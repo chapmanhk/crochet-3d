@@ -102,7 +102,8 @@ export class AttachmentPointManager {
      */
     createPointMesh(point, index) {
         const geometry = this.getGeometry(this.previewStitchType);
-        const mesh = new THREE.Mesh(geometry, this.ghostMaterial.clone());
+        // Use shared material instead of cloning - disposed in dispose() not clearPoints()
+        const mesh = new THREE.Mesh(geometry, this.ghostMaterial);
 
         // Calculate position above the attachment stitch
         const def = getStitchDefinition(this.previewStitchType);
@@ -180,16 +181,17 @@ export class AttachmentPointManager {
         raycaster.setFromCamera(mouse, this.sceneManager.camera);
         const intersects = raycaster.intersectObjects(this.pointMeshes);
 
-        // Reset previous hover
+        // Reset previous hover - reuse base material instead of cloning
         if (this.hoveredPoint) {
-            this.hoveredPoint.material = this.ghostMaterial.clone();
+            this.hoveredPoint.material = this.ghostMaterial;
             this.hoveredPoint.scale.setScalar(0.9);
             this.hoveredPoint = null;
         }
 
         if (intersects.length > 0) {
             const mesh = intersects[0].object;
-            mesh.material = this.hoverMaterial.clone();
+            // Reuse base material instead of cloning to prevent memory leak
+            mesh.material = this.hoverMaterial;
             mesh.scale.setScalar(1.0);
             this.hoveredPoint = mesh;
             this.sceneManager.domElement.style.cursor = 'pointer';
@@ -216,11 +218,13 @@ export class AttachmentPointManager {
 
     /**
      * Clear all attachment point meshes
+     * Note: Materials are shared and reused, so we don't dispose them here.
+     * They are disposed in dispose() when the manager is destroyed.
      */
     clearPoints() {
         this.pointMeshes.forEach(mesh => {
             this.group.remove(mesh);
-            mesh.material.dispose();
+            // Don't dispose material - it's shared (ghostMaterial or hoverMaterial)
         });
         this.pointMeshes = [];
         this.hoveredPoint = null;

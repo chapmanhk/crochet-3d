@@ -522,9 +522,11 @@ export class UIManager {
         if (attachPoints.length === 0) {
             // No pattern started - create foundation chain
             if (this.pattern.graph.size === 0) {
-                const chainLength = prompt('Enter foundation chain length:', '10');
+                const chainLength = prompt('Enter foundation chain length (1-100):', '10');
                 if (chainLength && !isNaN(chainLength)) {
-                    this.pattern.startWithChain(parseInt(chainLength));
+                    // Validate bounds to prevent performance issues
+                    const length = Math.max(1, Math.min(100, parseInt(chainLength, 10)));
+                    this.pattern.startWithChain(length);
                 }
             } else {
                 // Start new row

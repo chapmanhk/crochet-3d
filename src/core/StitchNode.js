@@ -12,11 +12,19 @@ import { getStitchDefinition, StitchType } from './StitchTypes.js';
  * - Reference to Three.js mesh
  */
 
-let nodeIdCounter = 0;
+/**
+ * Generate a unique ID for stitch nodes.
+ * Uses timestamp + random to avoid collisions across multiple pattern instances.
+ */
+function generateUniqueId() {
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 8);
+    return `stitch_${timestamp}_${random}`;
+}
 
 export class StitchNode {
     constructor(type, options = {}) {
-        this.id = `stitch_${++nodeIdCounter}`;
+        this.id = options.id ?? generateUniqueId();
         this.type = type;
         this.definition = getStitchDefinition(type);
 
