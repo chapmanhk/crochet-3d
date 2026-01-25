@@ -9,7 +9,10 @@ import { Pattern } from './core/Pattern.js';
 import { SceneManager } from './rendering/SceneManager.js';
 import { StitchRenderer } from './rendering/StitchRenderer.js';
 import { RaycastManager } from './interaction/RaycastManager.js';
+import { AttachmentPointManager } from './interaction/AttachmentPointManager.js';
+import { PhysicsEngine } from './physics/PhysicsEngine.js';
 import { UIManager } from './ui/UIManager.js';
+import { PhysicsPanel } from './ui/PhysicsPanel.js';
 import { EventBus, Events } from './utils/EventBus.js';
 
 class CrochetApp {
@@ -19,7 +22,10 @@ class CrochetApp {
         this.sceneManager = null;
         this.stitchRenderer = null;
         this.raycastManager = null;
+        this.attachmentManager = null;
+        this.physicsEngine = null;
         this.uiManager = null;
+        this.physicsPanel = null;
 
         // Initialize
         this.init();
@@ -43,8 +49,17 @@ class CrochetApp {
         // Create interaction manager
         this.raycastManager = new RaycastManager(this.sceneManager, this.stitchRenderer);
 
+        // Create attachment point manager for click-to-add functionality
+        this.attachmentManager = new AttachmentPointManager(this.sceneManager, this.pattern);
+
+        // Create physics engine for fabric simulation
+        this.physicsEngine = new PhysicsEngine(this.pattern, this.sceneManager);
+
         // Create UI
         this.uiManager = new UIManager(this.pattern);
+
+        // Create physics control panel
+        this.physicsPanel = new PhysicsPanel(this.physicsEngine);
 
         // Setup application-level event handlers
         this.setupEventHandlers();
@@ -68,6 +83,9 @@ class CrochetApp {
         console.log('  Enter - Add stitch');
         console.log('  Ctrl+Z - Undo');
         console.log('  Ctrl+Y - Redo');
+        console.log('  P - Toggle physics panel');
+        console.log('');
+        console.log('Physics: Use the panel in bottom-left to simulate fabric drape');
     }
 
     /**
@@ -81,21 +99,9 @@ class CrochetApp {
             });
         });
 
-        // Handle attachment point clicks
-        EventBus.on(Events.STITCH_SELECTED, ({ node }) => {
-            // Show attachment points above selected stitch
-            if (node.connections.above.length < node.definition.connectionsOut) {
-                this.raycastManager.showAttachmentPoints([{
-                    stitch: node,
-                    type: 'above',
-                    available: true,
-                    suggested: true
-                }]);
-            }
-        });
-
-        EventBus.on(Events.STITCH_DESELECTED, () => {
-            this.raycastManager.clearAttachmentPoints();
+        // Update attachment points when pattern loads
+        EventBus.on(Events.PATTERN_LOADED, () => {
+            // Initial attachment points update is handled by AttachmentPointManager
         });
     }
 
@@ -186,7 +192,10 @@ class CrochetApp {
      * Dispose of all resources
      */
     dispose() {
+        this.physicsPanel.dispose();
+        this.physicsEngine.dispose();
         this.uiManager.dispose();
+        this.attachmentManager.dispose();
         this.raycastManager.dispose();
         this.stitchRenderer.dispose();
         this.sceneManager.dispose();
