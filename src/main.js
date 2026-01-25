@@ -9,6 +9,7 @@ import { Pattern } from './core/Pattern.js';
 import { SceneManager } from './rendering/SceneManager.js';
 import { StitchRenderer } from './rendering/StitchRenderer.js';
 import { RaycastManager } from './interaction/RaycastManager.js';
+import { AttachmentPointManager } from './interaction/AttachmentPointManager.js';
 import { UIManager } from './ui/UIManager.js';
 import { EventBus, Events } from './utils/EventBus.js';
 
@@ -19,6 +20,7 @@ class CrochetApp {
         this.sceneManager = null;
         this.stitchRenderer = null;
         this.raycastManager = null;
+        this.attachmentManager = null;
         this.uiManager = null;
 
         // Initialize
@@ -42,6 +44,9 @@ class CrochetApp {
 
         // Create interaction manager
         this.raycastManager = new RaycastManager(this.sceneManager, this.stitchRenderer);
+
+        // Create attachment point manager for click-to-add functionality
+        this.attachmentManager = new AttachmentPointManager(this.sceneManager, this.pattern);
 
         // Create UI
         this.uiManager = new UIManager(this.pattern);
@@ -81,21 +86,9 @@ class CrochetApp {
             });
         });
 
-        // Handle attachment point clicks
-        EventBus.on(Events.STITCH_SELECTED, ({ node }) => {
-            // Show attachment points above selected stitch
-            if (node.connections.above.length < node.definition.connectionsOut) {
-                this.raycastManager.showAttachmentPoints([{
-                    stitch: node,
-                    type: 'above',
-                    available: true,
-                    suggested: true
-                }]);
-            }
-        });
-
-        EventBus.on(Events.STITCH_DESELECTED, () => {
-            this.raycastManager.clearAttachmentPoints();
+        // Update attachment points when pattern loads
+        EventBus.on(Events.PATTERN_LOADED, () => {
+            // Initial attachment points update is handled by AttachmentPointManager
         });
     }
 
@@ -187,6 +180,7 @@ class CrochetApp {
      */
     dispose() {
         this.uiManager.dispose();
+        this.attachmentManager.dispose();
         this.raycastManager.dispose();
         this.stitchRenderer.dispose();
         this.sceneManager.dispose();

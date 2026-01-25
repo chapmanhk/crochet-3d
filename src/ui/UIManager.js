@@ -1,5 +1,6 @@
 import { StitchType, StitchDefinitions, getStitchByKeyboard } from '../core/StitchTypes.js';
 import { EventBus, Events } from '../utils/EventBus.js';
+import { YarnMaterial } from '../rendering/YarnMaterial.js';
 
 /**
  * UIManager - Manages all HTML/CSS UI elements
@@ -209,11 +210,36 @@ export class UIManager {
                 border-top: 1px solid #eee;
             }
 
-            .color-picker-row input {
+            .color-picker-row input[type="color"] {
                 width: 40px;
                 height: 30px;
                 border: none;
                 cursor: pointer;
+            }
+
+            /* Color palette */
+            .color-palette {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                margin-top: 8px;
+            }
+
+            .color-swatch {
+                width: 24px;
+                height: 24px;
+                border-radius: 4px;
+                border: 2px solid transparent;
+                cursor: pointer;
+                transition: transform 0.1s;
+            }
+
+            .color-swatch:hover {
+                transform: scale(1.15);
+            }
+
+            .color-swatch.selected {
+                border-color: #333;
             }
 
             /* Instructions panel */
@@ -350,6 +376,7 @@ export class UIManager {
                 <label>Yarn color:</label>
                 <input type="color" id="color-picker" value="#8B4513">
             </div>
+            <div class="color-palette" id="color-palette"></div>
             <button class="toolbar-btn instructions-btn" id="btn-instructions">
                 View Instructions
             </button>
@@ -358,8 +385,26 @@ export class UIManager {
         // Color picker
         this.infoPanel.querySelector('#color-picker').addEventListener('change', (e) => {
             const color = parseInt(e.target.value.replace('#', ''), 16);
-            this.pattern.currentColor = color;
-            EventBus.emit(Events.COLOR_SELECTED, { color });
+            this.selectColor(color);
+        });
+
+        // Create color palette swatches
+        const palette = this.infoPanel.querySelector('#color-palette');
+        const presetColors = YarnMaterial.getPresetColors();
+
+        presetColors.forEach(({ name, color }) => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch';
+            swatch.style.backgroundColor = '#' + color.toString(16).padStart(6, '0');
+            swatch.title = name;
+            swatch.dataset.color = color;
+
+            if (color === this.pattern.currentColor) {
+                swatch.classList.add('selected');
+            }
+
+            swatch.addEventListener('click', () => this.selectColor(color));
+            palette.appendChild(swatch);
         });
 
         // Instructions button
@@ -447,6 +492,25 @@ export class UIManager {
         });
 
         EventBus.emit(Events.STITCH_TYPE_SELECTED, { type });
+    }
+
+    /**
+     * Select a yarn color
+     */
+    selectColor(color) {
+        this.pattern.currentColor = color;
+
+        // Update color picker
+        const colorPicker = this.infoPanel.querySelector('#color-picker');
+        colorPicker.value = '#' + color.toString(16).padStart(6, '0');
+
+        // Update swatch selection
+        const swatches = this.infoPanel.querySelectorAll('.color-swatch');
+        swatches.forEach(swatch => {
+            swatch.classList.toggle('selected', parseInt(swatch.dataset.color) === color);
+        });
+
+        EventBus.emit(Events.COLOR_SELECTED, { color });
     }
 
     /**

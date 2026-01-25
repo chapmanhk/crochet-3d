@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { StitchType, getStitchDefinition } from '../core/StitchTypes.js';
 import { EventBus, Events } from '../utils/EventBus.js';
+import { yarnMaterialInstance } from './YarnMaterial.js';
 
 /**
  * StitchRenderer - Creates and manages 3D meshes for stitches
  *
  * Handles:
  * - Generating geometry for each stitch type
- * - Material creation and management
+ * - Material creation and management (using YarnMaterial for realistic appearance)
  * - Mesh creation and updates
  * - Selection/highlight visual feedback
  */
@@ -19,15 +20,11 @@ export class StitchRenderer {
         // Geometry cache (reuse geometries for performance)
         this.geometryCache = new Map();
 
-        // Material cache
-        this.materialCache = new Map();
+        // Use yarn material system for realistic appearance
+        this.yarnMaterial = yarnMaterialInstance;
 
         // Node to mesh mapping
         this.meshMap = new Map();
-
-        // Selection visuals
-        this.selectionColor = 0x00ff00;
-        this.highlightColor = 0xffff00;
 
         // Setup event listeners
         this.setupEventListeners();
@@ -295,34 +292,10 @@ export class StitchRenderer {
     }
 
     /**
-     * Get or create material for a color
+     * Get or create material for a color using YarnMaterial system
      */
     getMaterial(color, options = {}) {
-        const key = `${color}_${options.selected || false}_${options.highlighted || false}`;
-
-        if (this.materialCache.has(key)) {
-            return this.materialCache.get(key);
-        }
-
-        let materialColor = color;
-        let emissive = 0x000000;
-
-        if (options.selected) {
-            emissive = this.selectionColor;
-        } else if (options.highlighted) {
-            emissive = this.highlightColor;
-        }
-
-        const material = new THREE.MeshStandardMaterial({
-            color: materialColor,
-            emissive: emissive,
-            emissiveIntensity: options.selected || options.highlighted ? 0.3 : 0,
-            roughness: 0.8,
-            metalness: 0.1
-        });
-
-        this.materialCache.set(key, material);
-        return material;
+        return this.yarnMaterial.getMaterial(color, options);
     }
 
     /**
@@ -448,9 +421,7 @@ export class StitchRenderer {
         this.geometryCache.forEach(geometry => geometry.dispose());
         this.geometryCache.clear();
 
-        // Dispose cached materials
-        this.materialCache.forEach(material => material.dispose());
-        this.materialCache.clear();
+        // YarnMaterial handles its own disposal
 
         // Clear mesh map
         this.clearAllMeshes();
