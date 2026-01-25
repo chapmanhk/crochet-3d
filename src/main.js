@@ -10,7 +10,9 @@ import { SceneManager } from './rendering/SceneManager.js';
 import { StitchRenderer } from './rendering/StitchRenderer.js';
 import { RaycastManager } from './interaction/RaycastManager.js';
 import { AttachmentPointManager } from './interaction/AttachmentPointManager.js';
+import { PhysicsEngine } from './physics/PhysicsEngine.js';
 import { UIManager } from './ui/UIManager.js';
+import { PhysicsPanel } from './ui/PhysicsPanel.js';
 import { EventBus, Events } from './utils/EventBus.js';
 
 class CrochetApp {
@@ -21,7 +23,9 @@ class CrochetApp {
         this.stitchRenderer = null;
         this.raycastManager = null;
         this.attachmentManager = null;
+        this.physicsEngine = null;
         this.uiManager = null;
+        this.physicsPanel = null;
 
         // Initialize
         this.init();
@@ -48,8 +52,14 @@ class CrochetApp {
         // Create attachment point manager for click-to-add functionality
         this.attachmentManager = new AttachmentPointManager(this.sceneManager, this.pattern);
 
+        // Create physics engine for fabric simulation
+        this.physicsEngine = new PhysicsEngine(this.pattern, this.sceneManager);
+
         // Create UI
         this.uiManager = new UIManager(this.pattern);
+
+        // Create physics control panel
+        this.physicsPanel = new PhysicsPanel(this.physicsEngine);
 
         // Setup application-level event handlers
         this.setupEventHandlers();
@@ -73,6 +83,9 @@ class CrochetApp {
         console.log('  Enter - Add stitch');
         console.log('  Ctrl+Z - Undo');
         console.log('  Ctrl+Y - Redo');
+        console.log('  P - Toggle physics panel');
+        console.log('');
+        console.log('Physics: Use the panel in bottom-left to simulate fabric drape');
     }
 
     /**
@@ -179,6 +192,8 @@ class CrochetApp {
      * Dispose of all resources
      */
     dispose() {
+        this.physicsPanel.dispose();
+        this.physicsEngine.dispose();
         this.uiManager.dispose();
         this.attachmentManager.dispose();
         this.raycastManager.dispose();
