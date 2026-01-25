@@ -1,0 +1,25 @@
+/* Crochet 3D Pattern Designer - Base Styles */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #f5f5f5;
+}
+
+canvas {
+    display: block;
+}
+
+/* Ensure UI stays above canvas */
+.crochet-ui {
+    pointer-events: none;
+}
+
+.crochet-ui > * {
+    pointer-events: auto;
+}
