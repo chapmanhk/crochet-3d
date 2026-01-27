@@ -28,8 +28,8 @@ export function validatePatternData(data) {
     const errors = [];
     const warnings = [];
 
-    // Check if data is an object
-    if (!data || typeof data !== 'object') {
+    // Check if data is an object (and not an array or null)
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
         errors.push('Pattern data must be an object');
         return { valid: false, errors, warnings };
     }
