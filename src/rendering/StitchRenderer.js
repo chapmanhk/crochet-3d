@@ -254,27 +254,10 @@ export class StitchRenderer {
     }
 
     /**
-     * Create increase geometry - branching Y shape
+     * Create increase geometry - wider stitch to represent two stitches in one
      */
     createIncreaseGeometry(geomDef) {
-        const group = new THREE.Group();
-
-        // Base single crochet
-        const baseGeom = this.createSingleCrochetGeometry(geomDef);
-
-        // Create two branches
-        const leftBranch = new THREE.Mesh(baseGeom);
-        leftBranch.position.set(-geomDef.baseRadius * 0.8, geomDef.height * 0.3, 0);
-        leftBranch.rotation.z = Math.PI * 0.1;
-
-        const rightBranch = new THREE.Mesh(baseGeom);
-        rightBranch.position.set(geomDef.baseRadius * 0.8, geomDef.height * 0.3, 0);
-        rightBranch.rotation.z = -Math.PI * 0.1;
-
-        // Merge into single geometry
-        const merged = new THREE.BufferGeometry();
-
-        // For simplicity, use a compound visual
+        // Use a wider single crochet to visually represent the increase
         return this.createSingleCrochetGeometry({
             ...geomDef,
             baseRadius: geomDef.baseRadius * 1.3
@@ -343,6 +326,10 @@ export class StitchRenderer {
 
     /**
      * Update mesh for a node (after type change)
+     *
+     * Note: Geometry and materials are cached and shared across meshes,
+     * so we don't dispose old references - they may be used by other meshes.
+     * The caches are cleaned up in dispose().
      */
     updateMeshForNode(node) {
         const mesh = this.meshMap.get(node.id);
@@ -351,10 +338,10 @@ export class StitchRenderer {
             return;
         }
 
-        // Update geometry
+        // Update geometry (cached/shared - don't dispose old reference)
         mesh.geometry = this.getGeometry(node.type);
 
-        // Update material
+        // Update material (cached by YarnMaterial - don't dispose old reference)
         mesh.material = this.getMaterial(node.color, {
             selected: node.isSelected,
             highlighted: node.isHighlighted

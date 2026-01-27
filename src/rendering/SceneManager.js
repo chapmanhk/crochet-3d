@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three-stdlib';
 import { EventBus, Events } from '../utils/EventBus.js';
+import { SceneConstants } from '../utils/Constants.js';
 
 /**
  * SceneManager - Three.js scene setup and management
@@ -57,7 +58,7 @@ export class SceneManager {
      */
     createScene() {
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0xf5f5f5);
+        this.scene.background = new THREE.Color(SceneConstants.BACKGROUND_COLOR);
     }
 
     /**
@@ -67,13 +68,14 @@ export class SceneManager {
         const aspect = window.innerWidth / window.innerHeight;
 
         this.camera = new THREE.PerspectiveCamera(
-            60,     // FOV
-            aspect, // Aspect ratio
-            0.1,    // Near plane
-            1000    // Far plane
+            SceneConstants.CAMERA_FOV,
+            aspect,
+            SceneConstants.CAMERA_NEAR,
+            SceneConstants.CAMERA_FAR
         );
 
-        this.camera.position.set(0, 5, 8);
+        const pos = SceneConstants.DEFAULT_CAMERA_POSITION;
+        this.camera.position.set(pos.x, pos.y, pos.z);
         this.camera.lookAt(0, 0, 0);
     }
 
@@ -87,7 +89,7 @@ export class SceneManager {
         });
 
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, SceneConstants.MAX_PIXEL_RATIO));
 
         // Enable shadows
         this.renderer.shadowMap.enabled = true;
@@ -95,7 +97,7 @@ export class SceneManager {
 
         // Tone mapping
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.0;
+        this.renderer.toneMappingExposure = SceneConstants.TONE_MAPPING_EXPOSURE;
 
         this.container.appendChild(this.renderer.domElement);
     }
@@ -105,30 +107,30 @@ export class SceneManager {
      */
     createLights() {
         // Main directional light
-        const mainLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        const mainLight = new THREE.DirectionalLight(0xffffff, SceneConstants.MAIN_LIGHT_INTENSITY);
         mainLight.position.set(5, 10, 7);
         mainLight.castShadow = true;
-        mainLight.shadow.mapSize.width = 2048;
-        mainLight.shadow.mapSize.height = 2048;
-        mainLight.shadow.camera.near = 0.5;
-        mainLight.shadow.camera.far = 50;
-        mainLight.shadow.camera.left = -10;
-        mainLight.shadow.camera.right = 10;
-        mainLight.shadow.camera.top = 10;
-        mainLight.shadow.camera.bottom = -10;
+        mainLight.shadow.mapSize.width = SceneConstants.SHADOW_MAP_SIZE;
+        mainLight.shadow.mapSize.height = SceneConstants.SHADOW_MAP_SIZE;
+        mainLight.shadow.camera.near = SceneConstants.SHADOW_CAMERA_NEAR;
+        mainLight.shadow.camera.far = SceneConstants.SHADOW_CAMERA_FAR;
+        mainLight.shadow.camera.left = -SceneConstants.SHADOW_CAMERA_SIZE;
+        mainLight.shadow.camera.right = SceneConstants.SHADOW_CAMERA_SIZE;
+        mainLight.shadow.camera.top = SceneConstants.SHADOW_CAMERA_SIZE;
+        mainLight.shadow.camera.bottom = -SceneConstants.SHADOW_CAMERA_SIZE;
         this.scene.add(mainLight);
 
         // Fill light
-        const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        const fillLight = new THREE.DirectionalLight(0xffffff, SceneConstants.FILL_LIGHT_INTENSITY);
         fillLight.position.set(-5, 5, -5);
         this.scene.add(fillLight);
 
         // Ambient light
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+        const ambientLight = new THREE.AmbientLight(0x404040, SceneConstants.AMBIENT_LIGHT_INTENSITY);
         this.scene.add(ambientLight);
 
         // Hemisphere light
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, SceneConstants.HEMISPHERE_LIGHT_INTENSITY);
         hemiLight.position.set(0, 20, 0);
         this.scene.add(hemiLight);
     }
@@ -139,12 +141,13 @@ export class SceneManager {
     createControls() {
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.05;
+        this.controls.dampingFactor = SceneConstants.DAMPING_FACTOR;
         this.controls.screenSpacePanning = true;
-        this.controls.minDistance = 2;
-        this.controls.maxDistance = 50;
-        this.controls.maxPolarAngle = Math.PI * 0.9;
-        this.controls.target.set(0, 1, 0);
+        this.controls.minDistance = SceneConstants.MIN_DISTANCE;
+        this.controls.maxDistance = SceneConstants.MAX_DISTANCE;
+        this.controls.maxPolarAngle = Math.PI * SceneConstants.MAX_POLAR_ANGLE_RATIO;
+        const target = SceneConstants.DEFAULT_CAMERA_TARGET;
+        this.controls.target.set(target.x, target.y, target.z);
         this.controls.update();
     }
 
@@ -169,7 +172,12 @@ export class SceneManager {
      * Create visual helpers
      */
     createHelpers() {
-        const gridHelper = new THREE.GridHelper(20, 20, 0xcccccc, 0xe0e0e0);
+        const gridHelper = new THREE.GridHelper(
+            SceneConstants.GRID_SIZE,
+            SceneConstants.GRID_DIVISIONS,
+            SceneConstants.GRID_CENTER_COLOR,
+            SceneConstants.GRID_LINE_COLOR
+        );
         gridHelper.position.y = -0.01;
         this.helperGroup.add(gridHelper);
 
@@ -267,8 +275,10 @@ export class SceneManager {
      * Reset camera to default view
      */
     resetCamera() {
-        this.camera.position.set(0, 5, 8);
-        this.controls.target.set(0, 1, 0);
+        const pos = SceneConstants.DEFAULT_CAMERA_POSITION;
+        const target = SceneConstants.DEFAULT_CAMERA_TARGET;
+        this.camera.position.set(pos.x, pos.y, pos.z);
+        this.controls.target.set(target.x, target.y, target.z);
         this.controls.update();
     }
 
@@ -276,24 +286,27 @@ export class SceneManager {
      * Set view mode
      */
     setViewMode(mode) {
+        let pos, target;
         switch (mode) {
             case 'top':
-                this.camera.position.set(0, 15, 0.1);
-                this.controls.target.set(0, 0, 0);
+                pos = SceneConstants.VIEW_TOP_POSITION;
+                target = SceneConstants.VIEW_TOP_TARGET;
                 break;
             case 'front':
-                this.camera.position.set(0, 2, 10);
-                this.controls.target.set(0, 2, 0);
+                pos = SceneConstants.VIEW_FRONT_POSITION;
+                target = SceneConstants.VIEW_FRONT_TARGET;
                 break;
             case 'side':
-                this.camera.position.set(10, 2, 0);
-                this.controls.target.set(0, 2, 0);
+                pos = SceneConstants.VIEW_SIDE_POSITION;
+                target = SceneConstants.VIEW_SIDE_TARGET;
                 break;
             case 'perspective':
             default:
                 this.resetCamera();
-                break;
+                return;
         }
+        this.camera.position.set(pos.x, pos.y, pos.z);
+        this.controls.target.set(target.x, target.y, target.z);
         this.controls.update();
     }
 

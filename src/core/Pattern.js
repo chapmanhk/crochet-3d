@@ -1,6 +1,7 @@
 import { StitchGraph } from './StitchGraph.js';
 import { StitchType, getStitchDefinition } from './StitchTypes.js';
 import { EventBus, Events } from '../utils/EventBus.js';
+import { PatternConstants } from '../utils/Constants.js';
 
 /**
  * Pattern - High-level pattern management
@@ -33,7 +34,7 @@ export class Pattern {
         // History for undo/redo
         this.history = [];
         this.historyIndex = -1;
-        this.maxHistorySize = 50;
+        this.maxHistorySize = PatternConstants.MAX_HISTORY_SIZE;
 
         // Pattern metadata
         this.metadata = {
@@ -86,7 +87,7 @@ export class Pattern {
     /**
      * Start a new pattern with a magic ring
      */
-    startWithMagicRing(initialStitches = 6) {
+    startWithMagicRing(initialStitches = PatternConstants.MAGIC_RING_INITIAL_STITCHES) {
         this.graph.clear();
         this.currentRow = 0;
         this.mode = 'round';
@@ -102,16 +103,16 @@ export class Pattern {
 
         // Add initial stitches around the ring
         const stitches = [ring];
+        const radius = PatternConstants.MAGIC_RING_RADIUS;
         for (let i = 0; i < initialStitches; i++) {
             const angle = (i / initialStitches) * Math.PI * 2;
-            const radius = 1.0;
 
             const stitch = this.graph.createNode(StitchType.SINGLE_CROCHET, {
                 row: 0,
                 column: i + 1,
                 position: {
                     x: Math.cos(angle) * radius,
-                    y: 0.5,
+                    y: PatternConstants.MAGIC_RING_INITIAL_Y,
                     z: Math.sin(angle) * radius
                 }
             });
@@ -210,16 +211,19 @@ export class Pattern {
         node.changeType(newType);
 
         // Recalculate position based on new type
+        // Safely access first connection below (may not exist for foundation row)
+        const attachTo = node.connections.below?.[0] ?? null;
         const newPosition = this.calculateStitchPosition(
             newType,
-            node.connections.below[0],
+            attachTo,
             node.row,
             node.column
         );
         node.setPosition(newPosition.x, newPosition.y, newPosition.z);
 
         EventBus.emit(Events.STITCH_TYPE_CHANGED, { node, oldType, newType });
-        this.saveHistoryState(`Change stitch to ${getStitchDefinition(newType).name}`);
+        const def = getStitchDefinition(newType);
+        this.saveHistoryState(`Change stitch to ${def?.name ?? 'unknown'}`);
 
         return true;
     }
@@ -229,10 +233,13 @@ export class Pattern {
      */
     calculateStitchPosition(type, attachTo, row, column) {
         const def = getStitchDefinition(type);
+        // Default dimensions if stitch definition not found
+        const width = def?.width ?? PatternConstants.DEFAULT_STITCH_WIDTH;
+        const height = def?.height ?? PatternConstants.DEFAULT_STITCH_HEIGHT;
 
         if (!attachTo) {
             // First stitch - position at origin
-            return { x: column * def.width, y: row * def.height, z: 0 };
+            return { x: column * width, y: row * height, z: 0 };
         }
 
         if (this.mode === 'round') {
@@ -246,11 +253,11 @@ export class Pattern {
         const rowStitches = this.graph.getRowSorted(row);
         if (rowStitches.length > 0) {
             const lastInRow = rowStitches[rowStitches.length - 1];
-            x = lastInRow.position.x + (lastInRow.width + def.width) / 2;
+            x = lastInRow.position.x + ((lastInRow.width ?? width) + width) / 2;
         }
 
         // Y position based on row and stitch height
-        const y = attachTo.position.y + (attachTo.height + def.height) / 2;
+        const y = attachTo.position.y + ((attachTo.height ?? height) + height) / 2;
 
         return { x, y, z: 0 };
     }
@@ -260,15 +267,16 @@ export class Pattern {
      */
     calculateRoundPosition(type, attachTo, row, column) {
         const def = getStitchDefinition(type);
+        const height = def?.height ?? PatternConstants.DEFAULT_STITCH_HEIGHT;
         const prevRowStitches = this.graph.getRow(row - 1);
 
-        const stitchCount = prevRowStitches.length || 6;
+        const stitchCount = prevRowStitches.length || PatternConstants.MAGIC_RING_INITIAL_STITCHES;
         const angle = (column / stitchCount) * Math.PI * 2;
-        const radius = 1.0 + row * 0.8;
+        const radius = PatternConstants.MAGIC_RING_RADIUS + row * PatternConstants.ROUND_RADIUS_GROWTH;
 
         return {
             x: Math.cos(angle) * radius,
-            y: row * def.height * 0.5,
+            y: row * height * 0.5,
             z: Math.sin(angle) * radius
         };
     }

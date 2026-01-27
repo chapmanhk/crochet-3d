@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { StitchType, getStitchDefinition } from '../core/StitchTypes.js';
 import { EventBus, Events } from '../utils/EventBus.js';
+import { AttachmentConstants } from '../utils/Constants.js';
 
 /**
  * AttachmentPointManager - Manages clickable attachment points for adding stitches
@@ -23,19 +24,19 @@ export class AttachmentPointManager {
 
         // Ghost material for preview stitches
         this.ghostMaterial = new THREE.MeshStandardMaterial({
-            color: 0x4CAF50,
+            color: AttachmentConstants.GHOST_COLOR,
             transparent: true,
-            opacity: 0.4,
-            emissive: 0x4CAF50,
-            emissiveIntensity: 0.2
+            opacity: AttachmentConstants.GHOST_OPACITY,
+            emissive: AttachmentConstants.GHOST_COLOR,
+            emissiveIntensity: AttachmentConstants.GHOST_EMISSIVE_INTENSITY
         });
 
         this.hoverMaterial = new THREE.MeshStandardMaterial({
-            color: 0x8BC34A,
+            color: AttachmentConstants.HOVER_COLOR,
             transparent: true,
-            opacity: 0.7,
-            emissive: 0x8BC34A,
-            emissiveIntensity: 0.4
+            opacity: AttachmentConstants.HOVER_OPACITY,
+            emissive: AttachmentConstants.HOVER_COLOR,
+            emissiveIntensity: AttachmentConstants.HOVER_EMISSIVE_INTENSITY
         });
 
         // Currently hovered point
@@ -102,7 +103,8 @@ export class AttachmentPointManager {
      */
     createPointMesh(point, index) {
         const geometry = this.getGeometry(this.previewStitchType);
-        const mesh = new THREE.Mesh(geometry, this.ghostMaterial.clone());
+        // Use shared material instead of cloning - disposed in dispose() not clearPoints()
+        const mesh = new THREE.Mesh(geometry, this.ghostMaterial);
 
         // Calculate position above the attachment stitch
         const def = getStitchDefinition(this.previewStitchType);
@@ -127,7 +129,7 @@ export class AttachmentPointManager {
         mesh.userData.isAttachmentPoint = true;
 
         // Scale down slightly for ghost effect
-        mesh.scale.setScalar(0.9);
+        mesh.scale.setScalar(AttachmentConstants.GHOST_SCALE);
 
         return mesh;
     }
@@ -144,7 +146,11 @@ export class AttachmentPointManager {
         let geometry;
 
         if (!def || !def.geometry) {
-            geometry = new THREE.SphereGeometry(0.2, 16, 16);
+            geometry = new THREE.SphereGeometry(
+                AttachmentConstants.DEFAULT_SPHERE_RADIUS,
+                AttachmentConstants.DEFAULT_SPHERE_SEGMENTS,
+                AttachmentConstants.DEFAULT_SPHERE_SEGMENTS
+            );
         } else if (def.geometry.type === 'torus') {
             geometry = new THREE.TorusGeometry(
                 def.geometry.radius,
@@ -180,17 +186,18 @@ export class AttachmentPointManager {
         raycaster.setFromCamera(mouse, this.sceneManager.camera);
         const intersects = raycaster.intersectObjects(this.pointMeshes);
 
-        // Reset previous hover
+        // Reset previous hover - reuse base material instead of cloning
         if (this.hoveredPoint) {
-            this.hoveredPoint.material = this.ghostMaterial.clone();
-            this.hoveredPoint.scale.setScalar(0.9);
+            this.hoveredPoint.material = this.ghostMaterial;
+            this.hoveredPoint.scale.setScalar(AttachmentConstants.GHOST_SCALE);
             this.hoveredPoint = null;
         }
 
         if (intersects.length > 0) {
             const mesh = intersects[0].object;
-            mesh.material = this.hoverMaterial.clone();
-            mesh.scale.setScalar(1.0);
+            // Reuse base material instead of cloning to prevent memory leak
+            mesh.material = this.hoverMaterial;
+            mesh.scale.setScalar(AttachmentConstants.HOVER_SCALE);
             this.hoveredPoint = mesh;
             this.sceneManager.domElement.style.cursor = 'pointer';
         } else {
@@ -216,11 +223,13 @@ export class AttachmentPointManager {
 
     /**
      * Clear all attachment point meshes
+     * Note: Materials are shared and reused, so we don't dispose them here.
+     * They are disposed in dispose() when the manager is destroyed.
      */
     clearPoints() {
         this.pointMeshes.forEach(mesh => {
             this.group.remove(mesh);
-            mesh.material.dispose();
+            // Don't dispose material - it's shared (ghostMaterial or hoverMaterial)
         });
         this.pointMeshes = [];
         this.hoveredPoint = null;

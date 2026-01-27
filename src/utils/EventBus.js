@@ -110,6 +110,92 @@ class EventBusClass {
 // Singleton instance
 export const EventBus = new EventBusClass();
 
+/**
+ * EventSubscriptions - Helper class for managing event listener cleanup
+ *
+ * Collects unsubscribe functions and provides a single dispose() call
+ * to clean up all subscriptions. Useful for components that need to
+ * subscribe to multiple events.
+ *
+ * Usage:
+ *   const subs = new EventSubscriptions();
+ *   subs.add(EventBus.on(Events.STITCH_ADDED, handler1));
+ *   subs.add(EventBus.on(Events.STITCH_REMOVED, handler2));
+ *
+ *   // Later, in dispose():
+ *   subs.dispose();
+ */
+export class EventSubscriptions {
+    constructor() {
+        this.unsubscribers = [];
+    }
+
+    /**
+     * Add an unsubscribe function to the collection
+     * @param {Function} unsubscribe - The function returned by EventBus.on()
+     * @returns {Function} - The same unsubscribe function (for chaining)
+     */
+    add(unsubscribe) {
+        if (typeof unsubscribe === 'function') {
+            this.unsubscribers.push(unsubscribe);
+        }
+        return unsubscribe;
+    }
+
+    /**
+     * Subscribe to an event and track the subscription
+     * Convenience method that combines EventBus.on() and add()
+     * @param {string} event - Event name
+     * @param {Function} callback - Event handler
+     * @returns {Function} - Unsubscribe function
+     */
+    on(event, callback) {
+        return this.add(EventBus.on(event, callback));
+    }
+
+    /**
+     * Subscribe to an event once and track the subscription
+     * @param {string} event - Event name
+     * @param {Function} callback - Event handler
+     * @returns {Function} - Unsubscribe function
+     */
+    once(event, callback) {
+        return this.add(EventBus.once(event, callback));
+    }
+
+    /**
+     * Dispose of all subscriptions
+     * Calls all collected unsubscribe functions
+     */
+    dispose() {
+        this.unsubscribers.forEach(unsub => {
+            try {
+                unsub();
+            } catch (err) {
+                console.error('Error during event unsubscription:', err);
+            }
+        });
+        this.unsubscribers = [];
+    }
+
+    /**
+     * Get the number of active subscriptions
+     * @returns {number}
+     */
+    get count() {
+        return this.unsubscribers.length;
+    }
+}
+
+/**
+ * Create a bound set of event subscriptions for a component
+ * Returns an object with on/once/dispose methods
+ * @returns {EventSubscriptions}
+ */
+export function createEventSubscriptions() {
+    return new EventSubscriptions();
+}
+
 // Event name constants for type safety
 export const Events = {
     // Stitch events
