@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { EventBus, Events } from '../utils/EventBus.js';
+import { PhysicsConstants } from '../utils/Constants.js';
 
 /**
  * PhysicsEngine - Simulates fabric physics for crochet patterns
@@ -27,20 +28,20 @@ export class PhysicsEngine {
 
         // Physics parameters
         this.params = {
-            gravity: new THREE.Vector3(0, -0.5, 0),
-            damping: 0.97,
-            iterations: 3,          // Constraint solver iterations
-            stiffness: 0.8,         // Spring stiffness (0-1)
-            restLengthScale: 1.0,   // Multiplier for rest lengths
-            groundY: -0.5,          // Ground plane Y position
+            gravity: new THREE.Vector3(0, PhysicsConstants.DEFAULT_GRAVITY_Y, 0),
+            damping: PhysicsConstants.DEFAULT_DAMPING,
+            iterations: PhysicsConstants.CONSTRAINT_ITERATIONS,
+            stiffness: PhysicsConstants.DEFAULT_STIFFNESS,
+            restLengthScale: PhysicsConstants.REST_LENGTH_SCALE,
+            groundY: PhysicsConstants.DEFAULT_GROUND_Y,
             enableGround: true,
             enableGravity: true
         };
 
         // Settling detection
-        this.settleThreshold = 0.001;
+        this.settleThreshold = PhysicsConstants.SETTLE_THRESHOLD;
         this.settleFrames = 0;
-        this.maxSettleFrames = 300;
+        this.maxSettleFrames = PhysicsConstants.MAX_SETTLE_FRAMES;
 
         // Bind methods
         this.update = this.update.bind(this);
@@ -81,7 +82,7 @@ export class PhysicsEngine {
             position: node.position.clone(),
             previousPosition: node.position.clone(),
             acceleration: new THREE.Vector3(),
-            mass: 1.0,
+            mass: PhysicsConstants.DEFAULT_BODY_MASS,
             pinned: node.row === 0 // Pin foundation row
         };
 
@@ -145,9 +146,9 @@ export class PhysicsEngine {
         // Adjust stiffness based on constraint type
         let stiffness = this.params.stiffness;
         if (type === 'horizontal') {
-            stiffness *= 1.0; // Full stiffness for row connections
+            stiffness *= PhysicsConstants.HORIZONTAL_STIFFNESS_MULTIPLIER;
         } else if (type === 'vertical') {
-            stiffness *= 0.8; // Slightly less for vertical (allows drape)
+            stiffness *= PhysicsConstants.VERTICAL_STIFFNESS_MULTIPLIER;
         }
 
         this.constraints.push({
@@ -207,7 +208,7 @@ export class PhysicsEngine {
     update() {
         if (!this.isRunning) return;
 
-        const dt = 1 / 60; // Fixed timestep
+        const dt = PhysicsConstants.FIXED_TIMESTEP;
         let totalMovement = 0;
 
         // Apply forces
@@ -299,16 +300,16 @@ export class PhysicsEngine {
 
             // Calculate correction
             const diff = (currentLength - restLength) / currentLength;
-            const correction = delta.multiplyScalar(diff * stiffness * 0.5);
+            const correction = delta.multiplyScalar(diff * stiffness * PhysicsConstants.CONSTRAINT_CORRECTION_FACTOR);
 
             // Apply correction (respecting pinned state)
             if (!bodyA.pinned && !bodyB.pinned) {
                 bodyA.position.add(correction);
                 bodyB.position.sub(correction);
             } else if (!bodyA.pinned) {
-                bodyA.position.add(correction.multiplyScalar(2));
+                bodyA.position.add(correction.multiplyScalar(PhysicsConstants.PINNED_CORRECTION_MULTIPLIER));
             } else if (!bodyB.pinned) {
-                bodyB.position.sub(correction.multiplyScalar(2));
+                bodyB.position.sub(correction.multiplyScalar(PhysicsConstants.PINNED_CORRECTION_MULTIPLIER));
             }
         });
     }

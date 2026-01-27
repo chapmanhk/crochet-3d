@@ -1,6 +1,7 @@
 import { StitchGraph } from './StitchGraph.js';
 import { StitchType, getStitchDefinition } from './StitchTypes.js';
 import { EventBus, Events } from '../utils/EventBus.js';
+import { PatternConstants } from '../utils/Constants.js';
 
 /**
  * Pattern - High-level pattern management
@@ -33,7 +34,7 @@ export class Pattern {
         // History for undo/redo
         this.history = [];
         this.historyIndex = -1;
-        this.maxHistorySize = 50;
+        this.maxHistorySize = PatternConstants.MAX_HISTORY_SIZE;
 
         // Pattern metadata
         this.metadata = {
@@ -86,7 +87,7 @@ export class Pattern {
     /**
      * Start a new pattern with a magic ring
      */
-    startWithMagicRing(initialStitches = 6) {
+    startWithMagicRing(initialStitches = PatternConstants.MAGIC_RING_INITIAL_STITCHES) {
         this.graph.clear();
         this.currentRow = 0;
         this.mode = 'round';
@@ -102,16 +103,16 @@ export class Pattern {
 
         // Add initial stitches around the ring
         const stitches = [ring];
+        const radius = PatternConstants.MAGIC_RING_RADIUS;
         for (let i = 0; i < initialStitches; i++) {
             const angle = (i / initialStitches) * Math.PI * 2;
-            const radius = 1.0;
 
             const stitch = this.graph.createNode(StitchType.SINGLE_CROCHET, {
                 row: 0,
                 column: i + 1,
                 position: {
                     x: Math.cos(angle) * radius,
-                    y: 0.5,
+                    y: PatternConstants.MAGIC_RING_INITIAL_Y,
                     z: Math.sin(angle) * radius
                 }
             });
@@ -233,8 +234,8 @@ export class Pattern {
     calculateStitchPosition(type, attachTo, row, column) {
         const def = getStitchDefinition(type);
         // Default dimensions if stitch definition not found
-        const width = def?.width ?? 0.8;
-        const height = def?.height ?? 0.5;
+        const width = def?.width ?? PatternConstants.DEFAULT_STITCH_WIDTH;
+        const height = def?.height ?? PatternConstants.DEFAULT_STITCH_HEIGHT;
 
         if (!attachTo) {
             // First stitch - position at origin
@@ -266,12 +267,12 @@ export class Pattern {
      */
     calculateRoundPosition(type, attachTo, row, column) {
         const def = getStitchDefinition(type);
-        const height = def?.height ?? 0.5;
+        const height = def?.height ?? PatternConstants.DEFAULT_STITCH_HEIGHT;
         const prevRowStitches = this.graph.getRow(row - 1);
 
-        const stitchCount = prevRowStitches.length || 6;
+        const stitchCount = prevRowStitches.length || PatternConstants.MAGIC_RING_INITIAL_STITCHES;
         const angle = (column / stitchCount) * Math.PI * 2;
-        const radius = 1.0 + row * 0.8;
+        const radius = PatternConstants.MAGIC_RING_RADIUS + row * PatternConstants.ROUND_RADIUS_GROWTH;
 
         return {
             x: Math.cos(angle) * radius,

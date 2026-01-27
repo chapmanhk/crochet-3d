@@ -14,6 +14,8 @@ import { PhysicsEngine } from './physics/PhysicsEngine.js';
 import { UIManager } from './ui/UIManager.js';
 import { PhysicsPanel } from './ui/PhysicsPanel.js';
 import { EventBus, Events } from './utils/EventBus.js';
+import { showAlert } from './ui/Modal.js';
+import { validatePatternData, formatValidationResult } from './utils/PatternSchema.js';
 
 class CrochetApp {
     constructor() {
@@ -167,9 +169,24 @@ class CrochetApp {
      */
     loadPattern(file) {
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 const data = JSON.parse(e.target.result);
+
+                // Validate the pattern data before loading
+                const validation = validatePatternData(data);
+                if (!validation.valid) {
+                    const errorMsg = 'Invalid pattern file:\n\n' + formatValidationResult(validation);
+                    console.error('Pattern validation failed:', validation.errors);
+                    await showAlert(errorMsg, 'Validation Error');
+                    return;
+                }
+
+                // Show warnings if any
+                if (validation.warnings.length > 0) {
+                    console.warn('Pattern loaded with warnings:', validation.warnings);
+                }
+
                 this.pattern = Pattern.fromJSON(data);
 
                 // Re-setup UI with new pattern
@@ -182,7 +199,7 @@ class CrochetApp {
                 console.log('Pattern loaded successfully');
             } catch (err) {
                 console.error('Failed to load pattern:', err);
-                alert('Failed to load pattern file');
+                showAlert('Failed to load pattern file. Please check the file format.', 'Load Error');
             }
         };
         reader.readAsText(file);

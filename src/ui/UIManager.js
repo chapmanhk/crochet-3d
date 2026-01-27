@@ -1,6 +1,8 @@
 import { StitchType, StitchDefinitions, getStitchByKeyboard } from '../core/StitchTypes.js';
-import { EventBus, Events } from '../utils/EventBus.js';
+import { EventBus, Events, EventSubscriptions } from '../utils/EventBus.js';
 import { YarnMaterial } from '../rendering/YarnMaterial.js';
+import { PatternConstants } from '../utils/Constants.js';
+import { showInstructions, showConfirm } from './Modal.js';
 
 /**
  * UIManager - Manages all HTML/CSS UI elements
@@ -26,6 +28,9 @@ export class UIManager {
 
         // Current selected stitch type
         this.selectedStitchType = StitchType.SINGLE_CROCHET;
+
+        // Event subscriptions for cleanup
+        this.eventSubs = new EventSubscriptions();
 
         // Bind methods
         this.onKeyDown = this.onKeyDown.bind(this);
@@ -328,8 +333,9 @@ export class UIManager {
             this.addStitchAtNextPosition();
         });
 
-        this.toolbar.querySelector('#btn-clear').addEventListener('click', () => {
-            if (confirm('Clear the entire pattern?')) {
+        this.toolbar.querySelector('#btn-clear').addEventListener('click', async () => {
+            const confirmed = await showConfirm('Clear the entire pattern?', 'Clear Pattern');
+            if (confirmed) {
                 this.pattern.graph.clear();
                 this.pattern.currentRow = 0;
                 this.updateInfoPanel();
@@ -410,7 +416,7 @@ export class UIManager {
         // Instructions button
         this.infoPanel.querySelector('#btn-instructions').addEventListener('click', () => {
             const instructions = this.pattern.generateInstructions();
-            alert(instructions);
+            showInstructions(instructions);
         });
 
         this.container.appendChild(this.infoPanel);
@@ -422,17 +428,17 @@ export class UIManager {
     setupEventListeners() {
         window.addEventListener('keydown', this.onKeyDown);
 
-        // Listen for pattern events
-        EventBus.on(Events.STITCH_ADDED, () => this.updateInfoPanel());
-        EventBus.on(Events.STITCH_REMOVED, () => this.updateInfoPanel());
-        EventBus.on(Events.PATTERN_LOADED, () => this.updateInfoPanel());
-        EventBus.on(Events.PATTERN_CLEARED, () => this.updateInfoPanel());
-        EventBus.on(Events.ROW_ADDED, () => this.updateInfoPanel());
+        // Listen for pattern events using EventSubscriptions for automatic cleanup
+        this.eventSubs.on(Events.STITCH_ADDED, () => this.updateInfoPanel());
+        this.eventSubs.on(Events.STITCH_REMOVED, () => this.updateInfoPanel());
+        this.eventSubs.on(Events.PATTERN_LOADED, () => this.updateInfoPanel());
+        this.eventSubs.on(Events.PATTERN_CLEARED, () => this.updateInfoPanel());
+        this.eventSubs.on(Events.ROW_ADDED, () => this.updateInfoPanel());
 
-        EventBus.on(Events.HISTORY_CHANGED, () => this.updateUndoRedoButtons());
+        this.eventSubs.on(Events.HISTORY_CHANGED, () => this.updateUndoRedoButtons());
 
-        EventBus.on(Events.STITCH_SELECTED, ({ node }) => this.showSelectionInfo(node));
-        EventBus.on(Events.STITCH_DESELECTED, () => this.hideSelectionInfo());
+        this.eventSubs.on(Events.STITCH_SELECTED, ({ node }) => this.showSelectionInfo(node));
+        this.eventSubs.on(Events.STITCH_DESELECTED, () => this.hideSelectionInfo());
     }
 
     /**
@@ -522,10 +528,16 @@ export class UIManager {
         if (attachPoints.length === 0) {
             // No pattern started - create foundation chain
             if (this.pattern.graph.size === 0) {
-                const chainLength = prompt('Enter foundation chain length (1-100):', '10');
+                const chainLength = prompt(
+                    `Enter foundation chain length (${PatternConstants.MIN_CHAIN_LENGTH}-${PatternConstants.MAX_CHAIN_LENGTH}):`,
+                    String(PatternConstants.DEFAULT_CHAIN_LENGTH)
+                );
                 if (chainLength && !isNaN(chainLength)) {
                     // Validate bounds to prevent performance issues
-                    const length = Math.max(1, Math.min(100, parseInt(chainLength, 10)));
+                    const length = Math.max(
+                        PatternConstants.MIN_CHAIN_LENGTH,
+                        Math.min(PatternConstants.MAX_CHAIN_LENGTH, parseInt(chainLength, 10))
+                    );
                     this.pattern.startWithChain(length);
                 }
             } else {
@@ -589,6 +601,9 @@ export class UIManager {
      */
     dispose() {
         window.removeEventListener('keydown', this.onKeyDown);
+
+        // Clean up all event subscriptions
+        this.eventSubs.dispose();
 
         if (this.container && this.container.parentElement) {
             this.container.parentElement.removeChild(this.container);
