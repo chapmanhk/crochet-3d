@@ -6,10 +6,11 @@ A 3D crochet pattern designer where users can dynamically build patterns by clic
 ---
 
 ## Current State
-- Three.js scene with basic torus geometry (5 hardcoded stitches)
-- OrbitControls for camera manipulation
-- Vite build system
-- No UI, no interactivity, no data structures
+- **Phase 1-5: COMPLETE** - Foundation, Rendering, Interaction, Physics, UI
+- **Phase 6: COMPLETE** - Pattern Templates (granny square, circle, square, triangle) and Shaping Guides
+- **Phase 7: PARTIAL** - JSON import/export done, PDF/PNG export pending
+- **Phase 8: NOT STARTED** - Advanced features (multi-color, collaboration, etc.)
+- Full test coverage with 488 passing tests
 
 ---
 
@@ -267,11 +268,11 @@ Use physics simulation to auto-position stitches:
 - Preset patterns (granny square, etc.)
 
 **Deliverables:**
-- [ ] Row direction tracking (left/right)
-- [ ] Working in the round support
-- [ ] Pattern validation engine
-- [ ] Template starter patterns
-- [ ] Shaping guides (increase/decrease suggestions)
+- [x] Row direction tracking (left/right)
+- [x] Working in the round support
+- [x] Pattern validation engine
+- [x] Template starter patterns (granny square, circle, square, triangle)
+- [x] Shaping guides (increase/decrease suggestions)
 
 ---
 
@@ -289,11 +290,11 @@ Use physics simulation to auto-position stitches:
 - Pattern versioning
 
 **Deliverables:**
-- [ ] JSON serialization/deserialization
-- [ ] LocalStorage autosave
-- [ ] File download (JSON, PDF, PNG)
-- [ ] Written pattern generator
-- [ ] Pattern import from JSON
+- [x] JSON serialization/deserialization
+- [x] LocalStorage autosave
+- [ ] File download (JSON, PDF, PNG) - JSON done, PDF/PNG pending
+- [x] Written pattern generator
+- [x] Pattern import from JSON
 
 ---
 
