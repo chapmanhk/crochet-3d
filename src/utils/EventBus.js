@@ -225,6 +225,14 @@ export const Events = {
     UI_PANEL_CLOSED: 'ui:panelClosed',
     UI_MODE_CHANGED: 'ui:modeChanged',
 
+    // View mode events
+    VIEW_MODE_CHANGED: 'view:modeChanged',
+    SCHEMATIC_MODE_CHANGED: 'view:schematicModeChanged',
+
+    // Row navigation events
+    ROW_NAVIGATED: 'row:navigated',
+    ROW_HIGHLIGHT_CHANGED: 'row:highlightChanged',
+
     // Physics events
     PHYSICS_STARTED: 'physics:started',
     PHYSICS_SETTLED: 'physics:settled',

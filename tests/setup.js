@@ -105,10 +105,67 @@ vi.mock('three', () => ({
             this.visible = true;
             this.userData = {};
         }
-    }
+    },
+    CanvasTexture: class MockCanvasTexture {
+        constructor(canvas) {
+            this.canvas = canvas;
+            this.needsUpdate = false;
+            this.wrapS = 1000;
+            this.wrapT = 1000;
+            this.repeat = {
+                set: vi.fn()
+            };
+            this.colorSpace = 'srgb';
+        }
+        dispose() {}
+    },
+    RepeatWrapping: 1000,
+    SRGBColorSpace: 'srgb'
 }));
 
 // Set up global THREE mock as well for any runtime checks
 globalThis.THREE = {
     Vector3: MockVector3
+};
+
+// Mock canvas 2D context for YarnMaterial
+const mockContext2D = {
+    fillStyle: '',
+    strokeStyle: '',
+    lineWidth: 1,
+    fillRect: vi.fn(),
+    beginPath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    stroke: vi.fn(),
+    save: vi.fn(),
+    restore: vi.fn(),
+    translate: vi.fn(),
+    rotate: vi.fn(),
+    scale: vi.fn(),
+    createLinearGradient: () => ({
+        addColorStop: vi.fn()
+    }),
+    createRadialGradient: () => ({
+        addColorStop: vi.fn()
+    }),
+    getImageData: () => ({
+        data: new Uint8ClampedArray(4 * 128 * 128)
+    }),
+    putImageData: vi.fn()
+};
+
+// Override createElement to return mock canvas with context
+const originalCreateElement = document.createElement.bind(document);
+document.createElement = (tagName, options) => {
+    const element = originalCreateElement(tagName, options);
+    if (tagName.toLowerCase() === 'canvas') {
+        element.getContext = (type) => {
+            if (type === '2d') {
+                return mockContext2D;
+            }
+            return null;
+        };
+    }
+    return element;
 };
