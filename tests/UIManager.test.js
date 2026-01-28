@@ -1,0 +1,633 @@
+/**
+ * Tests for UIManager - Phase 5 UI features
+ *
+ * Tests for:
+ * - View mode switching (perspective, top, front, side, schematic)
+ * - Row navigation UI (go to row, prev/next row)
+ * - Keyboard shortcuts for view modes
+ * - Event emission for view/row changes
+ */
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { EventBus, Events } from '../src/utils/EventBus.js';
+
+// Mock Pattern class for UIManager
+class MockPattern {
+    constructor() {
+        this.currentRow = 0;
+        this.selectedStitchType = 'SINGLE_CROCHET';
+        this.currentColor = 0x8B4513;
+        this.graph = {
+            size: 0,
+            getStats: () => ({
+                totalStitches: 10,
+                rowCount: 3
+            }),
+            clear: vi.fn()
+        };
+        this.history = [];
+        this.historyIndex = -1;
+    }
+    canUndo() { return false; }
+    canRedo() { return false; }
+    undo() {}
+    redo() {}
+    startNewRow() { this.currentRow++; }
+    getAttachmentPoints() { return []; }
+    generateInstructions() { return 'Row 1: ch 10'; }
+    getRowCount() { return 3; }
+    goToRow(row) {
+        if (row >= 0 && row < 3) {
+            this.currentRow = row;
+            return true;
+        }
+        return false;
+    }
+}
+
+// Mock SceneManager for view mode tests
+class MockSceneManager {
+    constructor() {
+        this.currentViewMode = 'perspective';
+    }
+    setViewMode(mode) {
+        this.currentViewMode = mode;
+    }
+    getViewMode() {
+        return this.currentViewMode;
+    }
+}
+
+describe('UIManager - View Modes', () => {
+    let UIManager;
+    let uiManager;
+    let mockPattern;
+    let mockSceneManager;
+
+    beforeEach(async () => {
+        // Clear EventBus
+        EventBus.clear();
+
+        // Reset DOM
+        document.body.innerHTML = '';
+
+        // Create mocks
+        mockPattern = new MockPattern();
+        mockSceneManager = new MockSceneManager();
+
+        // Import UIManager dynamically to get fresh instance
+        const module = await import('../src/ui/UIManager.js');
+        UIManager = module.UIManager;
+
+        // Create UIManager with scene manager reference
+        uiManager = new UIManager(mockPattern, mockSceneManager);
+    });
+
+    afterEach(() => {
+        if (uiManager && uiManager.dispose) {
+            uiManager.dispose();
+        }
+        document.body.innerHTML = '';
+    });
+
+    describe('View Mode Controls', () => {
+        it('should create view mode selector panel', () => {
+            const viewModePanel = document.querySelector('.view-mode-selector');
+            expect(viewModePanel).not.toBeNull();
+        });
+
+        it('should have buttons for all view modes', () => {
+            const viewModes = ['perspective', 'top', 'front', 'side', 'schematic'];
+
+            viewModes.forEach(mode => {
+                const button = document.querySelector(`[data-view-mode="${mode}"]`);
+                expect(button).not.toBeNull();
+            });
+        });
+
+        it('should have perspective mode selected by default', () => {
+            const perspectiveBtn = document.querySelector('[data-view-mode="perspective"]');
+            expect(perspectiveBtn.classList.contains('selected')).toBe(true);
+        });
+
+        it('should change view mode when button is clicked', () => {
+            const topBtn = document.querySelector('[data-view-mode="top"]');
+            topBtn.click();
+
+            expect(mockSceneManager.currentViewMode).toBe('top');
+        });
+
+        it('should update button selection state when view mode changes', () => {
+            const topBtn = document.querySelector('[data-view-mode="top"]');
+            const perspectiveBtn = document.querySelector('[data-view-mode="perspective"]');
+
+            topBtn.click();
+
+            expect(topBtn.classList.contains('selected')).toBe(true);
+            expect(perspectiveBtn.classList.contains('selected')).toBe(false);
+        });
+
+        it('should emit VIEW_MODE_CHANGED event when view mode changes', () => {
+            const callback = vi.fn();
+            EventBus.on(Events.VIEW_MODE_CHANGED, callback);
+
+            const frontBtn = document.querySelector('[data-view-mode="front"]');
+            frontBtn.click();
+
+            expect(callback).toHaveBeenCalledWith({ mode: 'front', previousMode: 'perspective' });
+        });
+    });
+
+    describe('View Mode Keyboard Shortcuts', () => {
+        it('should switch to perspective view with "1" key', () => {
+            // First switch to another mode
+            uiManager.setViewMode('top');
+
+            const event = new KeyboardEvent('keydown', { key: '1' });
+            window.dispatchEvent(event);
+
+            expect(mockSceneManager.currentViewMode).toBe('perspective');
+        });
+
+        it('should switch to top view with "2" key', () => {
+            const event = new KeyboardEvent('keydown', { key: '2' });
+            window.dispatchEvent(event);
+
+            expect(mockSceneManager.currentViewMode).toBe('top');
+        });
+
+        it('should switch to front view with "3" key', () => {
+            const event = new KeyboardEvent('keydown', { key: '3' });
+            window.dispatchEvent(event);
+
+            expect(mockSceneManager.currentViewMode).toBe('front');
+        });
+
+        it('should switch to side view with "4" key', () => {
+            const event = new KeyboardEvent('keydown', { key: '4' });
+            window.dispatchEvent(event);
+
+            expect(mockSceneManager.currentViewMode).toBe('side');
+        });
+
+        it('should switch to schematic view with "5" key', () => {
+            const event = new KeyboardEvent('keydown', { key: '5' });
+            window.dispatchEvent(event);
+
+            // Schematic mode uses 'top' camera position in scene manager
+            // but UIManager tracks it as 'schematic'
+            expect(uiManager.currentViewMode).toBe('schematic');
+            expect(mockSceneManager.currentViewMode).toBe('top');
+        });
+
+        it('should not trigger view mode change when typing in input', () => {
+            const input = document.createElement('input');
+            document.body.appendChild(input);
+            input.focus();
+
+            const event = new KeyboardEvent('keydown', { key: '2', target: input });
+            Object.defineProperty(event, 'target', { value: input });
+            window.dispatchEvent(event);
+
+            // Should still be perspective since we're typing in input
+            expect(mockSceneManager.currentViewMode).toBe('perspective');
+        });
+    });
+
+    describe('Schematic View Mode', () => {
+        it('should toggle 2D schematic rendering when schematic mode is selected', () => {
+            const schematicBtn = document.querySelector('[data-view-mode="schematic"]');
+            schematicBtn.click();
+
+            expect(uiManager.isSchematicMode).toBe(true);
+        });
+
+        it('should emit SCHEMATIC_MODE_CHANGED event', () => {
+            const callback = vi.fn();
+            EventBus.on(Events.SCHEMATIC_MODE_CHANGED, callback);
+
+            uiManager.setViewMode('schematic');
+
+            expect(callback).toHaveBeenCalledWith({ enabled: true });
+        });
+
+        it('should restore 3D rendering when switching from schematic to 3D mode', () => {
+            uiManager.setViewMode('schematic');
+            uiManager.setViewMode('perspective');
+
+            expect(uiManager.isSchematicMode).toBe(false);
+        });
+    });
+
+    describe('setViewMode() method', () => {
+        it('should update current view mode', () => {
+            uiManager.setViewMode('top');
+            expect(uiManager.currentViewMode).toBe('top');
+        });
+
+        it('should call sceneManager.setViewMode for 3D modes', () => {
+            const setViewModeSpy = vi.spyOn(mockSceneManager, 'setViewMode');
+
+            uiManager.setViewMode('front');
+
+            expect(setViewModeSpy).toHaveBeenCalledWith('front');
+        });
+
+        it('should update button UI to reflect current mode', () => {
+            uiManager.setViewMode('side');
+
+            const sideBtn = document.querySelector('[data-view-mode="side"]');
+            expect(sideBtn.classList.contains('selected')).toBe(true);
+        });
+
+        it('should return false for invalid view mode', () => {
+            const result = uiManager.setViewMode('invalid-mode');
+            expect(result).toBe(false);
+        });
+    });
+});
+
+describe('UIManager - Row Navigation', () => {
+    let UIManager;
+    let uiManager;
+    let mockPattern;
+    let mockSceneManager;
+
+    beforeEach(async () => {
+        EventBus.clear();
+        document.body.innerHTML = '';
+
+        mockPattern = new MockPattern();
+        mockSceneManager = new MockSceneManager();
+
+        const module = await import('../src/ui/UIManager.js');
+        UIManager = module.UIManager;
+
+        uiManager = new UIManager(mockPattern, mockSceneManager);
+    });
+
+    afterEach(() => {
+        if (uiManager && uiManager.dispose) {
+            uiManager.dispose();
+        }
+        document.body.innerHTML = '';
+    });
+
+    describe('Row Navigation Panel', () => {
+        it('should create row navigation panel', () => {
+            const rowNavPanel = document.querySelector('.row-navigation');
+            expect(rowNavPanel).not.toBeNull();
+        });
+
+        it('should display current row number', () => {
+            const currentRowDisplay = document.querySelector('#current-row-display');
+            expect(currentRowDisplay).not.toBeNull();
+            expect(currentRowDisplay.textContent).toContain('1'); // Row 1 (0-indexed as 0)
+        });
+
+        it('should display total row count', () => {
+            const totalRowsDisplay = document.querySelector('#total-rows-display');
+            expect(totalRowsDisplay).not.toBeNull();
+            expect(totalRowsDisplay.textContent).toContain('3');
+        });
+
+        it('should have previous row button', () => {
+            const prevBtn = document.querySelector('#btn-prev-row');
+            expect(prevBtn).not.toBeNull();
+        });
+
+        it('should have next row button', () => {
+            const nextBtn = document.querySelector('#btn-next-row');
+            expect(nextBtn).not.toBeNull();
+        });
+
+        it('should have go-to-row input field', () => {
+            const goToInput = document.querySelector('#input-go-to-row');
+            expect(goToInput).not.toBeNull();
+            expect(goToInput.type).toBe('number');
+        });
+
+        it('should have go button for row navigation', () => {
+            const goBtn = document.querySelector('#btn-go-to-row');
+            expect(goBtn).not.toBeNull();
+        });
+    });
+
+    describe('Previous/Next Row Navigation', () => {
+        it('should navigate to next row when next button is clicked', () => {
+            mockPattern.currentRow = 0;
+
+            const nextBtn = document.querySelector('#btn-next-row');
+            nextBtn.click();
+
+            expect(mockPattern.currentRow).toBe(1);
+        });
+
+        it('should navigate to previous row when prev button is clicked', () => {
+            mockPattern.currentRow = 2;
+            uiManager.updateRowNavigation();
+
+            const prevBtn = document.querySelector('#btn-prev-row');
+            prevBtn.click();
+
+            expect(mockPattern.currentRow).toBe(1);
+        });
+
+        it('should disable prev button on first row', () => {
+            mockPattern.currentRow = 0;
+            uiManager.updateRowNavigation();
+
+            const prevBtn = document.querySelector('#btn-prev-row');
+            expect(prevBtn.disabled).toBe(true);
+        });
+
+        it('should disable next button on last row', () => {
+            mockPattern.currentRow = 2; // Last row (0-indexed, 3 rows total)
+            uiManager.updateRowNavigation();
+
+            const nextBtn = document.querySelector('#btn-next-row');
+            expect(nextBtn.disabled).toBe(true);
+        });
+
+        it('should update display after navigation', () => {
+            mockPattern.currentRow = 0;
+
+            const nextBtn = document.querySelector('#btn-next-row');
+            nextBtn.click();
+
+            const currentRowDisplay = document.querySelector('#current-row-display');
+            expect(currentRowDisplay.textContent).toContain('2');
+        });
+
+        it('should emit ROW_NAVIGATED event when navigating', () => {
+            const callback = vi.fn();
+            EventBus.on(Events.ROW_NAVIGATED, callback);
+
+            mockPattern.currentRow = 0;
+            const nextBtn = document.querySelector('#btn-next-row');
+            nextBtn.click();
+
+            expect(callback).toHaveBeenCalledWith({ row: 1, previousRow: 0 });
+        });
+    });
+
+    describe('Go-to-Row Navigation', () => {
+        it('should navigate to specified row when go button is clicked', () => {
+            const input = document.querySelector('#input-go-to-row');
+            const goBtn = document.querySelector('#btn-go-to-row');
+
+            input.value = '2';
+            goBtn.click();
+
+            expect(mockPattern.currentRow).toBe(1); // 0-indexed, so row 2 = index 1
+        });
+
+        it('should navigate when Enter is pressed in input', () => {
+            const input = document.querySelector('#input-go-to-row');
+
+            input.value = '3';
+            const event = new KeyboardEvent('keydown', { key: 'Enter' });
+            input.dispatchEvent(event);
+
+            expect(mockPattern.currentRow).toBe(2); // 0-indexed
+        });
+
+        it('should not navigate to invalid row number (too high)', () => {
+            mockPattern.currentRow = 0;
+            const input = document.querySelector('#input-go-to-row');
+            const goBtn = document.querySelector('#btn-go-to-row');
+
+            input.value = '100';
+            goBtn.click();
+
+            // Should stay at current row
+            expect(mockPattern.currentRow).toBe(0);
+        });
+
+        it('should not navigate to invalid row number (negative)', () => {
+            mockPattern.currentRow = 1;
+            const input = document.querySelector('#input-go-to-row');
+            const goBtn = document.querySelector('#btn-go-to-row');
+
+            input.value = '-1';
+            goBtn.click();
+
+            expect(mockPattern.currentRow).toBe(1);
+        });
+
+        it('should not navigate to invalid row number (zero)', () => {
+            mockPattern.currentRow = 1;
+            const input = document.querySelector('#input-go-to-row');
+            const goBtn = document.querySelector('#btn-go-to-row');
+
+            input.value = '0';
+            goBtn.click();
+
+            expect(mockPattern.currentRow).toBe(1);
+        });
+
+        it('should clear input after successful navigation', () => {
+            const input = document.querySelector('#input-go-to-row');
+            const goBtn = document.querySelector('#btn-go-to-row');
+
+            input.value = '2';
+            goBtn.click();
+
+            expect(input.value).toBe('');
+        });
+
+        it('should show error feedback for invalid row', () => {
+            const input = document.querySelector('#input-go-to-row');
+            const goBtn = document.querySelector('#btn-go-to-row');
+
+            input.value = '999';
+            goBtn.click();
+
+            expect(input.classList.contains('error')).toBe(true);
+        });
+    });
+
+    describe('Row Navigation Keyboard Shortcuts', () => {
+        it('should navigate to previous row with PageUp', () => {
+            mockPattern.currentRow = 2;
+
+            const event = new KeyboardEvent('keydown', { key: 'PageUp' });
+            window.dispatchEvent(event);
+
+            expect(mockPattern.currentRow).toBe(1);
+        });
+
+        it('should navigate to next row with PageDown', () => {
+            mockPattern.currentRow = 0;
+
+            const event = new KeyboardEvent('keydown', { key: 'PageDown' });
+            window.dispatchEvent(event);
+
+            expect(mockPattern.currentRow).toBe(1);
+        });
+
+        it('should navigate to first row with Home', () => {
+            mockPattern.currentRow = 2;
+
+            const event = new KeyboardEvent('keydown', { key: 'Home' });
+            window.dispatchEvent(event);
+
+            expect(mockPattern.currentRow).toBe(0);
+        });
+
+        it('should navigate to last row with End', () => {
+            mockPattern.currentRow = 0;
+
+            const event = new KeyboardEvent('keydown', { key: 'End' });
+            window.dispatchEvent(event);
+
+            expect(mockPattern.currentRow).toBe(2);
+        });
+    });
+
+    describe('Row Highlight', () => {
+        it('should emit ROW_HIGHLIGHT_CHANGED when row is navigated', () => {
+            const callback = vi.fn();
+            EventBus.on(Events.ROW_HIGHLIGHT_CHANGED, callback);
+
+            uiManager.goToRow(1);
+
+            expect(callback).toHaveBeenCalledWith({ row: 1 });
+        });
+
+        it('should have method to highlight specific row in 3D view', () => {
+            expect(typeof uiManager.highlightRow).toBe('function');
+        });
+
+        it('should update highlighted row when navigating', () => {
+            uiManager.goToRow(1);
+
+            expect(uiManager.highlightedRow).toBe(1);
+        });
+    });
+
+    describe('updateRowNavigation() method', () => {
+        it('should update current row display', () => {
+            mockPattern.currentRow = 1;
+            uiManager.updateRowNavigation();
+
+            const display = document.querySelector('#current-row-display');
+            expect(display.textContent).toContain('2'); // 1-indexed display
+        });
+
+        it('should update total rows display', () => {
+            mockPattern.graph.getStats = () => ({ totalStitches: 20, rowCount: 5 });
+            uiManager.updateRowNavigation();
+
+            const display = document.querySelector('#total-rows-display');
+            expect(display.textContent).toContain('5');
+        });
+
+        it('should update button disabled states', () => {
+            mockPattern.currentRow = 0;
+            uiManager.updateRowNavigation();
+
+            const prevBtn = document.querySelector('#btn-prev-row');
+            const nextBtn = document.querySelector('#btn-next-row');
+
+            expect(prevBtn.disabled).toBe(true);
+            expect(nextBtn.disabled).toBe(false);
+        });
+    });
+
+    describe('goToRow() method', () => {
+        it('should update pattern current row', () => {
+            uiManager.goToRow(2);
+            expect(mockPattern.currentRow).toBe(2);
+        });
+
+        it('should return true for valid row', () => {
+            const result = uiManager.goToRow(1);
+            expect(result).toBe(true);
+        });
+
+        it('should return false for invalid row', () => {
+            const result = uiManager.goToRow(100);
+            expect(result).toBe(false);
+        });
+
+        it('should emit events for valid navigation', () => {
+            const navCallback = vi.fn();
+            const highlightCallback = vi.fn();
+
+            EventBus.on(Events.ROW_NAVIGATED, navCallback);
+            EventBus.on(Events.ROW_HIGHLIGHT_CHANGED, highlightCallback);
+
+            uiManager.goToRow(1);
+
+            expect(navCallback).toHaveBeenCalled();
+            expect(highlightCallback).toHaveBeenCalled();
+        });
+
+        it('should update UI after navigation', () => {
+            uiManager.goToRow(2);
+
+            const display = document.querySelector('#current-row-display');
+            expect(display.textContent).toContain('3'); // 1-indexed
+        });
+    });
+});
+
+describe('UIManager - Events Integration', () => {
+    let UIManager;
+    let uiManager;
+    let mockPattern;
+    let mockSceneManager;
+
+    beforeEach(async () => {
+        EventBus.clear();
+        document.body.innerHTML = '';
+
+        mockPattern = new MockPattern();
+        mockSceneManager = new MockSceneManager();
+
+        const module = await import('../src/ui/UIManager.js');
+        UIManager = module.UIManager;
+
+        uiManager = new UIManager(mockPattern, mockSceneManager);
+    });
+
+    afterEach(() => {
+        if (uiManager && uiManager.dispose) {
+            uiManager.dispose();
+        }
+        document.body.innerHTML = '';
+    });
+
+    it('should define VIEW_MODE_CHANGED event', () => {
+        expect(Events.VIEW_MODE_CHANGED).toBeDefined();
+    });
+
+    it('should define ROW_NAVIGATED event', () => {
+        expect(Events.ROW_NAVIGATED).toBeDefined();
+    });
+
+    it('should define ROW_HIGHLIGHT_CHANGED event', () => {
+        expect(Events.ROW_HIGHLIGHT_CHANGED).toBeDefined();
+    });
+
+    it('should define SCHEMATIC_MODE_CHANGED event', () => {
+        expect(Events.SCHEMATIC_MODE_CHANGED).toBeDefined();
+    });
+
+    it('should update row navigation when ROW_ADDED event is emitted', () => {
+        const updateSpy = vi.spyOn(uiManager, 'updateRowNavigation');
+
+        EventBus.emit(Events.ROW_ADDED, {});
+
+        expect(updateSpy).toHaveBeenCalled();
+    });
+
+    it('should update row navigation when PATTERN_LOADED event is emitted', () => {
+        const updateSpy = vi.spyOn(uiManager, 'updateRowNavigation');
+
+        EventBus.emit(Events.PATTERN_LOADED, {});
+
+        expect(updateSpy).toHaveBeenCalled();
+    });
+});

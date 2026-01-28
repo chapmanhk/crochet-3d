@@ -15,8 +15,9 @@ import { showInstructions, showConfirm } from './Modal.js';
  */
 
 export class UIManager {
-    constructor(pattern) {
+    constructor(pattern, sceneManager = null) {
         this.pattern = pattern;
+        this.sceneManager = sceneManager;
 
         // UI container
         this.container = null;
@@ -25,9 +26,19 @@ export class UIManager {
         this.stitchPalette = null;
         this.infoPanel = null;
         this.toolbar = null;
+        this.viewModeSelector = null;
+        this.rowNavigation = null;
 
         // Current selected stitch type
         this.selectedStitchType = StitchType.SINGLE_CROCHET;
+
+        // View mode state
+        this.currentViewMode = 'perspective';
+        this.isSchematicMode = false;
+        this.validViewModes = ['perspective', 'top', 'front', 'side', 'schematic'];
+
+        // Row navigation state
+        this.highlightedRow = 0;
 
         // Event subscriptions for cleanup
         this.eventSubs = new EventSubscriptions();
@@ -47,6 +58,8 @@ export class UIManager {
         this.createStitchPalette();
         this.createToolbar();
         this.createInfoPanel();
+        this.createViewModeSelector();
+        this.createRowNavigation();
         this.setupEventListeners();
     }
 
@@ -252,6 +265,125 @@ export class UIManager {
                 margin-top: 12px;
                 width: 100%;
             }
+
+            /* View Mode Selector */
+            .view-mode-selector {
+                left: 16px;
+                bottom: 16px;
+                display: flex;
+                gap: 4px;
+                padding: 8px;
+            }
+
+            .view-mode-btn {
+                padding: 8px 12px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background: #fff;
+                cursor: pointer;
+                font-size: 12px;
+                transition: all 0.15s ease;
+            }
+
+            .view-mode-btn:hover {
+                background: #f0f0f0;
+            }
+
+            .view-mode-btn.selected {
+                background: #2196F3;
+                color: white;
+                border-color: #1976D2;
+            }
+
+            .view-mode-btn .shortcut {
+                font-size: 10px;
+                color: #888;
+                margin-left: 4px;
+            }
+
+            .view-mode-btn.selected .shortcut {
+                color: rgba(255, 255, 255, 0.7);
+            }
+
+            /* Row Navigation */
+            .row-navigation {
+                right: 16px;
+                bottom: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                min-width: 160px;
+            }
+
+            .row-nav-display {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 4px;
+                font-size: 14px;
+            }
+
+            .row-nav-display #current-row-display {
+                font-weight: 600;
+                font-size: 16px;
+            }
+
+            .row-nav-buttons {
+                display: flex;
+                gap: 4px;
+            }
+
+            .row-nav-btn {
+                flex: 1;
+                padding: 6px 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background: #fff;
+                cursor: pointer;
+                font-size: 12px;
+                transition: all 0.15s ease;
+            }
+
+            .row-nav-btn:hover:not(:disabled) {
+                background: #f0f0f0;
+            }
+
+            .row-nav-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+            .row-goto-row {
+                display: flex;
+                gap: 4px;
+            }
+
+            .row-goto-row input {
+                flex: 1;
+                padding: 6px 8px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                font-size: 12px;
+                width: 60px;
+            }
+
+            .row-goto-row input.error {
+                border-color: #f44336;
+                background: #ffebee;
+            }
+
+            .row-goto-row button {
+                padding: 6px 12px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background: #fff;
+                cursor: pointer;
+                font-size: 12px;
+            }
+
+            .row-goto-row button:hover {
+                background: #f0f0f0;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -278,8 +410,11 @@ export class UIManager {
 
         const grid = this.stitchPalette.querySelector('.stitch-grid');
 
-        // Add button for each stitch type
+        // Add button for each stitch type that has a keyboard shortcut
         Object.entries(StitchDefinitions).forEach(([type, def]) => {
+            // Only show stitches with keyboard shortcuts in the palette
+            if (!def.keyboard) return;
+
             const btn = document.createElement('button');
             btn.className = 'stitch-btn';
             btn.dataset.type = type;
@@ -423,6 +558,115 @@ export class UIManager {
     }
 
     /**
+     * Create view mode selector panel
+     */
+    createViewModeSelector() {
+        this.viewModeSelector = document.createElement('div');
+        this.viewModeSelector.className = 'crochet-panel view-mode-selector';
+
+        const viewModes = [
+            { id: 'perspective', label: '3D', shortcut: '1' },
+            { id: 'top', label: 'Top', shortcut: '2' },
+            { id: 'front', label: 'Front', shortcut: '3' },
+            { id: 'side', label: 'Side', shortcut: '4' },
+            { id: 'schematic', label: 'Schematic', shortcut: '5' }
+        ];
+
+        viewModes.forEach(mode => {
+            const btn = document.createElement('button');
+            btn.className = 'view-mode-btn';
+            btn.dataset.viewMode = mode.id;
+            btn.innerHTML = `${mode.label}<span class="shortcut">${mode.shortcut}</span>`;
+
+            if (mode.id === this.currentViewMode) {
+                btn.classList.add('selected');
+            }
+
+            btn.addEventListener('click', () => this.setViewMode(mode.id));
+            this.viewModeSelector.appendChild(btn);
+        });
+
+        this.container.appendChild(this.viewModeSelector);
+    }
+
+    /**
+     * Create row navigation panel
+     */
+    createRowNavigation() {
+        this.rowNavigation = document.createElement('div');
+        this.rowNavigation.className = 'crochet-panel row-navigation';
+
+        const stats = this.pattern.graph.getStats();
+
+        this.rowNavigation.innerHTML = `
+            <div class="row-nav-display">
+                Row <span id="current-row-display">${this.pattern.currentRow + 1}</span>
+                of <span id="total-rows-display">${stats.rowCount || 1}</span>
+            </div>
+            <div class="row-nav-buttons">
+                <button class="row-nav-btn" id="btn-prev-row" title="Previous row (PageUp)">← Prev</button>
+                <button class="row-nav-btn" id="btn-next-row" title="Next row (PageDown)">Next →</button>
+            </div>
+            <div class="row-goto-row">
+                <input type="number" id="input-go-to-row" placeholder="Row #" min="1">
+                <button id="btn-go-to-row">Go</button>
+            </div>
+        `;
+
+        // Wire up prev/next buttons
+        this.rowNavigation.querySelector('#btn-prev-row').addEventListener('click', () => {
+            this.goToRow(this.pattern.currentRow - 1);
+        });
+
+        this.rowNavigation.querySelector('#btn-next-row').addEventListener('click', () => {
+            this.goToRow(this.pattern.currentRow + 1);
+        });
+
+        // Wire up go-to-row input
+        const goToInput = this.rowNavigation.querySelector('#input-go-to-row');
+        const goToBtn = this.rowNavigation.querySelector('#btn-go-to-row');
+
+        goToBtn.addEventListener('click', () => {
+            this.handleGoToRow(goToInput);
+        });
+
+        goToInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                this.handleGoToRow(goToInput);
+            }
+        });
+
+        this.container.appendChild(this.rowNavigation);
+        this.updateRowNavigation();
+    }
+
+    /**
+     * Handle go-to-row input
+     */
+    handleGoToRow(input) {
+        const rowNum = parseInt(input.value, 10);
+
+        // Clear any previous error state
+        input.classList.remove('error');
+
+        // Validate: must be positive and within range
+        if (isNaN(rowNum) || rowNum < 1) {
+            input.classList.add('error');
+            return;
+        }
+
+        // Convert from 1-indexed display to 0-indexed internal
+        const rowIndex = rowNum - 1;
+        const success = this.goToRow(rowIndex);
+
+        if (success) {
+            input.value = '';
+        } else {
+            input.classList.add('error');
+        }
+    }
+
+    /**
      * Setup event listeners
      */
     setupEventListeners() {
@@ -431,9 +675,18 @@ export class UIManager {
         // Listen for pattern events using EventSubscriptions for automatic cleanup
         this.eventSubs.on(Events.STITCH_ADDED, () => this.updateInfoPanel());
         this.eventSubs.on(Events.STITCH_REMOVED, () => this.updateInfoPanel());
-        this.eventSubs.on(Events.PATTERN_LOADED, () => this.updateInfoPanel());
-        this.eventSubs.on(Events.PATTERN_CLEARED, () => this.updateInfoPanel());
-        this.eventSubs.on(Events.ROW_ADDED, () => this.updateInfoPanel());
+        this.eventSubs.on(Events.PATTERN_LOADED, () => {
+            this.updateInfoPanel();
+            this.updateRowNavigation();
+        });
+        this.eventSubs.on(Events.PATTERN_CLEARED, () => {
+            this.updateInfoPanel();
+            this.updateRowNavigation();
+        });
+        this.eventSubs.on(Events.ROW_ADDED, () => {
+            this.updateInfoPanel();
+            this.updateRowNavigation();
+        });
 
         this.eventSubs.on(Events.HISTORY_CHANGED, () => this.updateUndoRedoButtons());
 
@@ -447,6 +700,42 @@ export class UIManager {
     onKeyDown(event) {
         // Ignore if typing in an input
         if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+            return;
+        }
+
+        // View mode shortcuts (1-5)
+        const viewModeKeys = {
+            '1': 'perspective',
+            '2': 'top',
+            '3': 'front',
+            '4': 'side',
+            '5': 'schematic'
+        };
+        if (viewModeKeys[event.key]) {
+            this.setViewMode(viewModeKeys[event.key]);
+            return;
+        }
+
+        // Row navigation shortcuts
+        if (event.key === 'PageUp') {
+            event.preventDefault();
+            this.goToRow(this.pattern.currentRow - 1);
+            return;
+        }
+        if (event.key === 'PageDown') {
+            event.preventDefault();
+            this.goToRow(this.pattern.currentRow + 1);
+            return;
+        }
+        if (event.key === 'Home') {
+            event.preventDefault();
+            this.goToRow(0);
+            return;
+        }
+        if (event.key === 'End') {
+            event.preventDefault();
+            const stats = this.pattern.graph.getStats();
+            this.goToRow(stats.rowCount - 1);
             return;
         }
 
@@ -594,6 +883,128 @@ export class UIManager {
     hideSelectionInfo() {
         const selectionInfo = this.infoPanel.querySelector('#selection-info');
         selectionInfo.classList.add('hidden');
+    }
+
+    /**
+     * Set view mode
+     * @param {string} mode - View mode: 'perspective', 'top', 'front', 'side', 'schematic'
+     * @returns {boolean} - Whether the mode was successfully set
+     */
+    setViewMode(mode) {
+        if (!this.validViewModes.includes(mode)) {
+            return false;
+        }
+
+        const previousMode = this.currentViewMode;
+        this.currentViewMode = mode;
+
+        // Handle schematic mode toggle
+        const wasSchematic = this.isSchematicMode;
+        this.isSchematicMode = mode === 'schematic';
+
+        // Update scene manager for 3D view modes
+        if (this.sceneManager) {
+            if (mode === 'schematic') {
+                // Schematic uses top-down view as base
+                this.sceneManager.setViewMode('top');
+            } else {
+                this.sceneManager.setViewMode(mode);
+            }
+        }
+
+        // Update button UI
+        const buttons = this.viewModeSelector.querySelectorAll('.view-mode-btn');
+        buttons.forEach(btn => {
+            btn.classList.toggle('selected', btn.dataset.viewMode === mode);
+        });
+
+        // Emit view mode changed event
+        EventBus.emit(Events.VIEW_MODE_CHANGED, { mode, previousMode });
+
+        // Emit schematic mode changed event if toggled
+        if (wasSchematic !== this.isSchematicMode) {
+            EventBus.emit(Events.SCHEMATIC_MODE_CHANGED, { enabled: this.isSchematicMode });
+        }
+
+        return true;
+    }
+
+    /**
+     * Navigate to a specific row
+     * @param {number} rowIndex - 0-indexed row number
+     * @returns {boolean} - Whether navigation was successful
+     */
+    goToRow(rowIndex) {
+        const stats = this.pattern.graph.getStats();
+        const maxRow = Math.max(0, stats.rowCount - 1);
+
+        // Validate row index
+        if (rowIndex < 0 || rowIndex > maxRow) {
+            return false;
+        }
+
+        const previousRow = this.pattern.currentRow;
+
+        // Update pattern's current row
+        if (this.pattern.goToRow) {
+            this.pattern.goToRow(rowIndex);
+        } else {
+            this.pattern.currentRow = rowIndex;
+        }
+
+        // Update highlighted row
+        this.highlightedRow = rowIndex;
+
+        // Update UI
+        this.updateRowNavigation();
+
+        // Emit events
+        EventBus.emit(Events.ROW_NAVIGATED, { row: rowIndex, previousRow });
+        EventBus.emit(Events.ROW_HIGHLIGHT_CHANGED, { row: rowIndex });
+
+        return true;
+    }
+
+    /**
+     * Highlight a specific row in the 3D view
+     * @param {number} rowIndex - 0-indexed row number
+     */
+    highlightRow(rowIndex) {
+        this.highlightedRow = rowIndex;
+        EventBus.emit(Events.ROW_HIGHLIGHT_CHANGED, { row: rowIndex });
+    }
+
+    /**
+     * Update row navigation UI
+     */
+    updateRowNavigation() {
+        if (!this.rowNavigation) return;
+
+        const stats = this.pattern.graph.getStats();
+        const currentRow = this.pattern.currentRow;
+        const totalRows = stats.rowCount || 1;
+
+        // Update displays
+        const currentDisplay = this.rowNavigation.querySelector('#current-row-display');
+        const totalDisplay = this.rowNavigation.querySelector('#total-rows-display');
+
+        if (currentDisplay) {
+            currentDisplay.textContent = currentRow + 1;
+        }
+        if (totalDisplay) {
+            totalDisplay.textContent = totalRows;
+        }
+
+        // Update button states
+        const prevBtn = this.rowNavigation.querySelector('#btn-prev-row');
+        const nextBtn = this.rowNavigation.querySelector('#btn-next-row');
+
+        if (prevBtn) {
+            prevBtn.disabled = currentRow <= 0;
+        }
+        if (nextBtn) {
+            nextBtn.disabled = currentRow >= totalRows - 1;
+        }
     }
 
     /**
