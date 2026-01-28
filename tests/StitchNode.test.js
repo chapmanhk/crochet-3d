@@ -67,6 +67,12 @@ describe('StitchNode', () => {
             expect(node.connections.above).toEqual([]);
             expect(node.connections.left).toBeNull();
             expect(node.connections.right).toBeNull();
+            expect(node.connections.space).toBeNull();
+        });
+
+        it('should initialize empty modifiers', () => {
+            const node = new StitchNode(StitchType.CHAIN);
+            expect(node.modifiers).toEqual([]);
         });
 
         it('should initialize with default selection state', () => {
@@ -97,12 +103,21 @@ describe('StitchNode', () => {
             expect(dc.abbreviation).toBe('dc');
         });
 
-        it('should return correct name', () => {
+        it('should return correct name (abbreviation by default)', () => {
             const chain = new StitchNode(StitchType.CHAIN);
             const sc = new StitchNode(StitchType.SINGLE_CROCHET);
 
-            expect(chain.name).toBe('Chain');
-            expect(sc.name).toBe('Single Crochet');
+            // name now returns display name (abbreviation)
+            expect(chain.name).toBe('ch');
+            expect(sc.name).toBe('sc');
+        });
+
+        it('should return correct base name', () => {
+            const chain = new StitchNode(StitchType.CHAIN);
+            const sc = new StitchNode(StitchType.SINGLE_CROCHET);
+
+            expect(chain.baseName).toBe('Chain');
+            expect(sc.baseName).toBe('Single Crochet');
         });
 
         it('should return correct height', () => {
@@ -340,7 +355,8 @@ describe('StitchNode', () => {
 
             expect(node.type).toBe(StitchType.SINGLE_CROCHET);
             expect(node.definition).toBeDefined();
-            expect(node.name).toBe('Single Crochet');
+            expect(node.baseName).toBe('Single Crochet');
+            expect(node.name).toBe('sc');  // Display name is abbreviation
         });
 
         it('should change yarn color', () => {

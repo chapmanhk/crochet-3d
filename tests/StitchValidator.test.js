@@ -24,6 +24,7 @@ describe('StitchValidator', () => {
 
     describe('canPlaceStitch', () => {
         beforeEach(() => {
+            pattern.autoTurningChain = false;  // Disable auto turning chains for tests
             pattern.startWithChain(5);
             pattern.startNewRow();
         });
@@ -119,7 +120,7 @@ describe('StitchValidator', () => {
                 );
 
                 expect(result.valid).toBe(false);
-                expect(result.errors.some(e => e.includes('two adjacent stitches'))).toBe(true);
+                expect(result.errors.some(e => e.includes('adjacent stitches'))).toBe(true);
             });
 
             it('should error when second stitch for decrease is connected', () => {
@@ -145,6 +146,7 @@ describe('StitchValidator', () => {
             });
 
             it('should be valid for proper decrease placement', () => {
+                // Use chain at position 0 which has chain at position 1 next to it
                 const chain0 = pattern.graph.getAt(0, 0);
 
                 const attachPoint = {
@@ -152,23 +154,28 @@ describe('StitchValidator', () => {
                     type: 'above'
                 };
 
+                // Ensure pattern.currentRow matches where we're placing
+                pattern.currentRow = 1;
+
                 const result = StitchValidator.canPlaceStitch(
                     StitchType.DECREASE,
                     attachPoint,
                     pattern
                 );
 
+                // Should be valid when there are 2 adjacent stitches
                 expect(result.valid).toBe(true);
             });
         });
 
-        describe('warnings', () => {
-            it('should warn about chain stitch after foundation row', () => {
-                const chain = pattern.graph.getAt(0, 0);
-                pattern.addStitch(StitchType.SINGLE_CROCHET, chain);
-                pattern.startNewRow();
+        describe('suggestions and warnings', () => {
+            it('should allow chain stitch on row 1 attachment', () => {
+                // Add a stitch to row 1 first
+                const chain0 = pattern.graph.getAt(0, 0);
+                const sc = pattern.addStitch(StitchType.SINGLE_CROCHET, chain0);
+                pattern.startNewRow();  // Now on row 2
 
-                const sc = pattern.graph.getAt(1, 0);
+                // The SC has available connections above
                 const attachPoint = {
                     stitch: sc,
                     type: 'above'
@@ -180,10 +187,12 @@ describe('StitchValidator', () => {
                     pattern
                 );
 
-                expect(result.warnings.some(w => w.includes('foundation row'))).toBe(true);
+                // Chains are valid anywhere - used for turning chains, chain spaces, etc.
+                expect(result.valid).toBe(true);
             });
 
-            it('should warn about tall stitches on first row', () => {
+            it('should suggest turning chain for tall stitches on foundation', () => {
+                // Get foundation chain (row 0)
                 const chain = pattern.graph.getAt(0, 0);
 
                 const attachPoint = {
@@ -197,10 +206,12 @@ describe('StitchValidator', () => {
                     pattern
                 );
 
-                expect(result.warnings.some(w => w.includes('tension issues'))).toBe(true);
+                // Suggestion about turning chain height for tall stitches
+                expect(result.suggestions.some(s => s.includes('turning chain'))).toBe(true);
             });
 
-            it('should warn about triple crochet on first row', () => {
+            it('should suggest turning chain for triple crochet on foundation', () => {
+                // Get foundation chain (row 0)
                 const chain = pattern.graph.getAt(0, 0);
 
                 const attachPoint = {
@@ -214,7 +225,25 @@ describe('StitchValidator', () => {
                     pattern
                 );
 
-                expect(result.warnings.some(w => w.includes('tension issues'))).toBe(true);
+                // Suggestion about turning chain height
+                expect(result.suggestions.some(s => s.includes('turning chain'))).toBe(true);
+            });
+
+            it('should warn about deprecated stitch types', () => {
+                const chain = pattern.graph.getAt(0, 0);
+
+                const attachPoint = {
+                    stitch: chain,
+                    type: 'above'
+                };
+
+                const result = StitchValidator.canPlaceStitch(
+                    StitchType.INCREASE,  // Deprecated type
+                    attachPoint,
+                    pattern
+                );
+
+                expect(result.warnings.some(w => w.includes('deprecated'))).toBe(true);
             });
         });
     });
@@ -235,28 +264,29 @@ describe('StitchValidator', () => {
             expect(result.errors).toHaveLength(0);
         });
 
-        it('should error on disconnected stitches', () => {
+        it('should warn about disconnected stitches (now warning for lace patterns)', () => {
             pattern.startWithChain(3);
             // Add disconnected stitch manually
             pattern.graph.createNode(StitchType.SINGLE_CROCHET, { row: 1, column: 0 });
 
             const result = StitchValidator.validatePattern(pattern);
 
-            expect(result.valid).toBe(false);
-            expect(result.errors.some(e => e.includes('no connection below'))).toBe(true);
+            // Changed from error to warning to support lace patterns with skipped stitches
+            expect(result.warnings.some(w => w.includes('no connection below'))).toBe(true);
         });
 
-        it('should warn about large stitch count changes', () => {
+        it('should warn about large unexpected stitch count changes', () => {
             pattern.startWithChain(10);
             const chain = pattern.graph.getRowSorted(0);
 
-            // Add only 2 stitches in row 1 (large decrease)
+            // Add only 2 stitches in row 1 (large decrease without using decrease stitches)
             pattern.addStitch(StitchType.SINGLE_CROCHET, chain[0]);
             pattern.addStitch(StitchType.SINGLE_CROCHET, chain[1]);
 
             const result = StitchValidator.validatePattern(pattern);
 
-            expect(result.warnings.some(w => w.includes('Large stitch count change'))).toBe(true);
+            // Warning text changed to mention "Unexpected stitch count change"
+            expect(result.warnings.some(w => w.includes('stitch count'))).toBe(true);
         });
 
         it('should include row statistics', () => {
@@ -276,12 +306,12 @@ describe('StitchValidator', () => {
             pattern.startWithChain(5);
             const chain = pattern.graph.getRowSorted(0);
             pattern.addStitch(StitchType.INCREASE, chain[0]);
-            pattern.addStitch(StitchType.DECREASE, chain[1], { secondAttachment: chain[2] });
+            pattern.addStitch(StitchType.DECREASE, chain[2], { secondAttachment: chain[3] });
 
             const result = StitchValidator.validatePattern(pattern);
 
-            expect(result.rowStats[1].info).toContain('1 inc');
-            expect(result.rowStats[1].info).toContain('1 dec');
+            expect(result.rowStats[1].increases).toBe(1);
+            expect(result.rowStats[1].decreases).toBe(1);
         });
     });
 

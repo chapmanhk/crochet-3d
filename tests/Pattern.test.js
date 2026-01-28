@@ -123,10 +123,11 @@ describe('Pattern', () => {
             expect(stitches).toHaveLength(9);
         });
 
-        it('should set mode to round', () => {
+        it('should set mode to round-joined', () => {
             pattern.startWithMagicRing();
 
-            expect(pattern.mode).toBe('round');
+            // Mode is now 'round-joined' (can also be 'round-spiral')
+            expect(pattern.mode).toBe('round-joined');
         });
 
         it('should create magic ring node at center', () => {
@@ -501,7 +502,7 @@ describe('Pattern', () => {
 
             const json = pattern.toJSON();
 
-            expect(json.version).toBe(1);
+            expect(json.version).toBe(2);  // Updated to version 2
             expect(json.metadata).toBeDefined();
             expect(json.mode).toBe('flat');
             expect(json.currentRow).toBeDefined();
@@ -521,17 +522,29 @@ describe('Pattern', () => {
 
         it('should deserialize from JSON', () => {
             pattern.startWithChain(5);
-            pattern.mode = 'round';
+            pattern.mode = 'round-joined';  // Use new mode name
             pattern.currentColor = 0xFF0000;
             pattern.metadata.name = 'Test';
 
             const json = pattern.toJSON();
             const restored = Pattern.fromJSON(json);
 
-            expect(restored.mode).toBe('round');
+            expect(restored.mode).toBe('round-joined');
             expect(restored.currentColor).toBe(0xFF0000);
             expect(restored.metadata.name).toBe('Test');
             expect(restored.graph.size).toBe(5);
+        });
+
+        it('should convert legacy round mode to round-joined', () => {
+            const legacyJson = {
+                mode: 'round',  // Legacy mode
+                graph: { nodes: [] }
+            };
+
+            const restored = Pattern.fromJSON(legacyJson);
+
+            // Legacy 'round' converts to 'round-joined'
+            expect(restored.mode).toBe('round-joined');
         });
 
         it('should handle missing optional fields', () => {

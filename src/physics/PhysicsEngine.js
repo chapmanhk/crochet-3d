@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { EventBus, Events } from '../utils/EventBus.js';
 import { PhysicsConstants } from '../utils/Constants.js';
+import { getStitchPhysics } from '../core/StitchTypes.js';
 
 /**
  * PhysicsEngine - Simulates fabric physics for crochet patterns
@@ -9,6 +10,7 @@ import { PhysicsConstants } from '../utils/Constants.js';
  * - Spring connections between stitches
  * - Gravity for drape effect
  * - Damping for stability
+ * - Per-stitch physics properties (stiffness, density, bendResistance)
  */
 
 export class PhysicsEngine {
@@ -75,14 +77,23 @@ export class PhysicsEngine {
 
     /**
      * Create a physics body for a stitch node
+     * Uses per-stitch physics properties for realistic fabric behavior
      */
     addBody(node) {
+        // Get stitch-specific physics properties
+        const stitchPhysics = node.physics || getStitchPhysics(node.type);
+
         const body = {
             node: node,
             position: node.position.clone(),
             previousPosition: node.position.clone(),
             acceleration: new THREE.Vector3(),
-            mass: PhysicsConstants.DEFAULT_BODY_MASS,
+            // Mass based on stitch density (denser stitches = heavier)
+            mass: PhysicsConstants.DEFAULT_BODY_MASS * (stitchPhysics.density || 1.0),
+            // Stitch-specific stiffness for constraint calculations
+            stiffness: stitchPhysics.stiffness || 0.8,
+            // Bend resistance affects how rigid the stitch is
+            bendResistance: stitchPhysics.bendResistance || 0.5,
             pinned: node.row === 0 // Pin foundation row
         };
 
@@ -138,15 +149,25 @@ export class PhysicsEngine {
 
     /**
      * Add a constraint between two bodies
+     * Uses per-stitch physics properties for realistic fabric behavior
      */
     addConstraint(bodyA, bodyB, type) {
         // Calculate rest length from current positions
         const restLength = bodyA.position.distanceTo(bodyB.position);
 
-        // Adjust stiffness based on constraint type
-        let stiffness = this.params.stiffness;
+        // Calculate stiffness as average of both stitches' properties
+        // This creates realistic transitions between different stitch types
+        const avgStitchStiffness = (bodyA.stiffness + bodyB.stiffness) / 2;
+
+        // Base stiffness from params, modified by stitch properties
+        let stiffness = this.params.stiffness * avgStitchStiffness;
+
+        // Adjust based on constraint type
         if (type === 'horizontal') {
             stiffness *= PhysicsConstants.HORIZONTAL_STIFFNESS_MULTIPLIER;
+            // Horizontal connections also affected by bend resistance
+            const avgBendResistance = (bodyA.bendResistance + bodyB.bendResistance) / 2;
+            stiffness *= (1 + avgBendResistance * 0.5);
         } else if (type === 'vertical') {
             stiffness *= PhysicsConstants.VERTICAL_STIFFNESS_MULTIPLIER;
         }
