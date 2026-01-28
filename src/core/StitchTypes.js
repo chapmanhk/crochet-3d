@@ -845,7 +845,8 @@ export function getStitchWidth(type) {
  * Get required turning chain length for a stitch type
  */
 export function getTurningChainLength(type) {
-    return TurningChainHeight[type] || 1;
+    const height = TurningChainHeight[type];
+    return height !== undefined ? height : 1;
 }
 
 /**

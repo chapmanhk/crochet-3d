@@ -1,4 +1,12 @@
-import { StitchType, getStitchDefinition } from './StitchTypes.js';
+import {
+    StitchType,
+    StitchModifier,
+    getStitchDefinition,
+    getTurningChainLength,
+    doesTurningChainCount,
+    isBasicStitch,
+    createsSpace
+} from './StitchTypes.js';
 
 /**
  * StitchValidator - Validates stitch placements and pattern construction
@@ -7,18 +15,24 @@ import { StitchType, getStitchDefinition } from './StitchTypes.js';
  * - Valid stitch type for position
  * - Correct connection counts
  * - Pattern consistency warnings
+ * - Support for increases, decreases, skipped stitches
  */
 
 export class StitchValidator {
     /**
      * Validate if a stitch can be placed at a given attachment point
      */
-    static canPlaceStitch(stitchType, attachPoint, pattern) {
+    static canPlaceStitch(stitchType, attachPoint, pattern, options = {}) {
         const result = {
             valid: true,
             warnings: [],
-            errors: []
+            errors: [],
+            suggestions: []
         };
+
+        const modifiers = options.modifiers || [];
+        const skipCount = options.skipCount || 0;
+        const workIntoSpace = options.workIntoSpace || false;
 
         if (!attachPoint || !attachPoint.stitch) {
             result.errors.push('No attachment point specified');
@@ -33,56 +47,143 @@ export class StitchValidator {
             return result;
         }
 
+        // Warn about deprecated types
+        if (def.deprecated) {
+            result.warnings.push(`${def.name} is deprecated. ${def.replacementHint}`);
+        }
+
         const attachStitch = attachPoint.stitch;
 
         // Check if attachment point has available connections
-        if (attachStitch.connections.above.length >= attachStitch.definition.connectionsOut) {
+        const connectionsOut = attachStitch.effectiveConnections?.connectionsOut
+            || attachStitch.definition?.connectionsOut || 1;
+
+        if (attachStitch.connections.above.length >= connectionsOut) {
             result.errors.push('Attachment point has no available connections');
             result.valid = false;
             return result;
         }
 
-        // Validate decrease requires two stitches below
-        if (stitchType === StitchType.DECREASE) {
+        // Validate decrease requires multiple stitches below
+        const isDecrease = modifiers.includes(StitchModifier.DECREASE) ||
+                          modifiers.includes(StitchModifier.DECREASE_3) ||
+                          stitchType === StitchType.DECREASE ||
+                          stitchType === StitchType.CLUSTER;
+
+        if (isDecrease) {
+            const decreaseCount = modifiers.includes(StitchModifier.DECREASE_3) ? 3 :
+                                 stitchType === StitchType.CLUSTER ? 3 : 2;
             const row = attachStitch.row;
             const rowStitches = pattern.graph.getRowSorted(row);
             const attachIndex = rowStitches.indexOf(attachStitch);
 
-            if (attachIndex === -1 || attachIndex >= rowStitches.length - 1) {
-                result.errors.push('Decrease requires two adjacent stitches');
+            if (attachIndex === -1 || attachIndex > rowStitches.length - decreaseCount) {
+                result.errors.push(`Decrease requires ${decreaseCount} adjacent stitches`);
                 result.valid = false;
                 return result;
             }
 
-            const nextStitch = rowStitches[attachIndex + 1];
-            if (nextStitch.connections.above.length > 0) {
-                result.errors.push('Second stitch for decrease already has a connection');
+            // Check that all stitches needed for decrease are available
+            for (let i = 1; i < decreaseCount; i++) {
+                const nextStitch = rowStitches[attachIndex + i];
+                if (!nextStitch) {
+                    result.errors.push(`Not enough stitches for ${decreaseCount}-stitch decrease`);
+                    result.valid = false;
+                    return result;
+                }
+                if (nextStitch.connections.above.length > 0) {
+                    result.errors.push(`Stitch ${i + 1} for decrease already has a connection above`);
+                    result.valid = false;
+                    return result;
+                }
+            }
+        }
+
+        // Validate skip stitches
+        if (skipCount > 0) {
+            const row = attachStitch.row;
+            const rowStitches = pattern.graph.getRowSorted(row);
+            const attachIndex = rowStitches.indexOf(attachStitch);
+
+            // Find actual attachment after skip
+            const actualAttachIndex = attachIndex + skipCount;
+            if (actualAttachIndex >= rowStitches.length) {
+                result.errors.push(`Cannot skip ${skipCount} stitches - not enough stitches in row`);
                 result.valid = false;
                 return result;
             }
         }
 
-        // Warnings for unusual patterns
-
-        // Chain stitch after foundation row is unusual
-        if (stitchType === StitchType.CHAIN && attachStitch.row > 0) {
-            result.warnings.push('Chain stitches are typically only used in foundation row');
+        // Validate working into chain space
+        if (workIntoSpace) {
+            if (!createsSpace(attachStitch.type)) {
+                result.warnings.push('Attachment point does not typically create a chain space');
+            }
         }
 
-        // Tall stitches on row 1 may cause tension issues
+        // Contextual warnings (not errors)
+
+        // Chain stitch usage - chains are valid in many contexts
+        if (stitchType === StitchType.CHAIN) {
+            const currentRowStitches = pattern.graph.getRow(pattern.currentRow);
+            const isAtRowStart = currentRowStitches.length === 0;
+
+            // Chains at row start are turning chains - this is normal
+            if (isAtRowStart && attachStitch.row >= 0) {
+                // Suggest using turning chain count based on planned stitch type
+                const suggestedStitchType = this.getSuggestedStitchType(pattern, attachPoint);
+                const turningChainCount = getTurningChainLength(suggestedStitchType);
+                if (turningChainCount > 1) {
+                    result.suggestions.push(
+                        `Consider ${turningChainCount} chains for turning chain (working ${getStitchDefinition(suggestedStitchType)?.name})`
+                    );
+                }
+            }
+        }
+
+        // Post stitches require working around a post from previous row
+        if (def.isPostStitch && attachStitch.row < 1) {
+            result.errors.push('Post stitches require at least one previous row to work around');
+            result.valid = false;
+            return result;
+        }
+
+        // Spike stitches need rows below to work into
+        if (def.isSpikeStitch) {
+            const spikeDepth = options.spikeDepth || def.rowsBelow || 1;
+            if (attachStitch.row < spikeDepth) {
+                result.errors.push(`Spike stitch requires at least ${spikeDepth + 1} rows`);
+                result.valid = false;
+                return result;
+            }
+        }
+
+        // Tall stitches on first working row - informational only
         if (attachStitch.row === 0) {
             const tallStitches = [StitchType.DOUBLE_CROCHET, StitchType.TRIPLE_CROCHET];
             if (tallStitches.includes(stitchType)) {
-                result.warnings.push('Tall stitches on first row may cause tension issues');
+                result.suggestions.push(
+                    'Tall stitches on first row: ensure adequate turning chain height'
+                );
             }
         }
 
-        // Check for stitch count consistency
+        // Analyze stitch count changes
         const currentRowCount = pattern.graph.getRow(pattern.currentRow).length;
         const prevRowCount = pattern.graph.getRow(pattern.currentRow - 1).length;
 
-        if (currentRowCount > prevRowCount && stitchType !== StitchType.INCREASE) {
-            result.warnings.push('Row has more stitches than previous - consider using increases');
+        if (prevRowCount > 0 && currentRowCount >= prevRowCount) {
+            const isIncrease = modifiers.includes(StitchModifier.INCREASE) ||
+                              modifiers.includes(StitchModifier.INCREASE_3) ||
+                              stitchType === StitchType.INCREASE ||
+                              stitchType === StitchType.SHELL ||
+                              stitchType === StitchType.V_STITCH;
+
+            if (!isIncrease && currentRowCount > prevRowCount) {
+                result.warnings.push(
+                    'Row exceeds previous row stitch count without explicit increase'
+                );
+            }
         }
 
         return result;
@@ -96,24 +197,56 @@ export class StitchValidator {
             valid: true,
             warnings: [],
             errors: [],
-            rowStats: []
+            rowStats: [],
+            info: {}
         };
 
         const rowCount = pattern.graph.getRowCount();
 
         for (let row = 0; row < rowCount; row++) {
-            const stitches = pattern.graph.getRow(row);
+            const stitches = pattern.graph.getRowSorted(row);
             const rowResult = {
                 row,
                 stitchCount: stitches.length,
                 warnings: [],
-                errors: []
+                errors: [],
+                increases: 0,
+                decreases: 0,
+                turningChains: 0,
+                skippedStitches: 0
             };
 
-            // Check for disconnected stitches
-            stitches.forEach(stitch => {
-                if (row > 0 && stitch.connections.below.length === 0) {
-                    rowResult.errors.push(`Stitch at column ${stitch.column} has no connection below`);
+            stitches.forEach((stitch, index) => {
+                // Check for disconnected stitches (except foundation and turning chains)
+                if (row > 0 &&
+                    stitch.connections.below.length === 0 &&
+                    !stitch.isTurningChain &&
+                    !stitch.workedIntoSpace) {
+
+                    // Allow skipped stitches - they don't need below connections
+                    const hasSkippedBefore = index > 0 &&
+                        stitches[index - 1].skippedStitches?.length > 0;
+
+                    if (!hasSkippedBefore) {
+                        rowResult.warnings.push(
+                            `Stitch at column ${stitch.column} has no connection below ` +
+                            `(may be intentional for lace/skip pattern)`
+                        );
+                    }
+                }
+
+                // Count increases and decreases (including modifier-based)
+                if (stitch.isIncrease) {
+                    rowResult.increases++;
+                }
+                if (stitch.isDecrease) {
+                    rowResult.decreases++;
+                }
+                if (stitch.isTurningChain) {
+                    rowResult.turningChains++;
+                }
+                if (stitch.skippedStitches?.length > 0) {
+                    rowResult.skippedStitches += stitch.skippedStitches.length;
                 }
             });
 
@@ -122,19 +255,26 @@ export class StitchValidator {
                 const prevRowCount = pattern.graph.getRow(row - 1).length;
                 const diff = stitches.length - prevRowCount;
 
-                if (Math.abs(diff) > 2) {
+                // Account for increases/decreases
+                const expectedDiff = rowResult.increases - rowResult.decreases;
+
+                if (Math.abs(diff) > 3 && Math.abs(diff - expectedDiff) > 2) {
                     rowResult.warnings.push(
-                        `Large stitch count change from row ${row}: ${diff > 0 ? '+' : ''}${diff}`
+                        `Unexpected stitch count change: ${diff > 0 ? '+' : ''}${diff} ` +
+                        `(expected around ${expectedDiff > 0 ? '+' : ''}${expectedDiff})`
                     );
                 }
             }
 
-            // Count increases and decreases
-            const increases = stitches.filter(s => s.type === StitchType.INCREASE).length;
-            const decreases = stitches.filter(s => s.type === StitchType.DECREASE).length;
+            // Build info string
+            const infoParts = [];
+            if (rowResult.increases > 0) infoParts.push(`${rowResult.increases} inc`);
+            if (rowResult.decreases > 0) infoParts.push(`${rowResult.decreases} dec`);
+            if (rowResult.turningChains > 0) infoParts.push(`${rowResult.turningChains} tch`);
+            if (rowResult.skippedStitches > 0) infoParts.push(`${rowResult.skippedStitches} skipped`);
 
-            if (increases > 0 || decreases > 0) {
-                rowResult.info = `${increases} inc, ${decreases} dec`;
+            if (infoParts.length > 0) {
+                rowResult.info = infoParts.join(', ');
             }
 
             result.rowStats.push(rowResult);
@@ -146,6 +286,13 @@ export class StitchValidator {
             }
             result.warnings.push(...rowResult.warnings.map(w => `Row ${row + 1}: ${w}`));
         }
+
+        // Overall pattern info
+        result.info = {
+            totalStitches: pattern.graph.size,
+            rows: rowCount,
+            shape: this.analyzeShape(pattern)
+        };
 
         return result;
     }
@@ -164,11 +311,16 @@ export class StitchValidator {
         if (currentRowStitches.length === 0 && prevRow.length > 0) {
             const typeCounts = {};
             prevRow.forEach(s => {
-                typeCounts[s.type] = (typeCounts[s.type] || 0) + 1;
+                // Ignore chains, turning chains, and increases/decreases for counting
+                if (s.type !== StitchType.CHAIN &&
+                    s.type !== StitchType.INCREASE &&
+                    s.type !== StitchType.DECREASE &&
+                    !s.isTurningChain) {
+                    typeCounts[s.type] = (typeCounts[s.type] || 0) + 1;
+                }
             });
 
             const dominantType = Object.entries(typeCounts)
-                .filter(([type]) => type !== StitchType.CHAIN)
                 .sort((a, b) => b[1] - a[1])[0];
 
             if (dominantType) {
@@ -176,11 +328,14 @@ export class StitchValidator {
             }
         }
 
-        // Continue with same type as last stitch in row
+        // Continue with same type as last working stitch in row
         if (currentRowStitches.length > 0) {
-            const lastStitch = currentRowStitches[currentRowStitches.length - 1];
-            if (lastStitch.type !== StitchType.CHAIN) {
-                return lastStitch.type;
+            // Find last non-chain, non-turning-chain stitch
+            for (let i = currentRowStitches.length - 1; i >= 0; i--) {
+                const stitch = currentRowStitches[i];
+                if (stitch.type !== StitchType.CHAIN && !stitch.isTurningChain) {
+                    return stitch.type;
+                }
             }
         }
 
@@ -195,7 +350,10 @@ export class StitchValidator {
         const rowCount = pattern.graph.getRowCount();
 
         for (let i = 0; i < rowCount; i++) {
-            rowCounts.push(pattern.graph.getRow(i).length);
+            const stitches = pattern.graph.getRow(i);
+            // Don't count turning chains in stitch count
+            const workingStitches = stitches.filter(s => !s.isTurningChain);
+            rowCounts.push(workingStitches.length);
         }
 
         // Determine shape type
@@ -211,7 +369,9 @@ export class StitchValidator {
             i === 0 || count <= rowCounts[i - 1]
         );
 
-        const isConstant = rowCounts.every(count => count === rowCounts[0]);
+        const isConstant = rowCounts.every(count =>
+            Math.abs(count - rowCounts[0]) <= 1  // Allow for small variations
+        );
 
         if (isConstant) {
             return { shape: 'rectangle', description: 'Rectangular piece' };
@@ -221,14 +381,104 @@ export class StitchValidator {
             return { shape: 'inverted-triangle', description: 'Decreasing (inverted triangle)' };
         } else {
             // More complex shape
-            const maxRow = Math.max(...rowCounts);
-            const maxRowIndex = rowCounts.indexOf(maxRow);
+            const maxCount = Math.max(...rowCounts);
+            const maxRowIndex = rowCounts.indexOf(maxCount);
 
             if (maxRowIndex > 0 && maxRowIndex < rowCounts.length - 1) {
                 return { shape: 'diamond', description: 'Diamond/hexagon shape' };
             }
 
+            // Check for wave pattern
+            let increasing = true;
+            let waveCount = 0;
+            for (let i = 1; i < rowCounts.length; i++) {
+                const changed = rowCounts[i] > rowCounts[i - 1];
+                if (changed !== increasing) {
+                    waveCount++;
+                    increasing = changed;
+                }
+            }
+            if (waveCount >= 2) {
+                return { shape: 'wave', description: 'Wave or scallop pattern' };
+            }
+
             return { shape: 'irregular', description: 'Irregular shaped piece' };
         }
+    }
+
+    /**
+     * Validate turning chain for a given stitch type
+     */
+    static validateTurningChain(pattern, stitchType) {
+        const result = {
+            valid: true,
+            suggestedChainCount: getTurningChainLength(stitchType),
+            countsAsStitch: doesTurningChainCount(stitchType),
+            warnings: []
+        };
+
+        const currentRowStitches = pattern.graph.getRow(pattern.currentRow);
+        const turningChains = currentRowStitches.filter(s => s.isTurningChain);
+
+        if (turningChains.length === 0 && pattern.currentRow > 0 && pattern.mode === 'flat') {
+            result.warnings.push('No turning chain at row start - may affect fabric height');
+        }
+
+        if (turningChains.length > 0 && turningChains.length !== result.suggestedChainCount) {
+            result.warnings.push(
+                `Turning chain count (${turningChains.length}) differs from standard ` +
+                `(${result.suggestedChainCount}) for ${getStitchDefinition(stitchType)?.name}`
+            );
+        }
+
+        return result;
+    }
+
+    /**
+     * Check if a stitch can be skipped
+     */
+    static canSkipStitch(stitch, pattern) {
+        // Can't skip if stitch already has connections above
+        if (stitch.connections.above.length > 0) {
+            return {
+                canSkip: false,
+                reason: 'Stitch already has stitches worked into it'
+            };
+        }
+
+        // Can't skip foundation/first stitch in row
+        const rowStitches = pattern.graph.getRowSorted(stitch.row);
+        if (rowStitches.indexOf(stitch) === 0) {
+            return {
+                canSkip: false,
+                reason: 'Cannot skip first stitch in row'
+            };
+        }
+
+        return { canSkip: true };
+    }
+
+    /**
+     * Get valid stitch types for a given context
+     */
+    static getValidStitchTypes(pattern, attachPoint) {
+        const validTypes = [];
+        const allTypes = Object.values(StitchType);
+
+        for (const type of allTypes) {
+            const def = getStitchDefinition(type);
+            if (!def || def.deprecated) continue;
+
+            const validation = this.canPlaceStitch(type, attachPoint, pattern);
+            if (validation.valid) {
+                validTypes.push({
+                    type,
+                    name: def.name,
+                    warnings: validation.warnings
+                });
+            }
+        }
+
+        return validTypes;
     }
 }
