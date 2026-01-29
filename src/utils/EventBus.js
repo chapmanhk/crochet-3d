@@ -245,5 +245,10 @@ export const Events = {
     // History events
     UNDO: 'history:undo',
     REDO: 'history:redo',
-    HISTORY_CHANGED: 'history:changed'
+    HISTORY_CHANGED: 'history:changed',
+
+    // Export events
+    EXPORT_STARTED: 'export:started',
+    EXPORT_COMPLETED: 'export:completed',
+    EXPORT_ERROR: 'export:error'
 };

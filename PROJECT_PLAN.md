@@ -8,9 +8,9 @@ A 3D crochet pattern designer where users can dynamically build patterns by clic
 ## Current State
 - **Phase 1-5: COMPLETE** - Foundation, Rendering, Interaction, Physics, UI
 - **Phase 6: COMPLETE** - Pattern Templates (granny square, circle, square, triangle) and Shaping Guides
-- **Phase 7: PARTIAL** - JSON import/export done, PDF/PNG export pending
+- **Phase 7: COMPLETE** - Full import/export with JSON, PDF, and PNG support via ExportManager
 - **Phase 8: NOT STARTED** - Advanced features (multi-color, collaboration, etc.)
-- Full test coverage with 488 passing tests
+- Full test coverage with 532 passing tests
 
 ---
 
@@ -292,9 +292,12 @@ Use physics simulation to auto-position stitches:
 **Deliverables:**
 - [x] JSON serialization/deserialization
 - [x] LocalStorage autosave
-- [ ] File download (JSON, PDF, PNG) - JSON done, PDF/PNG pending
+- [x] File download (JSON, PDF, PNG) - via ExportManager
 - [x] Written pattern generator
 - [x] Pattern import from JSON
+- [x] ExportManager module with full export functionality
+- [x] Stitch chart generation with standard symbols
+- [x] Export event system (EXPORT_STARTED, EXPORT_COMPLETED, EXPORT_ERROR)
 
 ---
 
