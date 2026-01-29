@@ -29,19 +29,46 @@ import { EventBus, Events } from './EventBus.js';
 
 /**
  * Standard crochet chart symbols for stitch types
+ * Comprehensive mapping for all supported stitch types
  */
 const STITCH_SYMBOLS = {
+    // Basic stitches
     CHAIN: 'o',
     SLIP_STITCH: '.',
     SINGLE_CROCHET: 'x',
     HALF_DOUBLE_CROCHET: 'T',
     DOUBLE_CROCHET: 'T',
     TRIPLE_CROCHET: 'Y',
+    DOUBLE_TRIPLE_CROCHET: 'Y',
+
+    // Increases and decreases
     INCREASE: 'V',
     DECREASE: 'A',
+    SC2TOG: 'A',
+    DC2TOG: 'A',
+
+    // Foundation stitches
     MAGIC_RING: 'O',
     FOUNDATION_SINGLE_CROCHET: 'x',
-    FOUNDATION_DOUBLE_CROCHET: 'T'
+    FOUNDATION_DOUBLE_CROCHET: 'T',
+
+    // Post stitches
+    FRONT_POST_DOUBLE_CROCHET: 'T',
+    BACK_POST_DOUBLE_CROCHET: 'T',
+    FRONT_POST_TRIPLE_CROCHET: 'Y',
+    BACK_POST_TRIPLE_CROCHET: 'Y',
+
+    // Texture stitches
+    BOBBLE: 'B',
+    POPCORN: 'P',
+    PUFF: 'U',
+    CLUSTER: 'CL',
+
+    // Decorative stitches
+    PICOT: '*',
+    SHELL: 'S',
+    V_STITCH: 'V',
+    SPIKE: '/'
 };
 
 /**
@@ -65,6 +92,7 @@ export class ExportManager {
      * @param {Object} options - Export options
      * @param {boolean} options.pretty - Format with indentation (default: true)
      * @returns {string} JSON string
+     * @throws {Error} If pattern is not available or invalid
      */
     exportJSON(options = {}) {
         const { pretty = true } = options;
@@ -72,6 +100,10 @@ export class ExportManager {
         EventBus.emit(Events.EXPORT_STARTED, { type: 'json' });
 
         try {
+            if (!this.pattern) {
+                throw new Error('Pattern not available');
+            }
+
             const data = this.pattern.toJSON();
             const json = pretty
                 ? JSON.stringify(data, null, 2)
@@ -175,12 +207,27 @@ export class ExportManager {
      * Uses efficient Uint8Array.from() instead of manual loop
      * @param {string} dataUrl
      * @returns {Blob}
+     * @throws {Error} If dataUrl is malformed
      */
     dataURLToBlob(dataUrl) {
+        if (!dataUrl || typeof dataUrl !== 'string') {
+            throw new Error('Invalid data URL: expected a string');
+        }
+
         const parts = dataUrl.split(',');
+        if (parts.length !== 2) {
+            throw new Error('Invalid data URL format: missing data section');
+        }
+
         const mimeMatch = parts[0].match(/:(.*?);/);
         const mime = mimeMatch ? mimeMatch[1] : 'image/png';
-        const bstr = atob(parts[1]);
+
+        let bstr;
+        try {
+            bstr = atob(parts[1]);
+        } catch (e) {
+            throw new Error('Invalid data URL: failed to decode base64 data');
+        }
 
         // More efficient than manual loop
         const u8arr = Uint8Array.from(bstr, char => char.charCodeAt(0));
@@ -213,43 +260,55 @@ export class ExportManager {
     /**
      * Generate PDF content object
      * @returns {Object} Content for PDF generation
+     * @throws {Error} If pattern is not available
      */
     generatePDFContent() {
-        const stats = this.pattern.graph.getStats();
-        const instructions = this.pattern.generateInstructions();
+        if (!this.pattern) {
+            throw new Error('Pattern not available');
+        }
+
+        const stats = this.pattern.graph?.getStats() || { totalStitches: 0, rowCount: 0 };
+        const instructions = this.pattern.generateInstructions?.() || '';
+        const metadata = this.pattern.metadata || {};
 
         return {
-            title: this.pattern.metadata.name || 'Untitled Pattern',
-            author: this.pattern.metadata.author || '',
+            title: metadata.name || 'Untitled Pattern',
+            author: metadata.author || '',
             date: new Date().toLocaleDateString(),
             instructions,
             stats: {
-                totalStitches: stats.totalStitches,
-                rowCount: stats.rowCount
+                totalStitches: stats.totalStitches || 0,
+                rowCount: stats.rowCount || 0
             },
-            notes: this.pattern.metadata.notes || ''
+            notes: metadata.notes || ''
         };
     }
 
     /**
      * Generate stitch chart data
      * @returns {Object} Chart data with rows and symbols
+     * @throws {Error} If pattern or graph is not available
      */
     generateStitchChart() {
-        const rowCount = this.pattern.graph.getRowCount
-            ? this.pattern.graph.getRowCount()
-            : this.pattern.graph.getStats().rowCount;
+        if (!this.pattern || !this.pattern.graph) {
+            throw new Error('Pattern or graph not available');
+        }
+
+        const graph = this.pattern.graph;
+        const rowCount = typeof graph.getRowCount === 'function'
+            ? graph.getRowCount()
+            : (graph.getStats?.()?.rowCount || 0);
 
         const rows = [];
 
         for (let i = 0; i < rowCount; i++) {
-            const stitches = this.pattern.graph.getRowSorted(i);
+            const stitches = graph.getRowSorted?.(i) || [];
             const chartRow = {
                 rowNumber: i + 1,
                 stitches: stitches.map(stitch => ({
-                    type: stitch.type,
-                    symbol: this.getStitchSymbol(stitch.type),
-                    column: stitch.column
+                    type: stitch?.type || 'UNKNOWN',
+                    symbol: this.getStitchSymbol(stitch?.type),
+                    column: stitch?.column ?? i
                 }))
             };
             rows.push(chartRow);
@@ -431,7 +490,8 @@ export class ExportManager {
     generateFilename(extension, options = {}) {
         const { includeTimestamp = false } = options;
 
-        let name = this.pattern.metadata.name || 'Untitled_Pattern';
+        // Safely access pattern metadata
+        let name = this.pattern?.metadata?.name || 'Untitled_Pattern';
 
         // Sanitize filename - remove special characters
         name = name
