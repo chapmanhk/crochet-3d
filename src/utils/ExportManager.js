@@ -29,46 +29,47 @@ import { EventBus, Events } from './EventBus.js';
 
 /**
  * Standard crochet chart symbols for stitch types
- * Comprehensive mapping for all supported stitch types
+ * Using distinct symbols to avoid confusion
+ * Based on common crochet chart conventions with adaptations for text-based display
  */
 const STITCH_SYMBOLS = {
-    // Basic stitches
+    // Basic stitches - using distinct symbols
     CHAIN: 'o',
-    SLIP_STITCH: '.',
+    SLIP_STITCH: '·',  // Middle dot
     SINGLE_CROCHET: 'x',
     HALF_DOUBLE_CROCHET: 'T',
-    DOUBLE_CROCHET: 'T',
-    TRIPLE_CROCHET: 'Y',
+    DOUBLE_CROCHET: '⊥',  // Perpendicular symbol (taller T)
+    TRIPLE_CROCHET: '⊤',  // Inverted perpendicular (even taller)
     DOUBLE_TRIPLE_CROCHET: 'Y',
 
     // Increases and decreases
     INCREASE: 'V',
-    DECREASE: 'A',
-    SC2TOG: 'A',
-    DC2TOG: 'A',
+    DECREASE: 'Λ',  // Lambda/inverted V
+    SC2TOG: 'Λ',
+    DC2TOG: '⋀',  // Logical and
 
     // Foundation stitches
     MAGIC_RING: 'O',
-    FOUNDATION_SINGLE_CROCHET: 'x',
-    FOUNDATION_DOUBLE_CROCHET: 'T',
+    FOUNDATION_SINGLE_CROCHET: '⊗',  // Circled x
+    FOUNDATION_DOUBLE_CROCHET: '⊕',  // Circled plus
 
-    // Post stitches
-    FRONT_POST_DOUBLE_CROCHET: 'T',
-    BACK_POST_DOUBLE_CROCHET: 'T',
-    FRONT_POST_TRIPLE_CROCHET: 'Y',
-    BACK_POST_TRIPLE_CROCHET: 'Y',
+    // Post stitches - using front/back indicators
+    FRONT_POST_DOUBLE_CROCHET: '⫰',  // Front post indicator
+    BACK_POST_DOUBLE_CROCHET: '⫯',  // Back post indicator
+    FRONT_POST_TRIPLE_CROCHET: '⟊',  // Tall front post
+    BACK_POST_TRIPLE_CROCHET: '⟋',  // Tall back post
 
     // Texture stitches
     BOBBLE: 'B',
     POPCORN: 'P',
     PUFF: 'U',
-    CLUSTER: 'CL',
+    CLUSTER: '⋏',  // Triple decrease symbol
 
     // Decorative stitches
-    PICOT: '*',
-    SHELL: 'S',
-    V_STITCH: 'V',
-    SPIKE: '/'
+    PICOT: '∗',  // Asterisk operator
+    SHELL: '⌓',  // Shell-like shape
+    V_STITCH: '⋁',  // Logical or (V shape)
+    SPIKE: '↓'  // Downward arrow
 };
 
 /**
@@ -404,19 +405,42 @@ export class ExportManager {
     }
 
     /**
-     * Build PDF text content stream
+     * Build PDF text content stream with pagination support
      * @param {Object} content
      * @returns {string[]}
      */
     buildPDFTextContent(content) {
         const lines = [];
-        let yPos = 750; // Start from top
+        const PAGE_HEIGHT = 792;  // Letter size height
+        const TOP_MARGIN = 750;
+        const BOTTOM_MARGIN = 50;
+        const LINE_HEIGHT = 15;
+
+        let yPos = TOP_MARGIN;
+        let currentPage = 1;
+
+        // Helper to check if we need a new page
+        const checkPageBreak = (neededSpace = LINE_HEIGHT) => {
+            if (yPos - neededSpace < BOTTOM_MARGIN) {
+                // Add page number before ending
+                lines.push(`0 -${yPos - 30} Td`);
+                lines.push(`(Page ${currentPage}) Tj`);
+                lines.push('ET'); // End text for this page
+                lines.push('%%PAGE_BREAK%%'); // Marker for page break
+                lines.push('BT'); // Begin text for new page
+                lines.push(`50 ${TOP_MARGIN} Td`);
+                yPos = TOP_MARGIN;
+                currentPage++;
+                return true;
+            }
+            return false;
+        };
 
         lines.push('BT'); // Begin text
+        lines.push(`50 ${yPos} Td`);
 
         // Title
         lines.push('/F1 18 Tf'); // Font size 18
-        lines.push(`50 ${yPos} Td`);
         lines.push(`(${this.escapePDFString(content.title)}) Tj`);
         yPos -= 30;
 
@@ -440,35 +464,92 @@ export class ExportManager {
         lines.push(`(Total Stitches: ${content.stats.totalStitches}  |  Rows: ${content.stats.rowCount}) Tj`);
         yPos -= 30;
 
+        // Stitch Legend
+        checkPageBreak(100);
+        lines.push('/F1 14 Tf');
+        lines.push(`0 -30 Td`);
+        lines.push(`(Stitch Symbol Legend) Tj`);
+        yPos -= 30;
+
+        lines.push('/F1 9 Tf');
+        const legendItems = this.getStitchLegend();
+        for (const item of legendItems) {
+            checkPageBreak();
+            lines.push(`0 -${LINE_HEIGHT} Td`);
+            lines.push(`(${this.escapePDFString(item)}) Tj`);
+            yPos -= LINE_HEIGHT;
+        }
+
         // Instructions header
+        checkPageBreak(50);
         lines.push('/F1 14 Tf');
         lines.push(`0 -30 Td`);
         lines.push(`(Instructions) Tj`);
-        yPos -= 20;
+        yPos -= 30;
 
         // Instructions content
         lines.push('/F1 10 Tf');
         const instructionLines = content.instructions.split('\n');
         for (const line of instructionLines) {
             if (line.trim()) {
-                lines.push(`0 -15 Td`);
+                checkPageBreak();
+                lines.push(`0 -${LINE_HEIGHT} Td`);
                 lines.push(`(${this.escapePDFString(line)}) Tj`);
+                yPos -= LINE_HEIGHT;
             }
         }
 
         // Notes
         if (content.notes) {
+            checkPageBreak(50);
             lines.push('/F1 12 Tf');
             lines.push(`0 -30 Td`);
             lines.push(`(Notes:) Tj`);
+            yPos -= 30;
+
             lines.push('/F1 10 Tf');
-            lines.push(`0 -15 Td`);
-            lines.push(`(${this.escapePDFString(content.notes)}) Tj`);
+            const noteLines = content.notes.split('\n');
+            for (const noteLine of noteLines) {
+                if (noteLine.trim()) {
+                    checkPageBreak();
+                    lines.push(`0 -${LINE_HEIGHT} Td`);
+                    lines.push(`(${this.escapePDFString(noteLine)}) Tj`);
+                    yPos -= LINE_HEIGHT;
+                }
+            }
         }
+
+        // Final page number
+        lines.push(`0 -${yPos - 30} Td`);
+        lines.push(`(Page ${currentPage}) Tj`);
 
         lines.push('ET'); // End text
 
         return lines;
+    }
+
+    /**
+     * Get stitch legend for PDF export
+     * @returns {string[]} Array of legend entries
+     */
+    getStitchLegend() {
+        return [
+            'o = Chain (ch)',
+            '· = Slip Stitch (sl st)',
+            'x = Single Crochet (sc)',
+            'T = Half Double Crochet (hdc)',
+            '⊥ = Double Crochet (dc)',
+            '⊤ = Triple Crochet (tr)',
+            'V = Increase (inc)',
+            'Λ = Decrease (dec)',
+            'O = Magic Ring (mr)',
+            'B = Bobble (bob)',
+            'P = Popcorn (pc)',
+            'U = Puff Stitch (puff)',
+            '↓ = Spike Stitch (spike)',
+            '⌓ = Shell',
+            '⋁ = V-Stitch (v-st)'
+        ];
     }
 
     /**

@@ -178,8 +178,8 @@ export const UIConstants = {
 
 export const SchemaConstants = {
     // Current pattern file version
-    CURRENT_VERSION: 1,
-    SUPPORTED_VERSIONS: [1],
+    CURRENT_VERSION: 2,
+    SUPPORTED_VERSIONS: [1, 2],
 
     // Limits for validation
     MAX_PATTERN_SIZE: 10000, // Maximum number of stitches

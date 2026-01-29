@@ -8,16 +8,33 @@ class EventBusClass {
     constructor() {
         this.listeners = new Map();
         this.onceListeners = new Map();
+        this.maxListeners = 20;  // Warning threshold per event
+        this.warningShown = new Set();  // Track which events have shown warnings
     }
 
     /**
      * Subscribe to an event
+     * @param {string} event - Event name
+     * @param {Function} callback - Event handler
+     * @returns {Function} Unsubscribe function - IMPORTANT: call this to prevent memory leaks
      */
     on(event, callback) {
         if (!this.listeners.has(event)) {
             this.listeners.set(event, []);
         }
-        this.listeners.get(event).push(callback);
+
+        const listeners = this.listeners.get(event);
+        listeners.push(callback);
+
+        // Warn about potential memory leak
+        if (listeners.length > this.maxListeners && !this.warningShown.has(event)) {
+            console.warn(
+                `EventBus: More than ${this.maxListeners} listeners for event "${event}". ` +
+                `This may indicate a memory leak. Use EventSubscriptions or call the ` +
+                `unsubscribe function returned by on() when components are disposed.`
+            );
+            this.warningShown.add(event);
+        }
 
         // Return unsubscribe function
         return () => this.off(event, callback);
@@ -104,6 +121,37 @@ class EventBusClass {
             ...this.listeners.keys(),
             ...this.onceListeners.keys()
         ]);
+    }
+
+    /**
+     * Get listener count for an event (for debugging)
+     * @param {string} event - Event name
+     * @returns {number} Number of listeners
+     */
+    listenerCount(event) {
+        const regular = this.listeners.get(event)?.length || 0;
+        const once = this.onceListeners.get(event)?.length || 0;
+        return regular + once;
+    }
+
+    /**
+     * Get all listener counts (for debugging memory leaks)
+     * @returns {Object} Map of event names to listener counts
+     */
+    getAllListenerCounts() {
+        const counts = {};
+        for (const event of this.getEvents()) {
+            counts[event] = this.listenerCount(event);
+        }
+        return counts;
+    }
+
+    /**
+     * Set the maximum listener threshold for warnings
+     * @param {number} max - Maximum listeners before warning
+     */
+    setMaxListeners(max) {
+        this.maxListeners = max;
     }
 }
 

@@ -47,7 +47,9 @@ export class Pattern {
 
         // Turning chain settings
         this.autoTurningChain = true;
-        this.turningChainCountsAsStitch = true;
+        // Per-stitch-type overrides for whether turning chain counts as first stitch
+        // If not specified, uses default from StitchTypes.js
+        this.turningChainOverrides = {};
 
         // History for undo/redo
         this.history = [];
@@ -60,7 +62,26 @@ export class Pattern {
             author: '',
             createdAt: Date.now(),
             modifiedAt: Date.now(),
-            notes: ''
+            notes: '',
+            // Yarn and materials information
+            yarn: {
+                weight: '',      // e.g., 'fingering', 'sport', 'dk', 'worsted', 'bulky'
+                fiber: '',       // e.g., 'cotton', 'wool', 'acrylic', 'blend'
+                brand: '',       // e.g., 'Lion Brand', 'Red Heart'
+                colorway: '',    // e.g., 'Seafoam', '#123 Blue'
+                yardage: null    // Estimated yards/meters needed
+            },
+            hook: {
+                size: '',        // e.g., '4mm', 'G/6', '7'
+                type: ''         // e.g., 'inline', 'tapered'
+            },
+            gauge: {
+                stitches: null,  // Stitches per 4 inches/10cm
+                rows: null,      // Rows per 4 inches/10cm
+                unit: 'inches'   // 'inches' or 'cm'
+            },
+            difficulty: '',      // e.g., 'beginner', 'easy', 'intermediate', 'advanced'
+            category: ''         // e.g., 'amigurumi', 'blanket', 'garment', 'accessory'
         };
 
         // Setup graph event forwarding
@@ -196,7 +217,10 @@ export class Pattern {
     addTurningChain(stitchType = null) {
         const targetStitchType = stitchType || this.selectedStitchType;
         const chainCount = getTurningChainLength(targetStitchType);
-        const countsAsStitch = doesTurningChainCount(targetStitchType);
+        // Check for per-pattern override, otherwise use default from StitchTypes
+        const countsAsStitch = this.turningChainOverrides[targetStitchType] !== undefined
+            ? this.turningChainOverrides[targetStitchType]
+            : doesTurningChainCount(targetStitchType);
 
         if (chainCount === 0) return [];
 
@@ -479,10 +503,17 @@ export class Pattern {
         // For spiral, use cumulative stitch count
         let stitchCount;
         if (this.mode === 'round-spiral') {
-            stitchCount = this.graph.getRow(row).length + this.graph.getRow(row - 1).length;
+            const currentCount = this.graph.getRow(row).length;
+            const prevCount = this.graph.getRow(row - 1).length;
+            stitchCount = currentCount + prevCount;
         } else {
             const prevRowStitches = this.graph.getRow(row - 1);
             stitchCount = prevRowStitches.length || PatternConstants.MAGIC_RING_INITIAL_STITCHES;
+        }
+
+        // Guard against division by zero or NaN
+        if (stitchCount <= 0 || !Number.isFinite(stitchCount)) {
+            stitchCount = PatternConstants.MAGIC_RING_INITIAL_STITCHES;
         }
 
         const currentRowStitches = this.graph.getRow(row);
@@ -496,10 +527,15 @@ export class Pattern {
             ? (stitchIndex / stitchCount) * height * 0.5
             : 0;
 
+        // Ensure no NaN values
+        const x = Math.cos(angle) * radius;
+        const y = row * height * 0.5 + heightOffset;
+        const z = Math.sin(angle) * radius;
+
         return {
-            x: Math.cos(angle) * radius,
-            y: row * height * 0.5 + heightOffset,
-            z: Math.sin(angle) * radius
+            x: Number.isFinite(x) ? x : 0,
+            y: Number.isFinite(y) ? y : 0,
+            z: Number.isFinite(z) ? z : 0
         };
     }
 
@@ -761,6 +797,23 @@ export class Pattern {
     }
 
     /**
+     * Set whether turning chain counts as first stitch for a specific stitch type
+     * @param {string} stitchType - The stitch type (e.g., StitchType.HALF_DOUBLE_CROCHET)
+     * @param {boolean} countsAsStitch - Whether the turning chain counts as a stitch
+     */
+    setTurningChainCounts(stitchType, countsAsStitch) {
+        this.turningChainOverrides[stitchType] = countsAsStitch;
+    }
+
+    /**
+     * Clear turning chain override for a stitch type (use default)
+     * @param {string} stitchType - The stitch type
+     */
+    clearTurningChainOverride(stitchType) {
+        delete this.turningChainOverrides[stitchType];
+    }
+
+    /**
      * Export pattern to JSON
      */
     toJSON() {
@@ -772,7 +825,7 @@ export class Pattern {
             workingDirection: this.workingDirection,
             currentColor: this.currentColor,
             autoTurningChain: this.autoTurningChain,
-            turningChainCountsAsStitch: this.turningChainCountsAsStitch,
+            turningChainOverrides: this.turningChainOverrides,
             graph: this.graph.toJSON()
         };
     }
@@ -798,7 +851,10 @@ export class Pattern {
         pattern.workingDirection = data.workingDirection || 'right';
         pattern.currentColor = data.currentColor || 0x8B4513;
         pattern.autoTurningChain = data.autoTurningChain ?? true;
-        pattern.turningChainCountsAsStitch = data.turningChainCountsAsStitch ?? true;
+        pattern.turningChainOverrides = data.turningChainOverrides || {};
+
+        // Legacy support: if old turningChainCountsAsStitch was used, ignore it
+        // as the new system uses StitchTypes defaults with optional overrides
 
         if (data.graph) {
             pattern.graph = StitchGraph.fromJSON(data.graph);

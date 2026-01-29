@@ -99,12 +99,14 @@ export const TurningChainHeight = {
 };
 
 // Whether the turning chain typically counts as the first stitch
+// Note: HDC is debatable - many modern patterns treat ch-2 as NOT counting
+// This can be overridden per-pattern via Pattern.turningChainCountsAsStitch
 export const TurningChainCountsAsStitch = {
     [StitchType.SLIP_STITCH]: false,
     [StitchType.SINGLE_CROCHET]: false,  // Usually doesn't count
-    [StitchType.HALF_DOUBLE_CROCHET]: true,
-    [StitchType.DOUBLE_CROCHET]: true,
-    [StitchType.TRIPLE_CROCHET]: true
+    [StitchType.HALF_DOUBLE_CROCHET]: false,  // Modern convention: ch-2 often doesn't count
+    [StitchType.DOUBLE_CROCHET]: true,   // ch-3 usually counts as first dc
+    [StitchType.TRIPLE_CROCHET]: true    // ch-4 usually counts as first tr
 };
 
 // =============================================================================
@@ -223,7 +225,7 @@ export const StitchDefinitions = {
         keyboard: 'h',
         canBeWorkedInto: true,
         turningChain: 2,
-        turningChainCounts: true
+        turningChainCounts: false  // Modern convention: ch-2 often doesn't count
     },
 
     [StitchType.DOUBLE_CROCHET]: {
@@ -411,7 +413,7 @@ export const StitchDefinitions = {
         width: 1.0,
         connectionsIn: 1,
         connectionsOut: 1,
-        description: '5 dc worked in same stitch, joined at top - creates 3D bump',
+        description: '3-5 dc worked in same stitch, joined at top - creates 3D bump',
         color: 0x8B4513,
         geometry: {
             type: 'custom',
@@ -429,8 +431,12 @@ export const StitchDefinitions = {
         keyboard: 'o',
         canBeWorkedInto: true,
         isTextureStitch: true,
-        componentStitches: 5,
-        componentType: StitchType.DOUBLE_CROCHET
+        componentStitches: 5,  // Default, can be overridden per-stitch
+        componentType: StitchType.DOUBLE_CROCHET,
+        // Configurable: common bobble sizes are 3, 4, or 5 DCs
+        minComponentStitches: 3,
+        maxComponentStitches: 7,
+        configurableComponents: true
     },
 
     [StitchType.POPCORN]: {
@@ -440,7 +446,7 @@ export const StitchDefinitions = {
         width: 1.1,
         connectionsIn: 1,
         connectionsOut: 1,
-        description: '5 dc in same stitch, remove hook, insert in first dc, pull through - very prominent bump',
+        description: '4-5 dc in same stitch, remove hook, insert in first dc, pull through - very prominent bump',
         color: 0x8B4513,
         geometry: {
             type: 'custom',
@@ -457,8 +463,12 @@ export const StitchDefinitions = {
         },
         canBeWorkedInto: true,
         isTextureStitch: true,
-        componentStitches: 5,
-        componentType: StitchType.DOUBLE_CROCHET
+        componentStitches: 5,  // Default, can be overridden per-stitch
+        componentType: StitchType.DOUBLE_CROCHET,
+        // Configurable: common popcorn sizes are 4 or 5 DCs
+        minComponentStitches: 3,
+        maxComponentStitches: 7,
+        configurableComponents: true
     },
 
     [StitchType.PUFF]: {
@@ -489,13 +499,13 @@ export const StitchDefinitions = {
     },
 
     [StitchType.CLUSTER]: {
-        name: 'Cluster',
-        abbreviation: 'cl',
+        name: 'DC3tog (3 DC Decrease)',
+        abbreviation: 'dc3tog',
         height: 1.8,
         width: 0.6,
-        connectionsIn: 3,  // Works into multiple stitches
+        connectionsIn: 3,  // Works into 3 consecutive stitches
         connectionsOut: 1,
-        description: 'Multiple partial dc worked into consecutive stitches, joined at top',
+        description: '3 double crochets worked into consecutive stitches, joined at top (decrease stitch)',
         color: 0x8B4513,
         geometry: {
             type: 'custom',
@@ -510,10 +520,13 @@ export const StitchDefinitions = {
             bendResistance: 0.45
         },
         canBeWorkedInto: true,
-        isTextureStitch: true,
+        isTextureStitch: false,  // This is a decrease, not a texture stitch
         isDecreaseType: true,
         componentStitches: 3,
-        componentType: StitchType.DOUBLE_CROCHET
+        componentType: StitchType.DOUBLE_CROCHET,
+        // Note: Traditional "cluster" (multiple dc into same stitch, joined at top)
+        // is similar to a bobble. This stitch is specifically dc3tog (decrease).
+        alternateNames: ['cluster', 'dc3tog', '3-dc decrease']
     },
 
     // -------------------------------------------------------------------------
@@ -526,7 +539,7 @@ export const StitchDefinitions = {
         width: 0.5,
         connectionsIn: 1,
         connectionsOut: 1,
-        description: 'Chain 3, slip stitch in first chain - creates small decorative loop',
+        description: 'Chain 2-5, slip stitch in first chain - creates decorative loop',
         color: 0x8B4513,
         geometry: {
             type: 'custom',
@@ -542,7 +555,10 @@ export const StitchDefinitions = {
         },
         canBeWorkedInto: false,  // Typically decorative, not worked into
         isDecorativeStitch: true,
-        chainCount: 3
+        chainCount: 3,  // Default chain count, can be overridden per-stitch
+        minChainCount: 2,
+        maxChainCount: 5,
+        configurableChainCount: true
     },
 
     [StitchType.SHELL]: {
@@ -551,7 +567,7 @@ export const StitchDefinitions = {
         height: 2.0,
         width: 2.0,
         connectionsIn: 1,
-        connectionsOut: 5,  // Creates 5 connection points
+        connectionsOut: 5,  // Creates 5 connection points (one per DC in shell)
         description: '5 dc in same stitch - fan-shaped decorative stitch',
         color: 0x8B4513,
         geometry: {
@@ -570,8 +586,15 @@ export const StitchDefinitions = {
         keyboard: 'e',
         canBeWorkedInto: true,
         isShellStitch: true,
+        isCompoundStitch: true,  // This stitch represents multiple components
         componentStitches: 5,
-        componentType: StitchType.DOUBLE_CROCHET
+        componentType: StitchType.DOUBLE_CROCHET,
+        // When working into a shell, you can work into:
+        // - The center DC (most common)
+        // - Any of the 5 individual DCs
+        // - The entire shell as one (working between shells)
+        componentPositions: ['first', 'second', 'center', 'fourth', 'fifth'],
+        defaultWorkIntoPosition: 'center'
     },
 
     [StitchType.V_STITCH]: {
@@ -580,7 +603,7 @@ export const StitchDefinitions = {
         height: 2.0,
         width: 1.5,
         connectionsIn: 1,
-        connectionsOut: 2,
+        connectionsOut: 3,  // Left DC, chain space, right DC
         description: '(dc, ch 1, dc) in same stitch - creates V shape with chain space',
         color: 0x8B4513,
         geometry: {
@@ -599,15 +622,23 @@ export const StitchDefinitions = {
         keyboard: 'v',
         canBeWorkedInto: true,
         createsSpace: true,
+        isCompoundStitch: true,  // This stitch represents multiple components
         componentStitches: 2,
         componentType: StitchType.DOUBLE_CROCHET,
-        chainsBetween: 1
+        chainsBetween: 1,
+        // V-stitch components: left DC, center chain space, right DC
+        componentPositions: ['left', 'space', 'right'],
+        defaultWorkIntoPosition: 'space'  // Most patterns work into the ch-1 space
     },
 
     [StitchType.SPIKE]: {
         name: 'Spike Stitch',
         abbreviation: 'spike',
-        height: 2.0,
+        // Base height - actual height varies by rowsBelow
+        // Height formula: 1.0 (sc height) + rowsBelow * 0.8 (additional reach)
+        height: 1.0,
+        baseHeight: 1.0,  // SC height at top
+        heightPerRow: 0.8,  // Additional height per row reached below
         width: 0.7,
         connectionsIn: 1,
         connectionsOut: 1,
@@ -617,7 +648,7 @@ export const StitchDefinitions = {
             type: 'custom',
             shape: 'spike',
             baseRadius: 0.2,
-            height: 1.0,
+            height: 1.0,  // Adjusted dynamically based on rowsBelow
             segments: 16
         },
         physics: {
@@ -628,7 +659,7 @@ export const StitchDefinitions = {
         keyboard: 'k',
         canBeWorkedInto: true,
         isSpikeStitch: true,
-        rowsBelow: 1  // How many rows below to work into (can be modified)
+        rowsBelow: 1  // Default: 1 row below. Can be modified per-stitch
     },
 
     // -------------------------------------------------------------------------
@@ -827,10 +858,20 @@ export function canConnect(fromType, toType) {
 
 /**
  * Get the effective height for positioning
+ * For spike stitches, optionally provide rowsBelow to get accurate height
  */
-export function getStitchHeight(type) {
+export function getStitchHeight(type, options = {}) {
     const def = getStitchDefinition(type);
-    return def ? def.height : 1.0;
+    if (!def) return 1.0;
+
+    // For spike stitches, calculate height based on rowsBelow
+    if (def.isSpikeStitch && options.rowsBelow !== undefined) {
+        const baseHeight = def.baseHeight || 1.0;
+        const heightPerRow = def.heightPerRow || 0.8;
+        return baseHeight + options.rowsBelow * heightPerRow;
+    }
+
+    return def.height;
 }
 
 /**

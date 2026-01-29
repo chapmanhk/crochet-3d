@@ -351,7 +351,8 @@ describe('getTurningChainLength', () => {
 describe('doesTurningChainCount', () => {
     it('should return correct value for each stitch type', () => {
         expect(doesTurningChainCount(StitchType.SINGLE_CROCHET)).toBe(false);
-        expect(doesTurningChainCount(StitchType.HALF_DOUBLE_CROCHET)).toBe(true);
+        // HDC turning chain convention updated to false (modern convention)
+        expect(doesTurningChainCount(StitchType.HALF_DOUBLE_CROCHET)).toBe(false);
         expect(doesTurningChainCount(StitchType.DOUBLE_CROCHET)).toBe(true);
         expect(doesTurningChainCount(StitchType.TRIPLE_CROCHET)).toBe(true);
     });

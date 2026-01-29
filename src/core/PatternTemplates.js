@@ -12,17 +12,46 @@ import { Pattern } from './Pattern.js';
 import { StitchType, getStitchDefinition } from './StitchTypes.js';
 
 /**
+ * Validate and clamp template options
+ * @param {Object} options - Options to validate
+ * @param {Object} limits - Limits for each option
+ * @returns {Object} Validated options
+ */
+function validateTemplateOptions(options, limits) {
+    const validated = { ...options };
+
+    for (const [key, limit] of Object.entries(limits)) {
+        if (validated[key] !== undefined) {
+            if (typeof limit.min === 'number' && validated[key] < limit.min) {
+                console.warn(`Template option '${key}' (${validated[key]}) is below minimum (${limit.min}), using minimum.`);
+                validated[key] = limit.min;
+            }
+            if (typeof limit.max === 'number' && validated[key] > limit.max) {
+                console.warn(`Template option '${key}' (${validated[key]}) exceeds maximum (${limit.max}), using maximum.`);
+                validated[key] = limit.max;
+            }
+        }
+    }
+
+    return validated;
+}
+
+/**
  * Create a granny square pattern
  * @param {Object} options - Configuration options
- * @param {number} options.rounds - Number of rounds (default: 1)
+ * @param {number} options.rounds - Number of rounds (default: 1, min: 1, max: 50)
  * @param {number} options.color - Yarn color (default: brown)
  * @returns {Pattern} The created pattern
  */
 export function createGrannySquare(options = {}) {
+    const validated = validateTemplateOptions(options, {
+        rounds: { min: 1, max: 50 }
+    });
+
     const {
         rounds = 1,
         color = 0x8B4513
-    } = options;
+    } = { ...options, ...validated };
 
     const pattern = new Pattern();
     pattern.metadata.name = 'Granny Square';
@@ -50,7 +79,7 @@ export function createGrannySquare(options = {}) {
     for (let corner = 0; corner < clusterCount; corner++) {
         const baseAngle = (corner / clusterCount) * Math.PI * 2;
 
-        // Add 3 dc in cluster
+        // Add 3 dc in cluster - all worked into the ring
         for (let dc = 0; dc < dcPerCluster; dc++) {
             const angle = baseAngle + (dc - 1) * 0.15;
             const node = pattern.graph.createNode(StitchType.DOUBLE_CROCHET, {
@@ -64,6 +93,7 @@ export function createGrannySquare(options = {}) {
                 color
             });
 
+            // All DCs are worked into the magic ring
             pattern.graph.connectVertical(node, ring);
             if (prevNode !== ring) {
                 pattern.graph.connectHorizontal(prevNode, node);
@@ -71,7 +101,8 @@ export function createGrannySquare(options = {}) {
             prevNode = node;
         }
 
-        // Add ch-2 corner
+        // Add ch-2 corner - chains are also part of working into the ring
+        // They form the corner space for the next round
         for (let ch = 0; ch < cornerChainLength; ch++) {
             const angle = baseAngle + Math.PI / clusterCount;
             const chainNode = pattern.graph.createNode(StitchType.CHAIN, {
@@ -83,9 +114,15 @@ export function createGrannySquare(options = {}) {
                     z: Math.sin(angle) * (radius + 0.3)
                 },
                 color,
-                metadata: { isCorner: ch === cornerChainLength - 1 }
+                metadata: {
+                    isCorner: ch === cornerChainLength - 1,
+                    isCornerSpace: true  // Marks this as a corner chain space
+                }
             });
 
+            // Corner chains connect to the ring (they're part of working into it)
+            // and also connect horizontally to form the sequence
+            pattern.graph.connectVertical(chainNode, ring);
             pattern.graph.connectHorizontal(prevNode, chainNode);
             prevNode = chainNode;
         }
@@ -214,21 +251,26 @@ function addGrannySquareRound(pattern, roundNumber, color) {
 /**
  * Create a basic circle pattern
  * @param {Object} options - Configuration options
- * @param {number} options.rounds - Number of rounds (default: 1)
- * @param {number} options.initialStitches - Starting stitch count (default: 6)
+ * @param {number} options.rounds - Number of rounds (default: 1, min: 1, max: 100)
+ * @param {number} options.initialStitches - Starting stitch count (default: 6, min: 4, max: 12)
  * @param {string} options.stitchType - Stitch type to use (default: single crochet)
  * @param {string} options.mode - 'joined' or 'spiral' (default: 'joined')
  * @param {number} options.color - Yarn color
  * @returns {Pattern} The created pattern
  */
 export function createBasicCircle(options = {}) {
+    const validated = validateTemplateOptions(options, {
+        rounds: { min: 1, max: 100 },
+        initialStitches: { min: 4, max: 12 }
+    });
+
     const {
         rounds = 1,
         initialStitches = 6,
         stitchType = StitchType.SINGLE_CROCHET,
         mode = 'joined',
         color = 0x8B4513
-    } = options;
+    } = { ...options, ...validated };
 
     const pattern = new Pattern();
     pattern.metadata.name = 'Basic Circle';
@@ -272,9 +314,8 @@ function addCircleRound(pattern, roundNumber, baseStitches, stitchType, color) {
     const prevStitches = prevRow.length;
     const increases = targetStitches - prevStitches;
 
-    // Calculate spacing for increases (guard against division by zero)
-    const increaseEvery = increases > 0 ? Math.floor(prevStitches / increases) : Infinity;
-
+    // Calculate which stitch indices should have increases
+    // For even distribution, we use a remainder-based approach
     const def = getStitchDefinition(stitchType);
     const height = def?.height || 1.0;
     const radius = 1.0 + (roundNumber - 1) * 0.6;
@@ -307,8 +348,15 @@ function addCircleRound(pattern, roundNumber, baseStitches, stitchType, color) {
         prevNode = node;
         stitchesAdded++;
 
-        // Add increase if needed
-        if (increasesAdded < increases && (i + 1) % increaseEvery === 0) {
+        // Add increase if needed - use proper distribution calculation
+        // Check if we should add an increase at this position
+        // Formula: we want to place 'increases' evenly among 'prevStitches' positions
+        // An increase should happen when: (i + 1) * increases / prevStitches crosses an integer boundary
+        const shouldIncrease = increases > 0 &&
+            increasesAdded < increases &&
+            Math.floor((i + 1) * increases / prevStitches) > increasesAdded;
+
+        if (shouldIncrease) {
             const incAngle = (stitchesAdded / targetStitches) * Math.PI * 2;
             const incNode = pattern.graph.createNode(stitchType, {
                 row: roundNumber - 1,
@@ -342,19 +390,24 @@ function addCircleRound(pattern, roundNumber, baseStitches, stitchType, color) {
 /**
  * Create a basic square pattern (flat, worked in rows)
  * @param {Object} options - Configuration options
- * @param {number} options.size - Width in stitches (default: 10)
- * @param {number} options.rows - Number of rows (default: same as size)
+ * @param {number} options.size - Width in stitches (default: 10, min: 2, max: 200)
+ * @param {number} options.rows - Number of rows (default: same as size, min: 1, max: 200)
  * @param {string} options.stitchType - Stitch type for body (default: single crochet)
  * @param {number} options.color - Yarn color
  * @returns {Pattern} The created pattern
  */
 export function createBasicSquare(options = {}) {
+    const validated = validateTemplateOptions(options, {
+        size: { min: 2, max: 200 },
+        rows: { min: 1, max: 200 }
+    });
+
     const {
         size = 10,
         rows = null,
         stitchType = StitchType.SINGLE_CROCHET,
         color = 0x8B4513
-    } = options;
+    } = { ...options, ...validated };
 
     const targetRows = rows || size;
 
@@ -430,20 +483,25 @@ function addSquareRow(pattern, rowNumber, width, stitchType, color) {
  * Create a triangle pattern
  * @param {Object} options - Configuration options
  * @param {string} options.direction - 'top-down' (decreasing) or 'bottom-up' (increasing)
- * @param {number} options.baseWidth - Width at the base (default: 10)
- * @param {number} options.rows - Number of rows
+ * @param {number} options.baseWidth - Width at the base (default: 10, min: 3, max: 200)
+ * @param {number} options.rows - Number of rows (min: 2, max: 200)
  * @param {string} options.stitchType - Stitch type to use
  * @param {number} options.color - Yarn color
  * @returns {Pattern} The created pattern
  */
 export function createTriangle(options = {}) {
+    const validated = validateTemplateOptions(options, {
+        baseWidth: { min: 3, max: 200 },
+        rows: { min: 2, max: 200 }
+    });
+
     const {
         direction = 'top-down',
         baseWidth = 10,
         rows = null,
         stitchType = StitchType.SINGLE_CROCHET,
         color = 0x8B4513
-    } = options;
+    } = { ...options, ...validated };
 
     const pattern = new Pattern();
     pattern.metadata.name = 'Triangle';

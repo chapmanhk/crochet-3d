@@ -22,9 +22,10 @@ export const ShapeType = {
  * Calculate increases needed for a flat circle at a given round
  * @param {number} roundNumber - Round number (1-indexed)
  * @param {number} baseStitches - Starting stitch count (usually 6 or 8)
+ * @param {string} stitchAbbr - Stitch abbreviation (default: 'sc')
  * @returns {Object} Increase information
  */
-export function calculateCircleIncreases(roundNumber, baseStitches = 6) {
+export function calculateCircleIncreases(roundNumber, baseStitches = 6, stitchAbbr = 'sc') {
     // For a flat circle:
     // Round 1: baseStitches
     // Round 2: baseStitches * 2
@@ -44,15 +45,15 @@ export function calculateCircleIncreases(roundNumber, baseStitches = 6) {
         }
     }
 
-    // Generate instruction
+    // Generate instruction using the provided stitch abbreviation
     let instruction = '';
     if (roundNumber === 1) {
-        instruction = `Work ${baseStitches} sc into magic ring`;
+        instruction = `Work ${baseStitches} ${stitchAbbr} into magic ring`;
     } else if (roundNumber === 2) {
-        instruction = `Inc in each st around (${totalStitches} sts)`;
+        instruction = `2 ${stitchAbbr} in each st around (${totalStitches} sts)`;
     } else {
-        const scBetween = roundNumber - 2;
-        instruction = `*Sc ${scBetween}, inc* repeat around (${totalStitches} sts)`;
+        const stsBetween = roundNumber - 2;
+        instruction = `*${stsBetween} ${stitchAbbr}, 2 ${stitchAbbr} in next st* repeat around (${totalStitches} sts)`;
     }
 
     return {
@@ -61,7 +62,8 @@ export function calculateCircleIncreases(roundNumber, baseStitches = 6) {
         increases,
         increaseCount: increasesNeeded,
         increaseSpacing: roundNumber > 1 ? roundNumber - 1 : 0,
-        instruction
+        instruction,
+        stitchType: stitchAbbr
     };
 }
 
