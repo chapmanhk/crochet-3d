@@ -272,8 +272,8 @@ function addCircleRound(pattern, roundNumber, baseStitches, stitchType, color) {
     const prevStitches = prevRow.length;
     const increases = targetStitches - prevStitches;
 
-    // Calculate spacing for increases
-    const increaseEvery = Math.floor(prevStitches / increases);
+    // Calculate spacing for increases (guard against division by zero)
+    const increaseEvery = increases > 0 ? Math.floor(prevStitches / increases) : Infinity;
 
     const def = getStitchDefinition(stitchType);
     const height = def?.height || 1.0;

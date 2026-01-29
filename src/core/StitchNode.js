@@ -36,8 +36,18 @@ export class StitchNode {
         this.type = type;
         this.definition = getStitchDefinition(type);
 
-        // Position in 3D space
-        this.position = options.position || new THREE.Vector3(0, 0, 0);
+        // Position in 3D space - ensure it's always a THREE.Vector3
+        if (options.position instanceof THREE.Vector3) {
+            this.position = options.position;
+        } else if (options.position && typeof options.position === 'object') {
+            this.position = new THREE.Vector3(
+                options.position.x || 0,
+                options.position.y || 0,
+                options.position.z || 0
+            );
+        } else {
+            this.position = new THREE.Vector3(0, 0, 0);
+        }
 
         // Position in pattern grid
         this.row = options.row ?? 0;

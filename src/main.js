@@ -187,14 +187,29 @@ class CrochetApp {
                     console.warn('Pattern loaded with warnings:', validation.warnings);
                 }
 
-                this.pattern = Pattern.fromJSON(data);
+                // Create new pattern from JSON
+                const newPattern = Pattern.fromJSON(data);
 
-                // Re-setup UI with new pattern
+                // Dispose old managers that hold pattern references
+                this.physicsPanel.dispose();
+                this.physicsEngine.dispose();
                 this.uiManager.dispose();
+                this.attachmentManager.dispose();
+
+                // Update pattern reference
+                this.pattern = newPattern;
+
+                // Recreate managers with new pattern
+                this.attachmentManager = new AttachmentPointManager(this.sceneManager, this.pattern);
+                this.physicsEngine = new PhysicsEngine(this.pattern, this.sceneManager);
                 this.uiManager = new UIManager(this.pattern);
+                this.physicsPanel = new PhysicsPanel(this.physicsEngine);
 
                 // Re-render
                 this.stitchRenderer.renderPattern(this.pattern);
+
+                // Emit pattern loaded event
+                EventBus.emit(Events.PATTERN_LOADED, { pattern: this.pattern });
 
                 console.log('Pattern loaded successfully');
             } catch (err) {

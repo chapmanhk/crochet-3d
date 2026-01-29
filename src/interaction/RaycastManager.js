@@ -325,5 +325,9 @@ export class RaycastManager {
 
         this.clearAttachmentPoints();
         this.sceneManager.removeUIObject(this.attachmentGroup);
+
+        // Clear stale references to prevent memory leaks
+        this.hoveredNode = null;
+        this.selectedNodes.clear();
     }
 }

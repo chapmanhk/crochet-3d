@@ -667,11 +667,13 @@ export class Pattern {
             timestamp: Date.now()
         });
 
-        // Limit history size
+        // Always increment historyIndex after adding new state
+        this.historyIndex++;
+
+        // Limit history size - remove oldest entry and adjust index
         if (this.history.length > this.maxHistorySize) {
             this.history.shift();
-        } else {
-            this.historyIndex++;
+            this.historyIndex--;
         }
 
         EventBus.emit(Events.HISTORY_CHANGED, {

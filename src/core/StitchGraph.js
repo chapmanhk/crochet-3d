@@ -361,16 +361,26 @@ export class StitchGraph {
             throw new Error('Invalid graph data');
         }
 
-        // First pass: create all nodes
+        // First pass: create all nodes and collect connection data
         const nodeMap = new Map();
+        const connectionDataMap = new Map();
+        const skippedStitchesMap = new Map();
+
         data.nodes.forEach(nodeData => {
             const node = StitchNode.fromJSON(nodeData);
             graph.addNode(node);
-            nodeMap.set(node.id, { node, connectionData: nodeData.connections });
+            nodeMap.set(node.id, node);
+            connectionDataMap.set(node.id, nodeData.connections || {});
+            // Store skippedStitches IDs for later resolution
+            if (nodeData.skippedStitches && nodeData.skippedStitches.length > 0) {
+                skippedStitchesMap.set(node.id, nodeData.skippedStitches);
+            }
         });
 
         // Second pass: restore connections
-        nodeMap.forEach(({ node, connectionData }) => {
+        nodeMap.forEach((node, nodeId) => {
+            const connectionData = connectionDataMap.get(nodeId);
+
             // Restore below connections
             if (connectionData.below) {
                 connectionData.below.forEach(id => {
@@ -379,10 +389,28 @@ export class StitchGraph {
                 });
             }
 
-            // Restore left connection
+            // Restore left connection (right is established automatically via connectLeft)
             if (connectionData.left) {
                 const left = graph.getNode(connectionData.left);
                 if (left) node.connectLeft(left);
+            }
+
+            // Restore space connection (for stitches worked into chain spaces)
+            if (connectionData.space) {
+                const spaceNode = graph.getNode(connectionData.space);
+                if (spaceNode) {
+                    node.connections.space = spaceNode;
+                }
+            }
+        });
+
+        // Third pass: restore skippedStitches references
+        skippedStitchesMap.forEach((skippedIds, nodeId) => {
+            const node = nodeMap.get(nodeId);
+            if (node) {
+                node.skippedStitches = skippedIds
+                    .map(id => graph.getNode(id))
+                    .filter(n => n !== null);
             }
         });
 
