@@ -336,63 +336,70 @@ export class ExportManager {
     createPDFBlob(content, options = {}) {
         // Simple PDF structure (PDF 1.4 compliant)
         // This creates a basic text-based PDF without external libraries
-        const lines = [];
+        // Track byte offsets for xref table
+        const objects = [];
+        const offsets = [];
+        let currentOffset = 0;
+
+        // Helper to add object and track offset
+        const addObject = (objContent) => {
+            offsets.push(currentOffset);
+            objects.push(objContent);
+            currentOffset += objContent.length + 1; // +1 for newline
+        };
 
         // PDF Header
-        lines.push('%PDF-1.4');
-        lines.push('%âãÏÓ'); // Binary marker
+        const header = '%PDF-1.4\n%âãÏÓ';
+        currentOffset = header.length + 1;
 
-        // Catalog object
-        lines.push('1 0 obj');
-        lines.push('<< /Type /Catalog /Pages 2 0 R >>');
-        lines.push('endobj');
+        // Object 1: Catalog
+        addObject('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj');
 
-        // Pages object
-        lines.push('2 0 obj');
-        lines.push('<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
-        lines.push('endobj');
+        // Object 2: Pages
+        addObject('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj');
 
-        // Page object
-        lines.push('3 0 obj');
-        lines.push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>');
-        lines.push('endobj');
+        // Object 3: Page
+        addObject('3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj');
 
         // Build content stream
         const textLines = this.buildPDFTextContent(content);
         const contentStream = textLines.join('\n');
 
-        // Content stream object
-        lines.push('4 0 obj');
-        lines.push(`<< /Length ${contentStream.length} >>`);
-        lines.push('stream');
-        lines.push(contentStream);
-        lines.push('endstream');
-        lines.push('endobj');
+        // Object 4: Content stream
+        addObject(`4 0 obj\n<< /Length ${contentStream.length} >>\nstream\n${contentStream}\nendstream\nendobj`);
 
-        // Font object
-        lines.push('5 0 obj');
-        lines.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-        lines.push('endobj');
+        // Object 5: Font
+        addObject('5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj');
 
-        // Cross-reference table
-        const xrefStart = lines.join('\n').length + 1;
-        lines.push('xref');
-        lines.push('0 6');
-        lines.push('0000000000 65535 f ');
-        lines.push('0000000015 00000 n ');
-        lines.push('0000000066 00000 n ');
-        lines.push('0000000125 00000 n ');
-        lines.push('0000000266 00000 n ');
-        lines.push(`0000000${350 + contentStream.length} 00000 n `);
+        // Build the PDF content
+        const bodyContent = objects.join('\n');
+        const xrefStart = header.length + 1 + bodyContent.length + 1;
+
+        // Format offsets with leading zeros (10 digits)
+        const formatOffset = (offset) => String(offset).padStart(10, '0');
+
+        // Build xref table
+        const xrefLines = [
+            'xref',
+            '0 6',
+            '0000000000 65535 f ',
+            `${formatOffset(offsets[0])} 00000 n `,
+            `${formatOffset(offsets[1])} 00000 n `,
+            `${formatOffset(offsets[2])} 00000 n `,
+            `${formatOffset(offsets[3])} 00000 n `,
+            `${formatOffset(offsets[4])} 00000 n `
+        ];
 
         // Trailer
-        lines.push('trailer');
-        lines.push('<< /Size 6 /Root 1 0 R >>');
-        lines.push('startxref');
-        lines.push(String(xrefStart));
-        lines.push('%%EOF');
+        const trailerLines = [
+            'trailer',
+            '<< /Size 6 /Root 1 0 R >>',
+            'startxref',
+            String(xrefStart),
+            '%%EOF'
+        ];
 
-        const pdfContent = lines.join('\n');
+        const pdfContent = [header, bodyContent, ...xrefLines, ...trailerLines].join('\n');
         return new Blob([pdfContent], { type: 'application/pdf' });
     }
 

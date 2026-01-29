@@ -48,6 +48,9 @@ export class PhysicsEngine {
         // Bind methods
         this.update = this.update.bind(this);
 
+        // Store unsubscribe functions for cleanup
+        this.eventUnsubscribers = [];
+
         // Setup event listeners
         this.setupEventListeners();
     }
@@ -56,23 +59,31 @@ export class PhysicsEngine {
      * Setup event listeners
      */
     setupEventListeners() {
-        EventBus.on(Events.STITCH_ADDED, ({ node }) => {
-            this.addBody(node);
-            this.rebuildConstraints();
-        });
+        this.eventUnsubscribers.push(
+            EventBus.on(Events.STITCH_ADDED, ({ node }) => {
+                this.addBody(node);
+                this.rebuildConstraints();
+            })
+        );
 
-        EventBus.on(Events.STITCH_REMOVED, ({ node }) => {
-            this.removeBody(node);
-            this.rebuildConstraints();
-        });
+        this.eventUnsubscribers.push(
+            EventBus.on(Events.STITCH_REMOVED, ({ node }) => {
+                this.removeBody(node);
+                this.rebuildConstraints();
+            })
+        );
 
-        EventBus.on(Events.PATTERN_LOADED, () => {
-            this.rebuildAll();
-        });
+        this.eventUnsubscribers.push(
+            EventBus.on(Events.PATTERN_LOADED, () => {
+                this.rebuildAll();
+            })
+        );
 
-        EventBus.on(Events.PATTERN_CLEARED, () => {
-            this.clear();
-        });
+        this.eventUnsubscribers.push(
+            EventBus.on(Events.PATTERN_CLEARED, () => {
+                this.clear();
+            })
+        );
     }
 
     /**
@@ -384,8 +395,12 @@ export class PhysicsEngine {
             const node = body.node;
             const def = node.definition;
 
-            const x = node.column * def.width;
-            const y = node.row * def.height;
+            // Use default dimensions if definition is not available
+            const width = def?.width ?? 0.7;
+            const height = def?.height ?? 1.0;
+
+            const x = node.column * width;
+            const y = node.row * height;
 
             body.position.set(x, y, 0);
             body.previousPosition.copy(body.position);
@@ -428,5 +443,13 @@ export class PhysicsEngine {
     dispose() {
         this.stop();
         this.clear();
+
+        // Unsubscribe from all events
+        this.eventUnsubscribers.forEach(unsub => {
+            if (typeof unsub === 'function') {
+                unsub();
+            }
+        });
+        this.eventUnsubscribers = [];
     }
 }
