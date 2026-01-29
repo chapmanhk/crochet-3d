@@ -97,8 +97,8 @@ export class ExportManager {
     /**
      * Export canvas as PNG data URL
      * @param {Object} options - Export options
-     * @param {number} options.width - Output width (optional)
-     * @param {number} options.height - Output height (optional)
+     * @param {number} options.width - Output width (optional, must be positive)
+     * @param {number} options.height - Output height (optional, must be positive)
      * @returns {Promise<string>} PNG data URL
      */
     async exportPNG(options = {}) {
@@ -111,6 +111,12 @@ export class ExportManager {
 
             const canvas = this.renderer.domElement;
             const { width, height } = options;
+
+            // Validate dimensions if provided
+            if ((width !== undefined && (width <= 0 || !Number.isFinite(width))) ||
+                (height !== undefined && (height <= 0 || !Number.isFinite(height)))) {
+                throw new Error('Invalid dimensions: width and height must be positive numbers');
+            }
 
             let dataUrl;
             if (width && height && (width !== canvas.width || height !== canvas.height)) {
@@ -136,13 +142,21 @@ export class ExportManager {
      * @returns {Promise<string>}
      */
     async resizeCanvas(sourceCanvas, width, height) {
-        return new Promise((resolve) => {
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = width;
-            tempCanvas.height = height;
-            const ctx = tempCanvas.getContext('2d');
-            ctx.drawImage(sourceCanvas, 0, 0, width, height);
-            resolve(tempCanvas.toDataURL('image/png'));
+        return new Promise((resolve, reject) => {
+            try {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = width;
+                tempCanvas.height = height;
+                const ctx = tempCanvas.getContext('2d');
+                if (!ctx) {
+                    reject(new Error('Failed to get 2D context for canvas resize'));
+                    return;
+                }
+                ctx.drawImage(sourceCanvas, 0, 0, width, height);
+                resolve(tempCanvas.toDataURL('image/png'));
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 
@@ -158,6 +172,7 @@ export class ExportManager {
 
     /**
      * Convert data URL to Blob
+     * Uses efficient Uint8Array.from() instead of manual loop
      * @param {string} dataUrl
      * @returns {Blob}
      */
@@ -166,12 +181,9 @@ export class ExportManager {
         const mimeMatch = parts[0].match(/:(.*?);/);
         const mime = mimeMatch ? mimeMatch[1] : 'image/png';
         const bstr = atob(parts[1]);
-        const n = bstr.length;
-        const u8arr = new Uint8Array(n);
 
-        for (let i = 0; i < n; i++) {
-            u8arr[i] = bstr.charCodeAt(i);
-        }
+        // More efficient than manual loop
+        const u8arr = Uint8Array.from(bstr, char => char.charCodeAt(0));
 
         return new Blob([u8arr], { type: mime });
     }
@@ -395,6 +407,7 @@ export class ExportManager {
 
     /**
      * Escape special characters for PDF strings
+     * Handles backslashes, parentheses, and control characters
      * @param {string} str
      * @returns {string}
      */
@@ -402,7 +415,10 @@ export class ExportManager {
         return str
             .replace(/\\/g, '\\\\')
             .replace(/\(/g, '\\(')
-            .replace(/\)/g, '\\)');
+            .replace(/\)/g, '\\)')
+            .replace(/\r/g, '\\r')
+            .replace(/\n/g, '\\n')
+            .replace(/\t/g, '\\t');
     }
 
     /**
