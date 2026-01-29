@@ -138,9 +138,11 @@ export class StitchGraph {
 
     /**
      * Get all nodes in a specific row
+     * Returns a copy to prevent external mutation of internal data
      */
     getRow(rowNumber) {
-        return this.rowIndex.get(rowNumber) || [];
+        const row = this.rowIndex.get(rowNumber);
+        return row ? [...row] : [];
     }
 
     /**

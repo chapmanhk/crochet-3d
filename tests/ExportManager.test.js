@@ -561,8 +561,8 @@ describe('ExportManager', () => {
             expect(chartData.rows[0].stitches[0].symbol).toBe('o');
             // SC should have 'x' symbol
             expect(chartData.rows[1].stitches[0].symbol).toBe('x');
-            // DC should have 'T' symbol
-            expect(chartData.rows[2].stitches[0].symbol).toBe('T');
+            // DC should have '⊥' symbol (updated to unique symbol)
+            expect(chartData.rows[2].stitches[0].symbol).toBe('⊥');
         });
     });
 });
