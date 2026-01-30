@@ -15,6 +15,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Pattern } from '../src/core/Pattern.js';
 import { StitchType } from '../src/core/StitchTypes.js';
 import { EventBus, Events } from '../src/utils/EventBus.js';
+import { PatternConstants } from '../src/utils/Constants.js';
 
 describe('Pattern', () => {
     let pattern;
@@ -421,6 +422,32 @@ describe('Pattern', () => {
             // The turning chain for row 2 should attach to where row 1 ended (rightmost)
             const rightmostColumn = Math.max(...row1Working.map(s => s.column));
             expect(attachedTo.column).toBe(rightmostColumn);
+        });
+    });
+
+    describe('round positioning', () => {
+        it('should space spiral stitches based on previous row count', () => {
+            pattern.startWithMagicRing(6, StitchType.SINGLE_CROCHET, 'spiral');
+
+            const row0All = pattern.graph.getRowSorted(0);
+            const row0Stitches = row0All.filter(stitch => stitch.type !== StitchType.MAGIC_RING);
+
+            pattern.addStitch(StitchType.SINGLE_CROCHET, row0Stitches[0]);
+            const second = pattern.addStitch(StitchType.SINGLE_CROCHET, row0Stitches[1]);
+
+            const stitchCount = row0All.length;
+            const angle = (1 / stitchCount) * Math.PI * 2;
+            const radius = PatternConstants.MAGIC_RING_RADIUS + 1 * PatternConstants.ROUND_RADIUS_GROWTH;
+            const height = 1.0;
+            const heightOffset = (1 / stitchCount) * height * 0.5;
+
+            const expectedX = Math.cos(angle) * radius;
+            const expectedZ = Math.sin(angle) * radius;
+            const expectedY = 1 * height * 0.5 + heightOffset;
+
+            expect(second.position.x).toBeCloseTo(expectedX, 4);
+            expect(second.position.z).toBeCloseTo(expectedZ, 4);
+            expect(second.position.y).toBeCloseTo(expectedY, 4);
         });
     });
 
