@@ -92,8 +92,13 @@ export function validatePatternData(data) {
     if (data.mode !== undefined) {
         if (typeof data.mode !== 'string') {
             errors.push('Mode must be a string');
-        } else if (!['flat', 'round'].includes(data.mode)) {
-            errors.push(`Invalid mode: ${data.mode}. Must be 'flat' or 'round'`);
+        } else {
+            const validModes = ['flat', 'round', 'round-joined', 'round-spiral'];
+            if (!validModes.includes(data.mode)) {
+                errors.push(`Invalid mode: ${data.mode}. Must be 'flat' or a round mode`);
+            } else if (data.mode === 'round') {
+                warnings.push('Legacy mode "round" will be treated as "round-joined"');
+            }
         }
     }
 
@@ -277,7 +282,7 @@ function validateNode(node, index, nodeIds) {
         if (typeof node.column !== 'number' || !Number.isInteger(node.column)) {
             errors.push(`Node at index ${index} has invalid column (must be integer)`);
         } else if (node.column < 0) {
-            errors.push(`Node at index ${index} has negative column`);
+            warnings.push(`Node at index ${index} has negative column (used for turning chains)`);
         }
     }
 

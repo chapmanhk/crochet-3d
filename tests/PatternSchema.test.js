@@ -84,6 +84,18 @@ describe('validatePatternData', () => {
             expect(result.errors.filter(e => e.includes('mode'))).toHaveLength(0);
         });
 
+        it('should accept valid mode "round-joined"', () => {
+            const result = validatePatternData({ mode: 'round-joined' });
+
+            expect(result.errors.filter(e => e.includes('mode'))).toHaveLength(0);
+        });
+
+        it('should accept valid mode "round-spiral"', () => {
+            const result = validatePatternData({ mode: 'round-spiral' });
+
+            expect(result.errors.filter(e => e.includes('mode'))).toHaveLength(0);
+        });
+
         it('should reject invalid mode', () => {
             const result = validatePatternData({ mode: 'invalid' });
 
@@ -96,6 +108,12 @@ describe('validatePatternData', () => {
 
             expect(result.valid).toBe(false);
             expect(result.errors.some(e => e.includes('Mode must be a string'))).toBe(true);
+        });
+
+        it('should warn when legacy "round" mode is used', () => {
+            const result = validatePatternData({ mode: 'round' });
+
+            expect(result.warnings.some(w => w.includes('Legacy mode "round"'))).toBe(true);
         });
     });
 
@@ -353,6 +371,15 @@ describe('validatePatternData', () => {
 
             expect(result.valid).toBe(false);
             expect(result.errors.some(e => e.includes('invalid column'))).toBe(true);
+        });
+
+        it('should warn about negative column values', () => {
+            const result = validatePatternData({
+                graph: { nodes: [createValidNode({ column: -1 })] }
+            });
+
+            expect(result.valid).toBe(true);
+            expect(result.warnings.some(w => w.includes('negative column'))).toBe(true);
         });
 
         it('should reject invalid position', () => {

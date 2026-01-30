@@ -8,6 +8,11 @@ import {
     doesTurningChainCount,
     getStitchDisplayName
 } from './StitchTypes.js';
+import {
+    calculateFlatPosition,
+    findPreviousInRow as findPreviousInRowInRow,
+    getNextColumn
+} from './StitchPlacement.js';
 import { EventBus, Events } from '../utils/EventBus.js';
 import { PatternConstants, sanitizeObject } from '../utils/Constants.js';
 
@@ -298,8 +303,6 @@ export class Pattern {
 
         const chains = [];
         let prevNode = attachPoint;
-        const def = getStitchDefinition(StitchType.CHAIN);
-
         // Calculate starting column for turning chains to avoid conflicts
         // Use negative columns for turning chains to keep them separate from working stitches
         const existingStitches = this.graph.getRow(this.currentRow);
@@ -376,7 +379,48 @@ export class Pattern {
      * @returns {StitchNode|null} The created node, or null if creation failed
      */
     addStitch(type, attachToNode, options = {}) {
-        // Validate stitch type
+        const def = this.validateStitchType(type);
+        if (!def) return null;
+
+        const {
+            modifiers,
+            skipCount,
+            workIntoSpace,
+            loopSelection,
+            row,
+            column,
+            color
+        } = this.normalizeAddOptions(options, attachToNode);
+
+        const { actualAttachNode, skippedStitches } =
+            this.resolveAttachmentForSkip(attachToNode, skipCount);
+
+        const position = this.calculateStitchPosition(type, actualAttachNode, row, column, modifiers);
+
+        const node = this.graph.createNode(type, {
+            row,
+            column,
+            position,
+            color,
+            modifiers,
+            loopSelection,
+            workedIntoSpace: workIntoSpace,
+            skippedStitches
+        });
+
+        this.connectNewStitch(node, actualAttachNode, workIntoSpace, row, column);
+        this.applyModifierEffects(node, actualAttachNode, modifiers, options);
+        this.updateCurrentRow(row);
+
+        const displayName = getStitchDisplayName(type, modifiers);
+        this.saveHistoryState(`Add ${displayName}`);
+        return node;
+    }
+
+    /**
+     * Validate and lookup stitch definition for a type.
+     */
+    validateStitchType(type) {
         if (!type || typeof type !== 'string') {
             console.error('Invalid stitch type: must be a non-empty string');
             return null;
@@ -388,17 +432,42 @@ export class Pattern {
             return null;
         }
 
-        // Validate options
-        const modifiers = Array.isArray(options.modifiers) ? options.modifiers : (this.currentModifiers || []);
-        const skipCount = Number.isFinite(options.skipCount) && options.skipCount >= 0 ? Math.floor(options.skipCount) : 0;
-        const workIntoSpace = Boolean(options.workIntoSpace);
-        const loopSelection = ['both', 'front', 'back'].includes(options.loopSelection) ? options.loopSelection : 'both';
+        return def;
+    }
 
-        // Determine row and column
+    /**
+     * Normalize addStitch options into a consistent shape.
+     */
+    normalizeAddOptions(options, attachToNode) {
+        const modifiers = Array.isArray(options.modifiers)
+            ? options.modifiers
+            : (this.currentModifiers || []);
+        const skipCount = Number.isFinite(options.skipCount) && options.skipCount >= 0
+            ? Math.floor(options.skipCount)
+            : 0;
+        const workIntoSpace = Boolean(options.workIntoSpace);
+        const loopSelection = ['both', 'front', 'back'].includes(options.loopSelection)
+            ? options.loopSelection
+            : 'both';
         const row = options.row ?? (attachToNode ? attachToNode.row + 1 : this.currentRow);
         const column = options.column ?? this.calculateNextColumn(row);
+        const color = options.color ?? this.currentColor;
 
-        // Handle skip stitches
+        return {
+            modifiers,
+            skipCount,
+            workIntoSpace,
+            loopSelection,
+            row,
+            column,
+            color
+        };
+    }
+
+    /**
+     * Resolve attachment point when skipping stitches.
+     */
+    resolveAttachmentForSkip(attachToNode, skipCount) {
         let actualAttachNode = attachToNode;
         const skippedStitches = [];
 
@@ -406,11 +475,9 @@ export class Pattern {
             const prevRowStitches = this.graph.getRowSorted(attachToNode.row);
             const attachIndex = prevRowStitches.indexOf(attachToNode);
 
-            // Safety check: ensure attachIndex is valid
             if (attachIndex === -1) {
                 console.warn('Attachment node not found in its row, using original attachment');
             } else {
-                // Collect skipped stitches (with bounds checking)
                 for (let i = 0; i < skipCount; i++) {
                     const idx = attachIndex + i;
                     if (idx >= 0 && idx < prevRowStitches.length) {
@@ -418,7 +485,6 @@ export class Pattern {
                     }
                 }
 
-                // Actual attachment is after the skipped stitches
                 const newAttachIndex = attachIndex + skipCount;
                 if (newAttachIndex >= 0 && newAttachIndex < prevRowStitches.length) {
                     actualAttachNode = prevRowStitches[newAttachIndex];
@@ -426,54 +492,45 @@ export class Pattern {
             }
         }
 
-        // Calculate position with working direction
-        const position = this.calculateStitchPosition(type, actualAttachNode, row, column, modifiers);
+        return { actualAttachNode, skippedStitches };
+    }
 
-        // Create the node with modifiers
-        const node = this.graph.createNode(type, {
-            row,
-            column,
-            position,
-            color: options.color ?? this.currentColor,
-            modifiers,
-            loopSelection,
-            workedIntoSpace: workIntoSpace,
-            skippedStitches
-        });
-
-        // Connect to attachment point
-        if (actualAttachNode && !workIntoSpace) {
-            this.graph.connectVertical(node, actualAttachNode);
+    /**
+     * Connect the new stitch to vertical/horizontal neighbors.
+     */
+    connectNewStitch(node, attachToNode, workIntoSpace, row, column) {
+        if (attachToNode && !workIntoSpace) {
+            this.graph.connectVertical(node, attachToNode);
         }
 
-        // Connect to chain space if working into space
-        if (workIntoSpace && actualAttachNode) {
-            node.connectToSpace(actualAttachNode);
+        if (workIntoSpace && attachToNode) {
+            node.connectToSpace(attachToNode);
         }
 
-        // Connect to previous stitch in row
         const prevInRow = this.findPreviousInRow(row, column);
         if (prevInRow) {
             this.graph.connectHorizontal(prevInRow, node);
         }
+    }
 
-        // Handle increases with modifiers (creates multiple stitches)
+    /**
+     * Apply modifier effects for increases/decreases and legacy types.
+     */
+    applyModifierEffects(node, attachToNode, modifiers, options) {
         if (modifiers.includes(StitchModifier.INCREASE) ||
             modifiers.includes(StitchModifier.INCREASE_3)) {
             const increaseCount = modifiers.includes(StitchModifier.INCREASE_3) ? 3 : 2;
             node.metadata.increasesTo = increaseCount;
         }
 
-        // Handle decreases (connect to multiple stitches below)
         if (modifiers.includes(StitchModifier.DECREASE) ||
             modifiers.includes(StitchModifier.DECREASE_3)) {
             const decreaseCount = modifiers.includes(StitchModifier.DECREASE_3) ? 3 : 2;
 
-            if (actualAttachNode) {
-                const prevRowStitches = this.graph.getRowSorted(actualAttachNode.row);
-                const attachIndex = prevRowStitches.indexOf(actualAttachNode);
+            if (attachToNode) {
+                const prevRowStitches = this.graph.getRowSorted(attachToNode.row);
+                const attachIndex = prevRowStitches.indexOf(attachToNode);
 
-                // Connect to additional stitches (with bounds checking)
                 if (attachIndex !== -1) {
                     for (let i = 1; i < decreaseCount; i++) {
                         const nextIndex = attachIndex + i;
@@ -488,24 +545,22 @@ export class Pattern {
             }
         }
 
-        // Legacy support for INCREASE/DECREASE types
-        if (type === StitchType.INCREASE) {
+        if (node.type === StitchType.INCREASE) {
             node.metadata.increasesTo = 2;
         }
 
-        if (type === StitchType.DECREASE && options.secondAttachment) {
+        if (node.type === StitchType.DECREASE && options.secondAttachment) {
             this.graph.connectVertical(node, options.secondAttachment);
         }
+    }
 
-        // Update currentRow if we've added a stitch to a higher row
-        // This keeps the pattern state in sync with actual work
+    /**
+     * Keep currentRow in sync with added stitches.
+     */
+    updateCurrentRow(row) {
         if (row > this.currentRow) {
             this.currentRow = row;
         }
-
-        const displayName = getStitchDisplayName(type, modifiers);
-        this.saveHistoryState(`Add ${displayName}`);
-        return node;
     }
 
     /**
@@ -581,35 +636,23 @@ export class Pattern {
             effectiveWidth = width * 0.7;
         }
 
-        if (!attachTo) {
-            return { x: column * width, y: row * height, z: 0 };
-        }
-
         if (this.mode === 'round-joined' || this.mode === 'round-spiral') {
             return this.calculateRoundPosition(type, attachTo, row, column);
         }
 
         // Flat mode positioning with working direction
         const rowStitches = this.graph.getRowSorted(row);
-        let x;
-
-        if (rowStitches.length > 0) {
-            if (this.workingDirection === 'right') {
-                const lastInRow = rowStitches[rowStitches.length - 1];
-                x = lastInRow.position.x + ((lastInRow.width ?? width) + effectiveWidth) / 2;
-            } else {
-                const firstInRow = rowStitches[0];
-                x = firstInRow.position.x - ((firstInRow.width ?? width) + effectiveWidth) / 2;
-            }
-        } else {
-            // First stitch of row - position based on attachment
-            x = attachTo.position.x;
-        }
-
-        // Y position based on row and stitch height
-        const y = attachTo.position.y + ((attachTo.height ?? height) + height) / 2;
-
-        return { x, y, z: 0 };
+        return calculateFlatPosition({
+            rowStitches,
+            attachTo,
+            column,
+            row,
+            width,
+            effectiveWidth,
+            height,
+            workingDirection: this.workingDirection,
+            rowBaseY: row * height
+        });
     }
 
     /**
@@ -619,16 +662,9 @@ export class Pattern {
         const def = getStitchDefinition(type);
         const height = def?.height ?? PatternConstants.DEFAULT_STITCH_HEIGHT;
 
-        // For spiral, use cumulative stitch count
-        let stitchCount;
-        if (this.mode === 'round-spiral') {
-            const currentCount = this.graph.getRow(row).length;
-            const prevCount = this.graph.getRow(row - 1).length;
-            stitchCount = currentCount + prevCount;
-        } else {
-            const prevRowStitches = this.graph.getRow(row - 1);
-            stitchCount = prevRowStitches.length || PatternConstants.MAGIC_RING_INITIAL_STITCHES;
-        }
+        // For spiral, use previous round count to keep even spacing
+        const prevRowStitches = this.graph.getRow(row - 1);
+        let stitchCount = prevRowStitches.length || PatternConstants.MAGIC_RING_INITIAL_STITCHES;
 
         // Guard against division by zero or NaN
         if (stitchCount <= 0 || !Number.isFinite(stitchCount)) {
@@ -663,21 +699,7 @@ export class Pattern {
      */
     findPreviousInRow(row, column) {
         const rowStitches = this.graph.getRowSorted(row);
-
-        if (this.workingDirection === 'right') {
-            for (let i = rowStitches.length - 1; i >= 0; i--) {
-                if (rowStitches[i].column < column) {
-                    return rowStitches[i];
-                }
-            }
-        } else {
-            for (let i = 0; i < rowStitches.length; i++) {
-                if (rowStitches[i].column > column) {
-                    return rowStitches[i];
-                }
-            }
-        }
-        return null;
+        return findPreviousInRowInRow(rowStitches, column, this.workingDirection);
     }
 
     /**
@@ -692,20 +714,7 @@ export class Pattern {
         }
 
         const rowStitches = this.graph.getRow(row);
-        if (!rowStitches || rowStitches.length === 0) return 0;
-
-        // Extract column numbers, filtering out any invalid values
-        const columns = rowStitches
-            .map(s => s?.column)
-            .filter(c => Number.isFinite(c));
-
-        if (columns.length === 0) return 0;
-
-        if (this.workingDirection === 'right') {
-            return Math.max(...columns) + 1;
-        } else {
-            return Math.min(...columns) - 1;
-        }
+        return getNextColumn(rowStitches, this.workingDirection);
     }
 
     /**
@@ -742,11 +751,16 @@ export class Pattern {
 
         // Join round with slip stitch if in joined round mode
         if (this.mode === 'round-joined' && !options.skipJoin) {
-            // Add slip stitch to join
+            // Close the previous round by connecting last to first
             const prevRow = this.graph.getRowSorted(this.currentRow - 1);
-            if (prevRow.length > 0) {
+            if (prevRow.length > 1) {
                 const firstStitch = prevRow[0];
-                // The join slip stitch is optional to add explicitly
+                const lastStitch = prevRow[prevRow.length - 1];
+                const alreadyJoined = firstStitch.connections.left === lastStitch ||
+                    lastStitch.connections.right === firstStitch;
+                if (!alreadyJoined) {
+                    this.graph.connectHorizontal(lastStitch, firstStitch);
+                }
             }
         }
 

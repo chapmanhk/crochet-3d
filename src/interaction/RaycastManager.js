@@ -8,7 +8,6 @@ import { EventBus, Events } from '../utils/EventBus.js';
  * - Click detection on stitches
  * - Hover detection
  * - Selection management
- * - Attachment point visualization
  */
 
 export class RaycastManager {
@@ -23,11 +22,6 @@ export class RaycastManager {
         // Current hover/selection state
         this.hoveredNode = null;
         this.selectedNodes = new Set();
-
-        // Attachment point indicators
-        this.attachmentIndicators = [];
-        this.attachmentGroup = new THREE.Group();
-        this.sceneManager.addUIObject(this.attachmentGroup);
 
         // Bind methods
         this.onMouseMove = this.onMouseMove.bind(this);
@@ -285,94 +279,6 @@ export class RaycastManager {
     }
 
     /**
-     * Show attachment point indicators
-     * @param {Array} points - Array of attachment points
-     */
-    showAttachmentPoints(points) {
-        this.clearAttachmentPoints();
-
-        // Validate input
-        if (!Array.isArray(points)) {
-            console.warn('showAttachmentPoints expects an array');
-            return;
-        }
-
-        points.forEach(point => {
-            const indicator = this.createAttachmentIndicator(point);
-            // Only add valid indicators
-            if (indicator) {
-                this.attachmentIndicators.push(indicator);
-                this.attachmentGroup.add(indicator);
-            }
-        });
-    }
-
-    /**
-     * Create a visual indicator for an attachment point
-     * @param {Object} point - Attachment point data
-     * @returns {THREE.Mesh|null} The indicator mesh, or null if creation failed
-     */
-    createAttachmentIndicator(point) {
-        // Validate input
-        if (!point || !point.stitch || !point.stitch.position) {
-            console.warn('Cannot create attachment indicator: invalid point data');
-            return null;
-        }
-
-        try {
-            const geometry = new THREE.SphereGeometry(0.1, 16, 16);
-            const material = new THREE.MeshBasicMaterial({
-                color: point.suggested ? 0x00ff00 : 0x0088ff,
-                transparent: true,
-                opacity: 0.7
-            });
-
-            const mesh = new THREE.Mesh(geometry, material);
-
-            // Position above the stitch
-            mesh.position.copy(point.stitch.position);
-            const stitchHeight = Number.isFinite(point.stitch.height) ? point.stitch.height : 1;
-            mesh.position.y += stitchHeight * 0.8;
-
-            // Store reference for click handling
-            mesh.userData.attachmentPoint = point;
-
-            return mesh;
-        } catch (err) {
-            console.error('Error creating attachment indicator:', err);
-            return null;
-        }
-    }
-
-    /**
-     * Clear attachment point indicators
-     */
-    clearAttachmentPoints() {
-        this.attachmentIndicators.forEach(indicator => {
-            this.attachmentGroup.remove(indicator);
-            indicator.geometry.dispose();
-            indicator.material.dispose();
-        });
-        this.attachmentIndicators = [];
-    }
-
-    /**
-     * Check if mouse is over an attachment point
-     */
-    getHoveredAttachmentPoint() {
-        if (this.attachmentIndicators.length === 0) return null;
-
-        this.raycaster.setFromCamera(this.mouse, this.sceneManager.camera);
-        const intersects = this.raycaster.intersectObjects(this.attachmentIndicators);
-
-        if (intersects.length > 0) {
-            return intersects[0].object.userData.attachmentPoint;
-        }
-
-        return null;
-    }
-
-    /**
      * Dispose of resources
      */
     dispose() {
@@ -381,9 +287,6 @@ export class RaycastManager {
         canvas.removeEventListener('mousemove', this.onMouseMove);
         canvas.removeEventListener('click', this.onClick);
         window.removeEventListener('keydown', this.onKeyDown);
-
-        this.clearAttachmentPoints();
-        this.sceneManager.removeUIObject(this.attachmentGroup);
 
         // Clear stale references to prevent memory leaks
         this.hoveredNode = null;

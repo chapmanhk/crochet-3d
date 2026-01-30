@@ -58,7 +58,11 @@ export class StitchValidator {
         const connectionsOut = attachStitch.effectiveConnections?.connectionsOut
             || attachStitch.definition?.connectionsOut || 1;
 
-        if (attachStitch.connections.above.length >= connectionsOut) {
+        const workingConnectionsAbove = attachStitch.connections.above.filter(stitch =>
+            !stitch.isTurningChain || stitch.turningChainCountsAsStitch
+        );
+
+        if (workingConnectionsAbove.length >= connectionsOut) {
             result.errors.push('Attachment point has no available connections');
             result.valid = false;
             return result;
@@ -91,7 +95,10 @@ export class StitchValidator {
                     result.valid = false;
                     return result;
                 }
-                if (nextStitch.connections.above.length > 0) {
+                const workingAbove = nextStitch.connections.above.filter(stitch =>
+                    !stitch.isTurningChain || stitch.turningChainCountsAsStitch
+                );
+                if (workingAbove.length > 0) {
                     result.errors.push(`Stitch ${i + 1} for decrease already has a connection above`);
                     result.valid = false;
                     return result;

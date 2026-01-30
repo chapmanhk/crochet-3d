@@ -343,6 +343,28 @@ describe('Pattern', () => {
                 pattern
             }));
         });
+
+        it('should join previous round in round-joined mode', () => {
+            pattern.startWithMagicRing(4, StitchType.SINGLE_CROCHET, 'joined');
+
+            const baseStitches = pattern.graph.getRowSorted(0)
+                .filter(stitch => stitch.type !== StitchType.MAGIC_RING);
+            baseStitches.forEach(stitch => {
+                pattern.addStitch(StitchType.SINGLE_CROCHET, stitch);
+            });
+
+            const row1 = pattern.graph.getRowSorted(1);
+            const first = row1[0];
+            const last = row1[row1.length - 1];
+
+            expect(first.connections.left).toBeNull();
+            expect(last.connections.right).toBeNull();
+
+            pattern.startNewRow();
+
+            expect(first.connections.left).toBe(last);
+            expect(last.connections.right).toBe(first);
+        });
     });
 
     describe('addTurningChain', () => {
