@@ -110,16 +110,10 @@ export class AttachmentPointManager {
         const def = getStitchDefinition(this.previewStitchType);
         const attachStitch = point.stitch;
 
-        let x = attachStitch.position.x;
-        let y = attachStitch.position.y + (attachStitch.height + def.height) / 2;
-        let z = attachStitch.position.z;
-
-        // Offset for working direction
-        const rowStitches = this.pattern.graph.getRow(this.pattern.currentRow);
-        if (rowStitches.length > 0) {
-            const lastInRow = rowStitches[rowStitches.length - 1];
-            x = lastInRow.position.x + (lastInRow.width + def.width) / 2;
-        }
+        // Position the ghost stitch directly above the attachment point
+        const x = attachStitch.position.x;
+        const y = attachStitch.position.y + (attachStitch.height + def.height) / 2;
+        const z = attachStitch.position.z;
 
         mesh.position.set(x, y, z);
 
@@ -130,6 +124,11 @@ export class AttachmentPointManager {
 
         // Scale down slightly for ghost effect
         mesh.scale.setScalar(AttachmentConstants.GHOST_SCALE);
+
+        // Highlight suggested attachment point
+        if (point.suggested) {
+            mesh.scale.setScalar(AttachmentConstants.GHOST_SCALE * 1.2);
+        }
 
         return mesh;
     }
