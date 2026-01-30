@@ -320,13 +320,15 @@ describe('Pattern', () => {
 
         it('should toggle working direction', () => {
             pattern.startWithChain(5);
-            expect(pattern.workingDirection).toBe('right');
-
-            pattern.startNewRow();
+            // In crochet, when working the first row into a foundation chain,
+            // you start at the right end and work left
             expect(pattern.workingDirection).toBe('left');
 
             pattern.startNewRow();
             expect(pattern.workingDirection).toBe('right');
+
+            pattern.startNewRow();
+            expect(pattern.workingDirection).toBe('left');
         });
 
         it('should emit ROW_ADDED event', () => {
@@ -345,35 +347,39 @@ describe('Pattern', () => {
 
     describe('addTurningChain', () => {
         it('should attach turning chain to end of previous row when working left', () => {
-            // Create foundation chain of 5 (columns 0-4, working right)
+            // Create foundation chain of 5 (columns 0-4)
+            // Initial direction is 'left' (you start at the end and work back)
             pattern.startWithChain(5);
-            // Start row 1 - toggles direction to 'left'
+            // Start row 1 - toggles direction to 'right'
+            // Before toggling, direction was 'left', so "end" is leftmost (column 0)
             pattern.startNewRow();
 
             // Get the turning chains created
             const row1 = pattern.graph.getRow(1);
             const turningChains = row1.filter(s => s.isTurningChain);
 
-            // The turning chain should connect to the LAST chain (column 4)
-            // because we just finished row 0 going right, ending at column 4
+            // The turning chain should connect to the FIRST chain (column 0)
+            // because we just finished row 0 going left, ending at column 0
             expect(turningChains.length).toBeGreaterThan(0);
             const firstTurningChain = turningChains[0];
             expect(firstTurningChain.connections.below.length).toBeGreaterThan(0);
             const attachedTo = firstTurningChain.connections.below[0];
-            expect(attachedTo.column).toBe(4); // Last chain of foundation
+            expect(attachedTo.column).toBe(0); // First chain of foundation (left end)
         });
 
         it('should attach turning chain to start of previous row when working right', () => {
-            // Create foundation chain, work row 1 (left), then start row 2 (right)
+            // Create foundation chain
+            // Initial direction is 'left', currentRow = 0
             pattern.startWithChain(5);
-            pattern.startNewRow(); // Row 1, direction = left
+            pattern.startNewRow(); // Row 1, direction = 'right' (toggled from 'left')
 
-            // Add some stitches to row 1 (working left)
+            // Add some stitches to row 1 (working right now)
             const chain = pattern.graph.getRowSorted(0);
-            pattern.addStitch(StitchType.SINGLE_CROCHET, chain[4]);
-            pattern.addStitch(StitchType.SINGLE_CROCHET, chain[3]);
+            // Working right means we add stitches left-to-right
+            pattern.addStitch(StitchType.SINGLE_CROCHET, chain[0]);
+            pattern.addStitch(StitchType.SINGLE_CROCHET, chain[1]);
 
-            pattern.startNewRow(); // Row 2, direction = right
+            pattern.startNewRow(); // Row 2, direction = 'left' (toggled from 'right')
 
             // Get turning chains for row 2
             const row2 = pattern.graph.getRow(2);
@@ -389,10 +395,10 @@ describe('Pattern', () => {
             const row1Working = pattern.graph.getRowSorted(1).filter(s => !s.isTurningChain);
             expect(row1Working.length).toBeGreaterThan(0);
 
-            // Row 1 was worked left, so the last stitch added has the lowest column
-            // The turning chain for row 2 should attach to where row 1 ended (leftmost)
-            const leftmostColumn = Math.min(...row1Working.map(s => s.column));
-            expect(attachedTo.column).toBe(leftmostColumn);
+            // Row 1 was worked right, so the last stitch added has the highest column
+            // The turning chain for row 2 should attach to where row 1 ended (rightmost)
+            const rightmostColumn = Math.max(...row1Working.map(s => s.column));
+            expect(attachedTo.column).toBe(rightmostColumn);
         });
     });
 

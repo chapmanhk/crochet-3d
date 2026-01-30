@@ -167,6 +167,40 @@ class CrochetApp {
         EventBus.on(Events.PATTERN_LOADED, () => {
             // Initial attachment points update is handled by AttachmentPointManager
         });
+
+        // Auto-follow camera when stitches are added
+        EventBus.on(Events.STITCH_ADDED, () => {
+            this.updateCameraTarget();
+        });
+
+        // Auto-follow camera when rows are added
+        EventBus.on(Events.ROW_ADDED, () => {
+            this.updateCameraTarget();
+        });
+    }
+
+    /**
+     * Update camera target to follow the pattern as it grows
+     * Smoothly adjusts the camera to keep the work area visible
+     */
+    updateCameraTarget() {
+        const bounds = this.calculatePatternBounds();
+
+        // Only update if we have valid bounds
+        if (bounds.height > 0 || bounds.width > 0) {
+            // Keep the camera target centered on the pattern
+            // Add a small offset to look slightly above center for better view of work area
+            const targetY = bounds.centerY + 0.5;
+
+            // Smoothly adjust camera target (don't jump suddenly)
+            const currentTarget = this.sceneManager.controls.target;
+            const lerpFactor = 0.3; // Smooth transition
+
+            currentTarget.x += (bounds.centerX - currentTarget.x) * lerpFactor;
+            currentTarget.y += (targetY - currentTarget.y) * lerpFactor;
+
+            this.sceneManager.controls.update();
+        }
     }
 
     /**
