@@ -16,6 +16,7 @@ import { PhysicsPanel } from './ui/PhysicsPanel.js';
 import { EventBus, Events } from './utils/EventBus.js';
 import { showAlert } from './ui/Modal.js';
 import { validatePatternData, formatValidationResult } from './utils/PatternSchema.js';
+import { SceneConstants } from './utils/Constants.js';
 
 /**
  * Global error handler to catch unhandled errors
@@ -60,6 +61,10 @@ class CrochetApp {
         this.uiManager = null;
         this.physicsPanel = null;
 
+        // Camera follow state
+        this.cameraFollowTarget = null;
+        this.cameraFollowActive = false;
+
         // Initialize
         this.init();
     }
@@ -98,6 +103,7 @@ class CrochetApp {
 
             // Setup application-level event handlers
             this.setupEventHandlers();
+            this.setupCameraFollow();
 
             // Start with a demo pattern
             this.createDemoPattern();
@@ -171,12 +177,32 @@ class CrochetApp {
         // Auto-follow camera when stitches are added
         EventBus.on(Events.STITCH_ADDED, () => {
             this.updateCameraTarget();
+            this.physicsEngine.settle();
         });
 
         // Auto-follow camera when rows are added
         EventBus.on(Events.ROW_ADDED, () => {
             this.updateCameraTarget();
+            this.physicsEngine.settle();
         });
+
+        EventBus.on(Events.PATTERN_LOADED, () => {
+            this.updateCameraTarget();
+        });
+    }
+
+    /**
+     * Setup smooth camera follow behavior
+     */
+    setupCameraFollow() {
+        const currentTarget = this.sceneManager.controls.target;
+        this.cameraFollowTarget = {
+            x: currentTarget.x,
+            y: currentTarget.y,
+            z: currentTarget.z
+        };
+        this.cameraFollowActive = true;
+        this.sceneManager.onUpdate(() => this.applyCameraFollow());
     }
 
     /**
@@ -188,19 +214,60 @@ class CrochetApp {
 
         // Only update if we have valid bounds
         if (bounds.height > 0 || bounds.width > 0) {
-            // Keep the camera target centered on the pattern
-            // Add a small offset to look slightly above center for better view of work area
-            const targetY = bounds.centerY + 0.5;
+            const targetX = bounds.centerX;
+            const targetY = bounds.centerY + SceneConstants.CAMERA_FOLLOW_Y_OFFSET;
+            const targetZ = 0;
 
-            // Smoothly adjust camera target (don't jump suddenly)
-            const currentTarget = this.sceneManager.controls.target;
-            const lerpFactor = 0.3; // Smooth transition
+            if (!this.cameraFollowTarget) {
+                this.cameraFollowTarget = { x: targetX, y: targetY, z: targetZ };
+                this.cameraFollowActive = true;
+                return;
+            }
 
-            currentTarget.x += (bounds.centerX - currentTarget.x) * lerpFactor;
-            currentTarget.y += (targetY - currentTarget.y) * lerpFactor;
+            const dx = targetX - this.cameraFollowTarget.x;
+            const dy = targetY - this.cameraFollowTarget.y;
+            const dz = targetZ - this.cameraFollowTarget.z;
+            const minDelta = SceneConstants.CAMERA_FOLLOW_MIN_DELTA;
+            if (Math.abs(dx) < minDelta &&
+                Math.abs(dy) < minDelta &&
+                Math.abs(dz) < minDelta) {
+                return;
+            }
 
-            this.sceneManager.controls.update();
+            this.cameraFollowTarget.x = targetX;
+            this.cameraFollowTarget.y = targetY;
+            this.cameraFollowTarget.z = targetZ;
+            this.cameraFollowActive = true;
         }
+    }
+
+    /**
+     * Apply smooth camera follow toward the target each frame
+     */
+    applyCameraFollow() {
+        if (!this.cameraFollowActive || !this.cameraFollowTarget) return;
+
+        const now = performance.now();
+        if (this.sceneManager.isUserInteracting &&
+            now - this.sceneManager.lastControlInteraction < SceneConstants.CAMERA_FOLLOW_IDLE_DELAY_MS) {
+            return;
+        }
+
+        const currentTarget = this.sceneManager.controls.target;
+        const dx = this.cameraFollowTarget.x - currentTarget.x;
+        const dy = this.cameraFollowTarget.y - currentTarget.y;
+        const dz = this.cameraFollowTarget.z - currentTarget.z;
+
+        const minDelta = SceneConstants.CAMERA_FOLLOW_MIN_DELTA;
+        const distSq = dx * dx + dy * dy + dz * dz;
+        if (distSq < minDelta * minDelta) return;
+
+        const lerpFactor = SceneConstants.CAMERA_FOLLOW_LERP;
+        currentTarget.x += dx * lerpFactor;
+        currentTarget.y += dy * lerpFactor;
+        currentTarget.z += dz * lerpFactor;
+
+        this.sceneManager.controls.update();
     }
 
     /**

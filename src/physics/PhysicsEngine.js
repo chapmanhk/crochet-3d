@@ -27,6 +27,8 @@ export class PhysicsEngine {
 
         // Constraints (springs between connected stitches)
         this.constraints = [];
+        this.constraintKeys = new Set();
+        this.rebuildScheduled = false;
 
         // Physics parameters
         this.params = {
@@ -37,7 +39,9 @@ export class PhysicsEngine {
             restLengthScale: PhysicsConstants.REST_LENGTH_SCALE,
             groundY: PhysicsConstants.DEFAULT_GROUND_Y,
             enableGround: true,
-            enableGravity: true
+            enableGravity: true,
+            enableShear: PhysicsConstants.DEFAULT_ENABLE_SHEAR,
+            enableBend: PhysicsConstants.DEFAULT_ENABLE_BEND
         };
 
         // Settling detection
@@ -62,14 +66,14 @@ export class PhysicsEngine {
         this.eventUnsubscribers.push(
             EventBus.on(Events.STITCH_ADDED, ({ node }) => {
                 this.addBody(node);
-                this.rebuildConstraints();
+                this.scheduleRebuildConstraints();
             })
         );
 
         this.eventUnsubscribers.push(
             EventBus.on(Events.STITCH_REMOVED, ({ node }) => {
                 this.removeBody(node);
-                this.rebuildConstraints();
+                this.scheduleRebuildConstraints();
             })
         );
 
@@ -136,6 +140,7 @@ export class PhysicsEngine {
      */
     rebuildConstraints() {
         this.constraints = [];
+        this.constraintKeys.clear();
 
         this.bodies.forEach((body, nodeId) => {
             const node = body.node;
@@ -155,6 +160,61 @@ export class PhysicsEngine {
                     this.addConstraint(body, belowBody, 'vertical');
                 }
             });
+
+            if (this.params.enableShear) {
+                node.connections.below.forEach(belowNode => {
+                    const belowLeft = belowNode.connections.left;
+                    if (belowLeft) {
+                        const belowLeftBody = this.bodies.get(belowLeft.id);
+                        if (belowLeftBody) {
+                            this.addConstraint(body, belowLeftBody, 'shear');
+                        }
+                    }
+
+                    const belowRight = belowNode.connections.right;
+                    if (belowRight) {
+                        const belowRightBody = this.bodies.get(belowRight.id);
+                        if (belowRightBody) {
+                            this.addConstraint(body, belowRightBody, 'shear');
+                        }
+                    }
+                });
+            }
+
+            if (this.params.enableBend) {
+                const right2 = node.connections.right?.connections.right;
+                if (right2) {
+                    const right2Body = this.bodies.get(right2.id);
+                    if (right2Body) {
+                        this.addConstraint(body, right2Body, 'bend');
+                    }
+                }
+
+                node.connections.below.forEach(belowNode => {
+                    const belowBelow = belowNode.connections.below?.[0];
+                    if (belowBelow) {
+                        const belowBelowBody = this.bodies.get(belowBelow.id);
+                        if (belowBelowBody) {
+                            this.addConstraint(body, belowBelowBody, 'bend');
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * Schedule a constraint rebuild after connections settle.
+     */
+    scheduleRebuildConstraints() {
+        if (this.rebuildScheduled) return;
+        this.rebuildScheduled = true;
+        const schedule = typeof queueMicrotask === 'function'
+            ? queueMicrotask
+            : (cb) => Promise.resolve().then(cb);
+        schedule(() => {
+            this.rebuildScheduled = false;
+            this.rebuildConstraints();
         });
     }
 
@@ -171,6 +231,19 @@ export class PhysicsEngine {
             console.warn('Cannot add constraint: invalid bodies');
             return;
         }
+
+        const idA = bodyA.node?.id;
+        const idB = bodyB.node?.id;
+        if (!idA || !idB) {
+            console.warn('Cannot add constraint: missing node ids');
+            return;
+        }
+
+        const key = idA < idB ? `${type}:${idA}|${idB}` : `${type}:${idB}|${idA}`;
+        if (this.constraintKeys.has(key)) {
+            return;
+        }
+        this.constraintKeys.add(key);
 
         // Calculate rest length from current positions
         const restLength = bodyA.position.distanceTo(bodyB.position);
@@ -196,6 +269,10 @@ export class PhysicsEngine {
             stiffness *= (1 + avgBendResistance * 0.5);
         } else if (type === 'vertical') {
             stiffness *= PhysicsConstants.VERTICAL_STIFFNESS_MULTIPLIER;
+        } else if (type === 'shear') {
+            stiffness *= PhysicsConstants.SHEAR_STIFFNESS_MULTIPLIER;
+        } else if (type === 'bend') {
+            stiffness *= PhysicsConstants.BEND_STIFFNESS_MULTIPLIER;
         }
 
         this.constraints.push({
@@ -459,7 +536,8 @@ export class PhysicsEngine {
         Object.assign(this.params, params);
 
         // Rebuild constraints if stiffness changed
-        if ('stiffness' in params || 'restLengthScale' in params) {
+        if ('stiffness' in params || 'restLengthScale' in params ||
+            'enableShear' in params || 'enableBend' in params) {
             this.rebuildConstraints();
         }
     }

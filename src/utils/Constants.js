@@ -64,6 +64,12 @@ export const PhysicsConstants = {
     // Stiffness multipliers by constraint type
     HORIZONTAL_STIFFNESS_MULTIPLIER: 1.0,
     VERTICAL_STIFFNESS_MULTIPLIER: 0.8,
+    SHEAR_STIFFNESS_MULTIPLIER: 0.7,
+    BEND_STIFFNESS_MULTIPLIER: 0.4,
+
+    // Advanced constraint defaults
+    DEFAULT_ENABLE_SHEAR: true,
+    DEFAULT_ENABLE_BEND: true,
 
     // Correction factor for constraint solving
     CONSTRAINT_CORRECTION_FACTOR: 0.5,
@@ -99,6 +105,12 @@ export const SceneConstants = {
     MAX_DISTANCE: 50,
     MAX_POLAR_ANGLE_RATIO: 0.9, // Multiplied by Math.PI
     DAMPING_FACTOR: 0.05,
+
+    // Camera follow behavior
+    CAMERA_FOLLOW_LERP: 0.08,
+    CAMERA_FOLLOW_MIN_DELTA: 0.02,
+    CAMERA_FOLLOW_IDLE_DELAY_MS: 250,
+    CAMERA_FOLLOW_Y_OFFSET: 0.5,
 
     // Shadow map
     SHADOW_MAP_SIZE: 2048,

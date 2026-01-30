@@ -123,6 +123,7 @@ export class AttachmentPointManager {
         this.eventSubs.on(Events.PATTERN_LOADED, () => this.updateAttachmentPoints());
         this.eventSubs.on(Events.PATTERN_CLEARED, () => this.clearPoints());
         this.eventSubs.on(Events.ROW_ADDED, () => this.updateAttachmentPoints());
+        this.eventSubs.on(Events.PHYSICS_STEP, () => this.updateDynamicPositions());
         this.eventSubs.on(Events.STITCH_TYPE_SELECTED, ({ type }) => {
             this.previewStitchType = type;
             this.updateAttachmentPoints();
@@ -205,9 +206,59 @@ export class AttachmentPointManager {
 
         mesh.scale.setScalar(scale);
         mesh.userData.markerType = type;
+        mesh.userData.stitch = stitch;
 
         this.markerMeshes.push(mesh);
         this.group.add(mesh);
+    }
+
+    /**
+     * Update positions for existing ghosts and markers (e.g., after physics)
+     */
+    updateDynamicPositions() {
+        if (this.pointMeshes.length === 0 && this.markerMeshes.length === 0) return;
+
+        const def = getStitchDefinition(this.previewStitchType);
+        const previewHeight = def?.height ?? 0.5;
+
+        this.pointMeshes.forEach(mesh => {
+            if (mesh.userData.isNewRowIndicator) {
+                const currentRowStitches = this.pattern.graph.getRowSorted(this.pattern.currentRow);
+                if (currentRowStitches.length === 0) return;
+
+                const endStitch = this.pattern.workingDirection === 'left'
+                    ? currentRowStitches[0]
+                    : currentRowStitches[currentRowStitches.length - 1];
+
+                const offsetX = this.pattern.workingDirection === 'left' ? -0.3 : 0.3;
+                mesh.position.set(
+                    endStitch.position.x + offsetX,
+                    endStitch.position.y + (endStitch.height + previewHeight) / 2,
+                    endStitch.position.z
+                );
+                return;
+            }
+
+            const point = mesh.userData.attachmentPoint;
+            if (!point?.stitch?.position) return;
+
+            const attachStitch = point.stitch;
+            mesh.position.set(
+                attachStitch.position.x,
+                attachStitch.position.y + (attachStitch.height + previewHeight) / 2,
+                attachStitch.position.z
+            );
+        });
+
+        this.markerMeshes.forEach(mesh => {
+            const stitch = mesh.userData.stitch;
+            if (!stitch?.position) return;
+            mesh.position.set(
+                stitch.position.x,
+                stitch.position.y + stitch.height + 0.3,
+                stitch.position.z
+            );
+        });
     }
 
     /**
