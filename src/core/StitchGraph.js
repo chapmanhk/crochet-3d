@@ -56,11 +56,19 @@ export class StitchGraph {
     }
 
     /**
-     * Emit event to listeners
+     * Emit event to listeners with error handling
+     * @param {string} event - Event name
+     * @param {*} data - Event data
      */
     emit(event, data) {
         if (this.listeners[event]) {
-            this.listeners[event].forEach(cb => cb(data));
+            this.listeners[event].forEach(cb => {
+                try {
+                    cb(data);
+                } catch (err) {
+                    console.error(`Error in StitchGraph event listener for "${event}":`, err);
+                }
+            });
         }
     }
 
@@ -147,10 +155,20 @@ export class StitchGraph {
 
     /**
      * Get the number of rows in the pattern
+     * @returns {number} Number of rows (0 if empty)
      */
     getRowCount() {
         if (this.rowIndex.size === 0) return 0;
-        return Math.max(...this.rowIndex.keys()) + 1;
+
+        // Convert to array to avoid spread operator issues with iterators
+        const keys = Array.from(this.rowIndex.keys());
+        if (keys.length === 0) return 0;
+
+        // Filter to only valid numbers and find max
+        const validKeys = keys.filter(k => Number.isFinite(k) && k >= 0);
+        if (validKeys.length === 0) return 0;
+
+        return Math.max(...validKeys) + 1;
     }
 
     /**
@@ -216,19 +234,36 @@ export class StitchGraph {
 
     /**
      * Create a foundation chain of specified length
+     * @param {number} length - Number of chains (must be positive integer)
+     * @param {Object} startPosition - Starting position {x, y, z}
+     * @returns {Array} Array of chain nodes
      */
     createFoundationChain(length, startPosition = { x: 0, y: 0, z: 0 }) {
+        // Validate length
+        if (!Number.isFinite(length) || length < 1) {
+            console.error(`Invalid chain length: ${length}. Must be a positive integer.`);
+            return [];
+        }
+
+        // Validate and sanitize startPosition
+        const safeStartPosition = {
+            x: Number.isFinite(startPosition?.x) ? startPosition.x : 0,
+            y: Number.isFinite(startPosition?.y) ? startPosition.y : 0,
+            z: Number.isFinite(startPosition?.z) ? startPosition.z : 0
+        };
+
+        const safeLength = Math.floor(length);
         const chainNodes = [];
         let prevNode = null;
 
-        for (let i = 0; i < length; i++) {
+        for (let i = 0; i < safeLength; i++) {
             const node = this.createNode(StitchType.CHAIN, {
                 row: 0,
                 column: i,
                 position: {
-                    x: startPosition.x + i * 0.6,
-                    y: startPosition.y,
-                    z: startPosition.z
+                    x: safeStartPosition.x + i * 0.6,
+                    y: safeStartPosition.y,
+                    z: safeStartPosition.z
                 }
             });
 
@@ -245,18 +280,36 @@ export class StitchGraph {
 
     /**
      * Add a stitch to the end of a row, connecting appropriately
+     * @param {string} type - Stitch type
+     * @param {number} rowNumber - Row number to add to
+     * @param {StitchNode} connectTo - Optional node to connect vertically to
+     * @returns {StitchNode|null} The created node, or null if creation failed
      */
     addStitchToRow(type, rowNumber, connectTo = null) {
+        // Validate inputs
+        if (!type || typeof type !== 'string') {
+            console.error('Invalid stitch type for addStitchToRow');
+            return null;
+        }
+
+        if (!Number.isFinite(rowNumber) || rowNumber < 0) {
+            console.error(`Invalid row number: ${rowNumber}`);
+            return null;
+        }
+
         const existingRow = this.getRowSorted(rowNumber);
         const lastInRow = existingRow.length > 0 ? existingRow[existingRow.length - 1] : null;
         const column = lastInRow ? lastInRow.column + 1 : 0;
 
         // Calculate position based on stitch type and previous stitch
         const def = getStitchDefinition(type);
+        const defWidth = def?.width ?? 0.7;
+        const defHeight = def?.height ?? 1.0;
         let position = { x: 0, y: 0, z: 0 };
 
         if (lastInRow) {
-            position.x = lastInRow.position.x + (lastInRow.width + def.width) / 2;
+            const lastWidth = lastInRow.width ?? defWidth;
+            position.x = lastInRow.position.x + (lastWidth + defWidth) / 2;
             position.y = lastInRow.position.y;
             position.z = lastInRow.position.z;
         } else if (rowNumber > 0) {
@@ -264,7 +317,7 @@ export class StitchGraph {
             const prevRowFirst = this.getFirstInRow(rowNumber - 1);
             if (prevRowFirst) {
                 position.x = prevRowFirst.position.x;
-                position.y = prevRowFirst.position.y + def.height;
+                position.y = prevRowFirst.position.y + defHeight;
                 position.z = prevRowFirst.position.z;
             }
         }

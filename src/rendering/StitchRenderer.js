@@ -31,27 +31,47 @@ export class StitchRenderer {
     }
 
     /**
-     * Setup event listeners
+     * Setup event listeners with error handling
      */
     setupEventListeners() {
         EventBus.on(Events.STITCH_ADDED, ({ node }) => {
-            this.createMeshForNode(node);
+            try {
+                if (node) this.createMeshForNode(node);
+            } catch (err) {
+                console.error('Error creating mesh for added node:', err);
+            }
         });
 
         EventBus.on(Events.STITCH_REMOVED, ({ node }) => {
-            this.removeMeshForNode(node);
+            try {
+                if (node) this.removeMeshForNode(node);
+            } catch (err) {
+                console.error('Error removing mesh for node:', err);
+            }
         });
 
         EventBus.on(Events.PATTERN_CLEARED, () => {
-            this.clearAllMeshes();
+            try {
+                this.clearAllMeshes();
+            } catch (err) {
+                console.error('Error clearing meshes:', err);
+            }
         });
 
         EventBus.on(Events.PATTERN_LOADED, ({ pattern }) => {
-            this.renderPattern(pattern);
+            try {
+                if (pattern) this.renderPattern(pattern);
+            } catch (err) {
+                console.error('Error rendering pattern:', err);
+            }
         });
 
         EventBus.on(Events.STITCH_TYPE_CHANGED, ({ node }) => {
-            this.updateMeshForNode(node);
+            try {
+                if (node) this.updateMeshForNode(node);
+            } catch (err) {
+                console.error('Error updating mesh for type change:', err);
+            }
         });
     }
 
@@ -283,31 +303,55 @@ export class StitchRenderer {
 
     /**
      * Create mesh for a stitch node
+     * @param {StitchNode} node - The node to create a mesh for
+     * @returns {THREE.Mesh|null} The created mesh, or null if creation failed
      */
     createMeshForNode(node) {
+        // Validate input
+        if (!node || !node.id) {
+            console.warn('Cannot create mesh: invalid node');
+            return null;
+        }
+
+        // Return existing mesh if already created
         if (this.meshMap.has(node.id)) {
             return this.meshMap.get(node.id);
         }
 
-        const geometry = this.getGeometry(node.type);
-        const material = this.getMaterial(node.color);
+        try {
+            const geometry = this.getGeometry(node.type);
+            const material = this.getMaterial(node.color);
 
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.copy(node.position);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
+            if (!geometry || !material) {
+                console.warn('Failed to get geometry or material for node:', node.id);
+                return null;
+            }
 
-        // Store reference to node on mesh for raycasting
-        mesh.userData.nodeId = node.id;
-        mesh.userData.node = node;
+            const mesh = new THREE.Mesh(geometry, material);
 
-        // Store reference to mesh on node
-        node.mesh = mesh;
+            // Safety check for position
+            if (node.position) {
+                mesh.position.copy(node.position);
+            }
 
-        this.meshMap.set(node.id, mesh);
-        this.sceneManager.addStitchMesh(mesh);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
 
-        return mesh;
+            // Store reference to node on mesh for raycasting
+            mesh.userData.nodeId = node.id;
+            mesh.userData.node = node;
+
+            // Store reference to mesh on node
+            node.mesh = mesh;
+
+            this.meshMap.set(node.id, mesh);
+            this.sceneManager.addStitchMesh(mesh);
+
+            return mesh;
+        } catch (err) {
+            console.error('Error creating mesh for node:', node.id, err);
+            return null;
+        }
     }
 
     /**
