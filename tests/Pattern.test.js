@@ -368,7 +368,7 @@ describe('Pattern', () => {
             pattern.startWithChain(5);
             pattern.startNewRow(); // Row 1, direction = left
 
-            // Add some stitches to row 1 (working left, so decreasing columns)
+            // Add some stitches to row 1 (working left)
             const chain = pattern.graph.getRowSorted(0);
             pattern.addStitch(StitchType.SINGLE_CROCHET, chain[4]);
             pattern.addStitch(StitchType.SINGLE_CROCHET, chain[3]);
@@ -379,15 +379,20 @@ describe('Pattern', () => {
             const row2 = pattern.graph.getRow(2);
             const turningChains = row2.filter(s => s.isTurningChain);
 
-            // Working direction is now 'right', so turning chain should attach to
-            // where we ended row 1 (the leftmost stitch, which is at the lower column)
-            if (turningChains.length > 0) {
-                const attachedTo = turningChains[0].connections.below[0];
-                const row1Sorted = pattern.graph.getRowSorted(1);
-                const row1Working = row1Sorted.filter(s => !s.isTurningChain);
-                // Should attach to first (leftmost) working stitch of row 1
-                expect(attachedTo.column).toBeLessThanOrEqual(row1Working[0]?.column ?? 0);
-            }
+            // Strict assertions - turning chains must exist
+            expect(turningChains.length).toBeGreaterThan(0);
+
+            const attachedTo = turningChains[0].connections.below[0];
+            expect(attachedTo).toBeDefined();
+
+            // Get the working stitches from row 1 (excluding turning chains)
+            const row1Working = pattern.graph.getRowSorted(1).filter(s => !s.isTurningChain);
+            expect(row1Working.length).toBeGreaterThan(0);
+
+            // Row 1 was worked left, so the last stitch added has the lowest column
+            // The turning chain for row 2 should attach to where row 1 ended (leftmost)
+            const leftmostColumn = Math.min(...row1Working.map(s => s.column));
+            expect(attachedTo.column).toBe(leftmostColumn);
         });
     });
 
@@ -550,22 +555,29 @@ describe('Pattern', () => {
             const row1 = pattern.graph.getRow(1);
             const turningChains = row1.filter(s => s.isTurningChain);
 
-            // Find the turning chain that counts as stitch
-            const countingChain = turningChains.find(tc => tc.turningChainCountsAsStitch);
+            // DC requires ch-3, so we must have 3 turning chains
+            expect(turningChains.length).toBe(3);
 
-            if (countingChain && countingChain.connections.below.length > 0) {
-                const attachedTo = countingChain.connections.below[0];
+            // All chains in sequence should be marked when it counts as stitch
+            expect(turningChains.every(tc => tc.turningChainCountsAsStitch)).toBe(true);
 
-                // Get attachment points - the stitch below the counting turning chain
-                // should NOT be available since it's effectively "worked into"
-                const points = pattern.getAttachmentPoints();
-                const pointForAttachedStitch = points.find(p => p.stitch === attachedTo);
+            // The first chain in the sequence connects to the previous row
+            const firstChain = turningChains.find(tc => tc.connections.below.length > 0);
+            expect(firstChain).toBeDefined();
+            expect(firstChain.turningChainCountsAsStitch).toBe(true);
 
-                // The stitch should either not be in points, or be marked as unavailable
-                if (pointForAttachedStitch) {
-                    expect(pointForAttachedStitch.available).toBe(false);
-                }
-            }
+            const attachedTo = firstChain.connections.below[0];
+            expect(attachedTo).toBeDefined();
+
+            // Get attachment points - the stitch below the turning chain
+            // should NOT be available since the counting chain occupies that position
+            const points = pattern.getAttachmentPoints();
+            const pointForAttachedStitch = points.find(p => p.stitch === attachedTo);
+
+            // The stitch should either not be in points, or be marked as unavailable
+            expect(
+                !pointForAttachedStitch || pointForAttachedStitch.available === false
+            ).toBe(true);
         });
 
         it('should not exclude stitches with turning chain that does not count', () => {
@@ -576,19 +588,21 @@ describe('Pattern', () => {
             const row1 = pattern.graph.getRow(1);
             const turningChains = row1.filter(s => s.isTurningChain);
 
-            if (turningChains.length > 0) {
-                const attachedTo = turningChains[0].connections.below[0];
+            // SC requires ch-1, so we must have 1 turning chain
+            expect(turningChains.length).toBe(1);
+            expect(turningChains[0].turningChainCountsAsStitch).toBe(false);
 
-                // Get attachment points - since the ch-1 doesn't count as a stitch,
-                // the underlying stitch should still be available
-                const points = pattern.getAttachmentPoints();
-                const pointForAttachedStitch = points.find(p => p.stitch === attachedTo);
+            const attachedTo = turningChains[0].connections.below[0];
+            expect(attachedTo).toBeDefined();
 
-                // The stitch should be available since the turning chain doesn't count
-                if (pointForAttachedStitch) {
-                    expect(pointForAttachedStitch.available).toBe(true);
-                }
-            }
+            // Get attachment points - since the ch-1 doesn't count as a stitch,
+            // the underlying stitch should still be available
+            const points = pattern.getAttachmentPoints();
+            const pointForAttachedStitch = points.find(p => p.stitch === attachedTo);
+
+            // The stitch should be available since the turning chain doesn't count
+            expect(pointForAttachedStitch).toBeDefined();
+            expect(pointForAttachedStitch.available).toBe(true);
         });
     });
 
