@@ -147,6 +147,25 @@ export const AttachmentConstants = {
     HOVER_EMISSIVE_INTENSITY: 0.4,
     HOVER_SCALE: 1.0,
 
+    // New row indicator appearance (purple/orange to distinguish from regular ghosts)
+    NEW_ROW_COLOR: 0xFF9800,
+    NEW_ROW_OPACITY: 0.5,
+    NEW_ROW_EMISSIVE_INTENSITY: 0.3,
+    NEW_ROW_HOVER_COLOR: 0xFFB74D,
+
+    // Chain start marker (green - indicates beginning of foundation)
+    CHAIN_START_COLOR: 0x00BFA5,
+    CHAIN_START_SCALE: 0.4,
+
+    // Chain end marker (blue - indicates where to start working)
+    CHAIN_END_COLOR: 0x2196F3,
+    CHAIN_END_SCALE: 0.4,
+
+    // Working position marker (yellow - indicates current suggested position)
+    WORKING_POSITION_COLOR: 0xFFEB3B,
+    WORKING_POSITION_SCALE: 0.35,
+    WORKING_POSITION_PULSE_SCALE: 0.45,
+
     // Default sphere radius for unknown geometries
     DEFAULT_SPHERE_RADIUS: 0.2,
     DEFAULT_SPHERE_SEGMENTS: 16

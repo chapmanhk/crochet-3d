@@ -132,7 +132,9 @@ export class Pattern {
 
         this.graph.clear();
         this.currentRow = 0;
-        this.workingDirection = 'right';
+        // In crochet, when working the first row into a foundation chain,
+        // you start at the right end (last chain made) and work left
+        this.workingDirection = 'left';
         this.historyIndex = -1;
         this.history = [];
 
