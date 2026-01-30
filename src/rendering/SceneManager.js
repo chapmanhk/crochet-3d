@@ -195,15 +195,31 @@ export class SceneManager {
     }
 
     /**
-     * Handle window resize
+     * Handle window resize with safety checks
      */
     onWindowResize() {
-        const width = window.innerWidth;
-        const height = window.innerHeight;
+        try {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
 
-        this.camera.aspect = width / height;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(width, height);
+            // Safety check for valid dimensions
+            if (!Number.isFinite(width) || width <= 0 ||
+                !Number.isFinite(height) || height <= 0) {
+                console.warn('Invalid window dimensions for resize');
+                return;
+            }
+
+            if (this.camera) {
+                this.camera.aspect = width / height;
+                this.camera.updateProjectionMatrix();
+            }
+
+            if (this.renderer) {
+                this.renderer.setSize(width, height);
+            }
+        } catch (err) {
+            console.error('Error during window resize:', err);
+        }
     }
 
     /**
@@ -284,8 +300,17 @@ export class SceneManager {
 
     /**
      * Set view mode
+     * @param {string} mode - View mode ('top', 'front', 'side', 'perspective')
+     * @returns {boolean} Whether the mode was set successfully
      */
     setViewMode(mode) {
+        // Validate mode
+        const validModes = ['top', 'front', 'side', 'perspective'];
+        if (!validModes.includes(mode)) {
+            console.warn(`Invalid view mode: ${mode}. Using 'perspective'.`);
+            mode = 'perspective';
+        }
+
         let pos, target;
         switch (mode) {
             case 'top':
@@ -303,11 +328,25 @@ export class SceneManager {
             case 'perspective':
             default:
                 this.resetCamera();
-                return;
+                return true;
         }
-        this.camera.position.set(pos.x, pos.y, pos.z);
-        this.controls.target.set(target.x, target.y, target.z);
-        this.controls.update();
+
+        // Safety check for position and target
+        if (!pos || !target) {
+            console.warn('View mode constants not defined, using defaults');
+            this.resetCamera();
+            return false;
+        }
+
+        try {
+            this.camera.position.set(pos.x ?? 0, pos.y ?? 5, pos.z ?? 8);
+            this.controls.target.set(target.x ?? 0, target.y ?? 0, target.z ?? 0);
+            this.controls.update();
+            return true;
+        } catch (err) {
+            console.error('Error setting view mode:', err);
+            return false;
+        }
     }
 
     /**
@@ -338,16 +377,31 @@ export class SceneManager {
     }
 
     /**
-     * Animation loop
+     * Animation loop with error handling to prevent crashes
      */
     animate() {
         if (!this.isRunning) return;
 
         this.animationId = requestAnimationFrame(this.animate.bind(this));
-        this.controls.update();
-        this.updateCallbacks.forEach(cb => cb());
-        this.renderer.render(this.scene, this.camera);
-        EventBus.emit(Events.RENDER_FRAME, { time: performance.now() });
+
+        try {
+            this.controls.update();
+
+            // Call update callbacks with error handling
+            this.updateCallbacks.forEach(cb => {
+                try {
+                    cb();
+                } catch (err) {
+                    console.error('Error in update callback:', err);
+                }
+            });
+
+            this.renderer.render(this.scene, this.camera);
+            EventBus.emit(Events.RENDER_FRAME, { time: performance.now() });
+        } catch (err) {
+            console.error('Error in animation loop:', err);
+            // Continue running - don't crash the animation loop
+        }
     }
 
     /**

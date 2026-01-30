@@ -161,10 +161,25 @@ export class PhysicsEngine {
     /**
      * Add a constraint between two bodies
      * Uses per-stitch physics properties for realistic fabric behavior
+     * @param {Object} bodyA - First body
+     * @param {Object} bodyB - Second body
+     * @param {string} type - Constraint type ('horizontal' or 'vertical')
      */
     addConstraint(bodyA, bodyB, type) {
+        // Validate inputs
+        if (!bodyA?.position || !bodyB?.position) {
+            console.warn('Cannot add constraint: invalid bodies');
+            return;
+        }
+
         // Calculate rest length from current positions
         const restLength = bodyA.position.distanceTo(bodyB.position);
+
+        // Safety check: skip if rest length is invalid
+        if (!Number.isFinite(restLength) || restLength < 0) {
+            console.warn('Cannot add constraint: invalid rest length');
+            return;
+        }
 
         // Calculate stiffness as average of both stitches' properties
         // This creates realistic transitions between different stitch types
@@ -236,99 +251,124 @@ export class PhysicsEngine {
 
     /**
      * Physics update step (called each frame)
+     * Wrapped in try-catch to prevent animation loop breakage
      */
     update() {
         if (!this.isRunning) return;
 
-        const dt = PhysicsConstants.FIXED_TIMESTEP;
-        let totalMovement = 0;
+        try {
+            const dt = PhysicsConstants.FIXED_TIMESTEP;
+            let totalMovement = 0;
 
-        // Apply forces
-        this.bodies.forEach(body => {
-            if (body.pinned) return;
-
-            // Gravity
-            if (this.params.enableGravity) {
-                body.acceleration.add(this.params.gravity);
-            }
-        });
-
-        // Verlet integration
-        this.bodies.forEach(body => {
-            if (body.pinned) return;
-
-            const velocity = body.position.clone().sub(body.previousPosition);
-            velocity.multiplyScalar(this.params.damping);
-
-            body.previousPosition.copy(body.position);
-
-            // position += velocity + acceleration * dt^2
-            body.position.add(velocity);
-            body.position.add(body.acceleration.clone().multiplyScalar(dt * dt));
-
-            // Reset acceleration
-            body.acceleration.set(0, 0, 0);
-        });
-
-        // Solve constraints (multiple iterations for stability)
-        for (let i = 0; i < this.params.iterations; i++) {
-            this.solveConstraints();
-        }
-
-        // Ground collision
-        if (this.params.enableGround) {
+            // Apply forces
             this.bodies.forEach(body => {
-                if (body.position.y < this.params.groundY) {
-                    body.position.y = this.params.groundY;
+                if (body.pinned) return;
+
+                // Safety check for valid body
+                if (!body?.position || !body?.acceleration) return;
+
+                // Gravity
+                if (this.params.enableGravity && this.params.gravity) {
+                    body.acceleration.add(this.params.gravity);
                 }
             });
-        }
 
-        // Update mesh positions and calculate total movement
-        this.bodies.forEach(body => {
-            const movement = body.position.distanceTo(body.node.position);
-            totalMovement += movement;
+            // Verlet integration
+            this.bodies.forEach(body => {
+                if (body.pinned) return;
 
-            // Update node position
-            body.node.position.copy(body.position);
+                // Safety check for valid body properties
+                if (!body?.position || !body?.previousPosition || !body?.acceleration) return;
 
-            // Update mesh
-            if (body.node.mesh) {
-                body.node.mesh.position.copy(body.position);
+                const velocity = body.position.clone().sub(body.previousPosition);
+                velocity.multiplyScalar(this.params.damping);
+
+                body.previousPosition.copy(body.position);
+
+                // position += velocity + acceleration * dt^2
+                body.position.add(velocity);
+                body.position.add(body.acceleration.clone().multiplyScalar(dt * dt));
+
+                // Safety check: clamp position to prevent extreme values
+                if (!Number.isFinite(body.position.x)) body.position.x = 0;
+                if (!Number.isFinite(body.position.y)) body.position.y = 0;
+                if (!Number.isFinite(body.position.z)) body.position.z = 0;
+
+                // Reset acceleration
+                body.acceleration.set(0, 0, 0);
+            });
+
+            // Solve constraints (multiple iterations for stability)
+            const iterations = Math.max(1, Math.min(this.params.iterations, 10)); // Clamp iterations
+            for (let i = 0; i < iterations; i++) {
+                this.solveConstraints();
             }
-        });
 
-        // Check if settled
-        if (this.isSettling) {
-            this.settleFrames++;
-
-            const avgMovement = totalMovement / Math.max(1, this.bodies.size);
-
-            if (avgMovement < this.settleThreshold || this.settleFrames >= this.maxSettleFrames) {
-                this.isSettling = false;
-                this.isRunning = false;
-                EventBus.emit(Events.PHYSICS_SETTLED);
+            // Ground collision
+            if (this.params.enableGround) {
+                this.bodies.forEach(body => {
+                    if (body?.position && body.position.y < this.params.groundY) {
+                        body.position.y = this.params.groundY;
+                    }
+                });
             }
-        }
 
-        EventBus.emit(Events.PHYSICS_STEP, {
-            totalMovement,
-            bodyCount: this.bodies.size,
-            constraintCount: this.constraints.length
-        });
+            // Update mesh positions and calculate total movement
+            this.bodies.forEach(body => {
+                // Safety check
+                if (!body?.position || !body?.node?.position) return;
+
+                const movement = body.position.distanceTo(body.node.position);
+                totalMovement += Number.isFinite(movement) ? movement : 0;
+
+                // Update node position
+                body.node.position.copy(body.position);
+
+                // Update mesh
+                if (body.node.mesh) {
+                    body.node.mesh.position.copy(body.position);
+                }
+            });
+
+            // Check if settled
+            if (this.isSettling) {
+                this.settleFrames++;
+
+                const avgMovement = totalMovement / Math.max(1, this.bodies.size);
+
+                if (avgMovement < this.settleThreshold || this.settleFrames >= this.maxSettleFrames) {
+                    this.isSettling = false;
+                    this.isRunning = false;
+                    EventBus.emit(Events.PHYSICS_SETTLED);
+                }
+            }
+
+            EventBus.emit(Events.PHYSICS_STEP, {
+                totalMovement,
+                bodyCount: this.bodies.size,
+                constraintCount: this.constraints.length
+            });
+        } catch (err) {
+            console.error('Error in physics update:', err);
+            // Don't stop the simulation on error, but log it
+        }
     }
 
     /**
-     * Solve all constraints
+     * Solve all constraints with numerical safety checks
      */
     solveConstraints() {
         this.constraints.forEach(constraint => {
             const { bodyA, bodyB, restLength, stiffness } = constraint;
 
+            // Safety check for valid bodies
+            if (!bodyA?.position || !bodyB?.position) return;
+
             const delta = bodyB.position.clone().sub(bodyA.position);
             const currentLength = delta.length();
 
-            if (currentLength === 0) return;
+            // Safety check for zero length (avoid division by zero) and NaN
+            if (currentLength === 0 || !Number.isFinite(currentLength)) return;
 
             // Calculate correction
             const diff = (currentLength - restLength) / currentLength;

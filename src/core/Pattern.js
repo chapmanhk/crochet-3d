@@ -109,15 +109,26 @@ export class Pattern {
 
     /**
      * Start a new pattern with a foundation chain
+     * @param {number} length - Number of chains (must be positive integer)
+     * @returns {Array} Array of chain nodes, or empty array if invalid input
      */
     startWithChain(length) {
+        // Validate input
+        if (!Number.isFinite(length) || length < 1) {
+            console.error(`Invalid chain length: ${length}. Must be a positive integer.`);
+            return [];
+        }
+
+        // Clamp to reasonable bounds
+        const safeLength = Math.min(Math.max(1, Math.floor(length)), PatternConstants.MAX_CHAIN_LENGTH || 1000);
+
         this.graph.clear();
         this.currentRow = 0;
         this.workingDirection = 'right';
         this.historyIndex = -1;
         this.history = [];
 
-        const chain = this.graph.createFoundationChain(length);
+        const chain = this.graph.createFoundationChain(safeLength);
         this.saveHistoryState('Create foundation chain');
 
         EventBus.emit(Events.PATTERN_LOADED, { pattern: this });
@@ -126,8 +137,19 @@ export class Pattern {
 
     /**
      * Start a new pattern with foundation single crochet (chainless)
+     * @param {number} length - Number of foundation stitches (must be positive integer)
+     * @returns {Array} Array of stitch nodes, or empty array if invalid input
      */
     startWithFoundationSC(length) {
+        // Validate input
+        if (!Number.isFinite(length) || length < 1) {
+            console.error(`Invalid foundation length: ${length}. Must be a positive integer.`);
+            return [];
+        }
+
+        // Clamp to reasonable bounds
+        const safeLength = Math.min(Math.max(1, Math.floor(length)), PatternConstants.MAX_CHAIN_LENGTH || 1000);
+
         this.graph.clear();
         this.currentRow = 0;
         this.workingDirection = 'right';
@@ -137,7 +159,7 @@ export class Pattern {
         const stitches = [];
         let prevNode = null;
 
-        for (let i = 0; i < length; i++) {
+        for (let i = 0; i < safeLength; i++) {
             const node = this.graph.createNode(StitchType.FOUNDATION_SINGLE_CROCHET, {
                 row: 0,
                 column: i,
@@ -159,11 +181,28 @@ export class Pattern {
 
     /**
      * Start a new pattern with a magic ring
-     * @param {number} initialStitches - Number of stitches in the ring
+     * @param {number} initialStitches - Number of stitches in the ring (must be positive integer, min 1, max 50)
      * @param {string} stitchType - Type of stitch to use (default: single crochet)
      * @param {string} roundMode - 'joined' or 'spiral'
+     * @returns {Array} Array of stitch nodes, or empty array if invalid input
      */
     startWithMagicRing(initialStitches = PatternConstants.MAGIC_RING_INITIAL_STITCHES, stitchType = StitchType.SINGLE_CROCHET, roundMode = 'joined') {
+        // Validate initialStitches
+        if (!Number.isFinite(initialStitches) || initialStitches < 1) {
+            console.error(`Invalid initial stitches: ${initialStitches}. Must be a positive integer.`);
+            initialStitches = PatternConstants.MAGIC_RING_INITIAL_STITCHES;
+        }
+
+        // Clamp to reasonable bounds (1-50 stitches in magic ring)
+        const safeStitchCount = Math.min(Math.max(1, Math.floor(initialStitches)), 50);
+
+        // Validate roundMode
+        const validRoundModes = ['joined', 'spiral'];
+        if (!validRoundModes.includes(roundMode)) {
+            console.warn(`Invalid round mode: ${roundMode}. Defaulting to 'joined'.`);
+            roundMode = 'joined';
+        }
+
         this.graph.clear();
         this.currentRow = 0;
         this.mode = roundMode === 'spiral' ? 'round-spiral' : 'round-joined';
@@ -180,8 +219,8 @@ export class Pattern {
         // Add initial stitches around the ring
         const stitches = [ring];
         const radius = PatternConstants.MAGIC_RING_RADIUS;
-        for (let i = 0; i < initialStitches; i++) {
-            const angle = (i / initialStitches) * Math.PI * 2;
+        for (let i = 0; i < safeStitchCount; i++) {
+            const angle = (i / safeStitchCount) * Math.PI * 2;
 
             const stitch = this.graph.createNode(stitchType, {
                 row: 0,
@@ -213,6 +252,8 @@ export class Pattern {
 
     /**
      * Add turning chain at the start of a new row
+     * @param {string} stitchType - Optional stitch type to determine chain count
+     * @returns {Array} Array of chain nodes, or empty array if cannot add
      */
     addTurningChain(stitchType = null) {
         const targetStitchType = stitchType || this.selectedStitchType;
@@ -224,7 +265,20 @@ export class Pattern {
 
         if (chainCount === 0) return [];
 
+        // Safety check for currentRow
+        if (this.currentRow < 1) {
+            console.warn('Cannot add turning chain: no previous row exists');
+            return [];
+        }
+
         const prevRow = this.graph.getRowSorted(this.currentRow - 1);
+
+        // Safety check for empty previous row
+        if (!prevRow || prevRow.length === 0) {
+            console.warn('Cannot add turning chain: previous row is empty');
+            return [];
+        }
+
         const attachPoint = this.workingDirection === 'right'
             ? prevRow[prevRow.length - 1]
             : prevRow[0];
@@ -281,18 +335,29 @@ export class Pattern {
 
     /**
      * Add a stitch at a specific attachment point
+     * @param {string} type - Stitch type to add
+     * @param {StitchNode} attachToNode - Node to attach to (can be null for first stitch)
+     * @param {Object} options - Additional options
+     * @returns {StitchNode|null} The created node, or null if creation failed
      */
     addStitch(type, attachToNode, options = {}) {
+        // Validate stitch type
+        if (!type || typeof type !== 'string') {
+            console.error('Invalid stitch type: must be a non-empty string');
+            return null;
+        }
+
         const def = getStitchDefinition(type);
         if (!def) {
             console.error(`Unknown stitch type: ${type}`);
             return null;
         }
 
-        const modifiers = options.modifiers || this.currentModifiers;
-        const skipCount = options.skipCount || 0;
-        const workIntoSpace = options.workIntoSpace || false;
-        const loopSelection = options.loopSelection || 'both';
+        // Validate options
+        const modifiers = Array.isArray(options.modifiers) ? options.modifiers : (this.currentModifiers || []);
+        const skipCount = Number.isFinite(options.skipCount) && options.skipCount >= 0 ? Math.floor(options.skipCount) : 0;
+        const workIntoSpace = Boolean(options.workIntoSpace);
+        const loopSelection = ['both', 'front', 'back'].includes(options.loopSelection) ? options.loopSelection : 'both';
 
         // Determine row and column
         const row = options.row ?? (attachToNode ? attachToNode.row + 1 : this.currentRow);
@@ -306,15 +371,23 @@ export class Pattern {
             const prevRowStitches = this.graph.getRowSorted(attachToNode.row);
             const attachIndex = prevRowStitches.indexOf(attachToNode);
 
-            // Collect skipped stitches
-            for (let i = 0; i < skipCount && attachIndex + i < prevRowStitches.length; i++) {
-                skippedStitches.push(prevRowStitches[attachIndex + i]);
-            }
+            // Safety check: ensure attachIndex is valid
+            if (attachIndex === -1) {
+                console.warn('Attachment node not found in its row, using original attachment');
+            } else {
+                // Collect skipped stitches (with bounds checking)
+                for (let i = 0; i < skipCount; i++) {
+                    const idx = attachIndex + i;
+                    if (idx >= 0 && idx < prevRowStitches.length) {
+                        skippedStitches.push(prevRowStitches[idx]);
+                    }
+                }
 
-            // Actual attachment is after the skipped stitches
-            const newAttachIndex = attachIndex + skipCount;
-            if (newAttachIndex < prevRowStitches.length) {
-                actualAttachNode = prevRowStitches[newAttachIndex];
+                // Actual attachment is after the skipped stitches
+                const newAttachIndex = attachIndex + skipCount;
+                if (newAttachIndex >= 0 && newAttachIndex < prevRowStitches.length) {
+                    actualAttachNode = prevRowStitches[newAttachIndex];
+                }
             }
         }
 
@@ -365,11 +438,16 @@ export class Pattern {
                 const prevRowStitches = this.graph.getRowSorted(actualAttachNode.row);
                 const attachIndex = prevRowStitches.indexOf(actualAttachNode);
 
-                // Connect to additional stitches
-                for (let i = 1; i < decreaseCount; i++) {
-                    const nextStitch = prevRowStitches[attachIndex + i];
-                    if (nextStitch) {
-                        this.graph.connectVertical(node, nextStitch);
+                // Connect to additional stitches (with bounds checking)
+                if (attachIndex !== -1) {
+                    for (let i = 1; i < decreaseCount; i++) {
+                        const nextIndex = attachIndex + i;
+                        if (nextIndex >= 0 && nextIndex < prevRowStitches.length) {
+                            const nextStitch = prevRowStitches[nextIndex];
+                            if (nextStitch) {
+                                this.graph.connectVertical(node, nextStitch);
+                            }
+                        }
                     }
                 }
             }
@@ -563,15 +641,29 @@ export class Pattern {
 
     /**
      * Calculate the next column number for a row
+     * @param {number} row - Row number
+     * @returns {number} Next column number
      */
     calculateNextColumn(row) {
+        // Validate row number
+        if (!Number.isFinite(row) || row < 0) {
+            return 0;
+        }
+
         const rowStitches = this.graph.getRow(row);
-        if (rowStitches.length === 0) return 0;
+        if (!rowStitches || rowStitches.length === 0) return 0;
+
+        // Extract column numbers, filtering out any invalid values
+        const columns = rowStitches
+            .map(s => s?.column)
+            .filter(c => Number.isFinite(c));
+
+        if (columns.length === 0) return 0;
 
         if (this.workingDirection === 'right') {
-            return Math.max(...rowStitches.map(s => s.column)) + 1;
+            return Math.max(...columns) + 1;
         } else {
-            return Math.min(...rowStitches.map(s => s.column)) - 1;
+            return Math.min(...columns) - 1;
         }
     }
 
