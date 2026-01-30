@@ -261,9 +261,10 @@ export class Pattern {
     /**
      * Add turning chain at the start of a new row
      * @param {string} stitchType - Optional stitch type to determine chain count
+     * @param {StitchNode} attachTo - Optional explicit attachment point (end of previous row)
      * @returns {Array} Array of chain nodes, or empty array if cannot add
      */
-    addTurningChain(stitchType = null) {
+    addTurningChain(stitchType = null, attachTo = null) {
         const targetStitchType = stitchType || this.selectedStitchType;
         const chainCount = getTurningChainLength(targetStitchType);
         // Check for per-pattern override, otherwise use default from StitchTypes
@@ -279,17 +280,19 @@ export class Pattern {
             return [];
         }
 
-        const prevRow = this.graph.getRowSorted(this.currentRow - 1);
-
-        // Safety check for empty previous row
-        if (!prevRow || prevRow.length === 0) {
-            console.warn('Cannot add turning chain: previous row is empty');
-            return [];
+        // Use explicit attachment point if provided, otherwise find it from previous row
+        let attachPoint = attachTo;
+        if (!attachPoint) {
+            const prevRow = this.graph.getRowSorted(this.currentRow - 1);
+            if (!prevRow || prevRow.length === 0) {
+                console.warn('Cannot add turning chain: previous row is empty');
+                return [];
+            }
+            // Fallback: infer from working direction (less preferred)
+            attachPoint = this.workingDirection === 'left'
+                ? prevRow[prevRow.length - 1]
+                : prevRow[0];
         }
-
-        const attachPoint = this.workingDirection === 'right'
-            ? prevRow[prevRow.length - 1]
-            : prevRow[0];
 
         const chains = [];
         let prevNode = attachPoint;
@@ -324,7 +327,10 @@ export class Pattern {
                 position,
                 color: this.currentColor,
                 isTurningChain: true,
-                turningChainCountsAsStitch: isLast && countsAsStitch
+                // Mark ALL chains in sequence when it counts as stitch
+                // This ensures the first chain (which has the vertical connection)
+                // properly marks the underlying stitch as occupied
+                turningChainCountsAsStitch: countsAsStitch
             });
 
             // Connect to previous
@@ -704,6 +710,20 @@ export class Pattern {
      * Start a new row
      */
     startNewRow(options = {}) {
+        // Find the end of the current row BEFORE incrementing/toggling
+        // This is where the turning chain will attach
+        let turningChainAttachPoint = null;
+        if (this.autoTurningChain && this.mode === 'flat' && !options.skipTurningChain) {
+            const currentRowStitches = this.graph.getRowSorted(this.currentRow);
+            if (currentRowStitches.length > 0) {
+                // Attach to the END of the row we just finished
+                // If working right, end is rightmost (last). If working left, end is leftmost (first).
+                turningChainAttachPoint = this.workingDirection === 'right'
+                    ? currentRowStitches[currentRowStitches.length - 1]
+                    : currentRowStitches[0];
+            }
+        }
+
         this.currentRow++;
 
         // Toggle working direction for flat mode
@@ -714,7 +734,7 @@ export class Pattern {
         // Auto-add turning chain if enabled and in flat mode
         const turningChains = [];
         if (this.autoTurningChain && this.mode === 'flat' && !options.skipTurningChain) {
-            const chains = this.addTurningChain(options.stitchType);
+            const chains = this.addTurningChain(options.stitchType, turningChainAttachPoint);
             turningChains.push(...chains);
         }
 
@@ -767,8 +787,12 @@ export class Pattern {
             : null;
 
         prevRow.forEach((stitch, index) => {
-            // Count only working stitches (non-turning-chains) for connection checks
-            const workingStitchesAbove = stitch.connections.above.filter(s => !s.isTurningChain);
+            // Count working stitches for connection checks
+            // Filter out turning chains EXCEPT those that count as a stitch (like dc's ch-3)
+            // because those DO occupy the attachment point
+            const workingStitchesAbove = stitch.connections.above.filter(s =>
+                !s.isTurningChain || s.turningChainCountsAsStitch
+            );
             const hasWorkingConnection = workingStitchesAbove.length > 0;
             const hasAvailable = stitch.hasAvailableConnectionsAbove;
 
