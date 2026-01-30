@@ -295,13 +295,32 @@ export class Pattern {
         let prevNode = attachPoint;
         const def = getStitchDefinition(StitchType.CHAIN);
 
+        // Calculate starting column for turning chains to avoid conflicts
+        // Use negative columns for turning chains to keep them separate from working stitches
+        const existingStitches = this.graph.getRow(this.currentRow);
+        let startColumn;
+        if (existingStitches.length === 0) {
+            // No existing stitches, use negative columns for turning chains
+            startColumn = -chainCount;
+        } else {
+            // Get min/max columns of existing stitches
+            const columns = existingStitches.map(s => s.column).filter(c => Number.isFinite(c));
+            if (this.workingDirection === 'left') {
+                // Working left, turning chain is at the right end
+                startColumn = Math.max(...columns) + 1;
+            } else {
+                // Working right, turning chain is at the left end
+                startColumn = Math.min(...columns) - chainCount;
+            }
+        }
+
         for (let i = 0; i < chainCount; i++) {
             const isLast = i === chainCount - 1;
             const position = this.calculateTurningChainPosition(prevNode, i, chainCount);
 
             const node = this.graph.createNode(StitchType.CHAIN, {
                 row: this.currentRow,
-                column: i,
+                column: startColumn + i,
                 position,
                 color: this.currentColor,
                 isTurningChain: true,
@@ -468,6 +487,12 @@ export class Pattern {
 
         if (type === StitchType.DECREASE && options.secondAttachment) {
             this.graph.connectVertical(node, options.secondAttachment);
+        }
+
+        // Update currentRow if we've added a stitch to a higher row
+        // This keeps the pattern state in sync with actual work
+        if (row > this.currentRow) {
+            this.currentRow = row;
         }
 
         const displayName = getStitchDisplayName(type, modifiers);
@@ -718,46 +743,60 @@ export class Pattern {
     getAttachmentPoints(options = {}) {
         const points = [];
         const includeSkippable = options.includeSkippable || false;
-        const currentRowStitches = this.graph.getRow(this.currentRow);
 
-        if (this.currentRow === 0) {
-            // Foundation row - return end points
-            const foundationStitches = this.graph.getRowSorted(0);
-            if (foundationStitches.length > 0) {
-                const lastStitch = foundationStitches[foundationStitches.length - 1];
-                if (lastStitch.hasAvailableConnectionsAbove) {
-                    points.push({
-                        stitch: lastStitch,
-                        type: 'end',
-                        available: true
-                    });
-                }
-            }
+        // Determine which row we're working into (previous row)
+        // If currentRow is 0, we're working into the foundation to create row 1
+        const targetRow = this.currentRow === 0 ? 0 : this.currentRow - 1;
+        const workingRow = this.currentRow === 0 ? 1 : this.currentRow;
+
+        // Get stitches from the row we're working into
+        const prevRow = this.workingDirection === 'right'
+            ? this.graph.getRowSorted(targetRow)
+            : this.graph.getRowSorted(targetRow).reverse();
+
+        if (prevRow.length === 0) {
             return points;
         }
 
-        // Working on subsequent rows
-        const prevRow = this.workingDirection === 'right'
-            ? this.graph.getRowSorted(this.currentRow - 1)
-            : this.graph.getRowSorted(this.currentRow - 1).reverse();
-
-        const lastStitch = this.graph.getLastInRow(this.currentRow);
+        // Get the last stitch in the row we're building (to determine suggested point)
+        // Exclude turning chains when finding the last working stitch
+        const workingRowStitches = this.graph.getRowSorted(workingRow)
+            .filter(s => !s.isTurningChain);
+        const lastWorkingStitch = workingRowStitches.length > 0
+            ? workingRowStitches[workingRowStitches.length - 1]
+            : null;
 
         prevRow.forEach((stitch, index) => {
-            const hasConnection = stitch.connections.above.length > 0;
+            // Count only working stitches (non-turning-chains) for connection checks
+            const workingStitchesAbove = stitch.connections.above.filter(s => !s.isTurningChain);
+            const hasWorkingConnection = workingStitchesAbove.length > 0;
             const hasAvailable = stitch.hasAvailableConnectionsAbove;
 
             if (hasAvailable) {
-                const isSuggested = !hasConnection && (
-                    lastStitch ? index === (this.workingDirection === 'right' ? lastStitch.column + 1 : lastStitch.column - 1) : index === 0
-                );
+                // Determine if this is the suggested next attachment point
+                let isSuggested = false;
+                if (!hasWorkingConnection) {
+                    if (!lastWorkingStitch) {
+                        // No working stitches yet - suggest first available
+                        isSuggested = index === 0;
+                    } else {
+                        // Suggest the stitch adjacent to the last one worked
+                        const lastWorkedIntoCol = lastWorkingStitch.connections.below[0]?.column;
+                        if (lastWorkedIntoCol !== undefined) {
+                            const expectedNextCol = this.workingDirection === 'right'
+                                ? lastWorkedIntoCol + 1
+                                : lastWorkedIntoCol - 1;
+                            isSuggested = stitch.column === expectedNextCol;
+                        }
+                    }
+                }
 
                 points.push({
                     stitch,
                     type: 'above',
-                    available: !hasConnection,
+                    available: !hasWorkingConnection,
                     suggested: isSuggested,
-                    canSkip: includeSkippable && !hasConnection
+                    canSkip: includeSkippable && !hasWorkingConnection
                 });
             }
         });
