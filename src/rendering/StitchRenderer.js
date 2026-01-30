@@ -25,6 +25,13 @@ export class StitchRenderer {
 
         // Node to mesh mapping
         this.meshMap = new Map();
+        this.connectionMeshes = new Map();
+        this.connectionGeometry = new THREE.CylinderGeometry(0.03, 0.03, 1, 8);
+        this.connectionUp = new THREE.Vector3(0, 1, 0);
+        this.connectionTmpDir = new THREE.Vector3();
+        this.connectionTmpMid = new THREE.Vector3();
+        this.connectionRebuildPending = false;
+        this.pattern = null;
 
         // Event subscriptions for cleanup
         this.eventSubs = new EventSubscriptions();
@@ -37,17 +44,21 @@ export class StitchRenderer {
      * Setup event listeners with error handling
      */
     setupEventListeners() {
-        this.eventSubs.on(Events.STITCH_ADDED, ({ node }) => {
+        this.eventSubs.on(Events.STITCH_ADDED, ({ node, pattern }) => {
             try {
+                if (pattern) this.pattern = pattern;
                 if (node) this.createMeshForNode(node);
+                this.requestConnectionRebuild();
             } catch (err) {
                 console.error('Error creating mesh for added node:', err);
             }
         });
 
-        this.eventSubs.on(Events.STITCH_REMOVED, ({ node }) => {
+        this.eventSubs.on(Events.STITCH_REMOVED, ({ node, pattern }) => {
             try {
+                if (pattern) this.pattern = pattern;
                 if (node) this.removeMeshForNode(node);
+                this.requestConnectionRebuild();
             } catch (err) {
                 console.error('Error removing mesh for node:', err);
             }
@@ -63,7 +74,11 @@ export class StitchRenderer {
 
         this.eventSubs.on(Events.PATTERN_LOADED, ({ pattern }) => {
             try {
-                if (pattern) this.renderPattern(pattern);
+                if (pattern) {
+                    this.pattern = pattern;
+                    this.renderPattern(pattern);
+                    this.requestConnectionRebuild();
+                }
             } catch (err) {
                 console.error('Error rendering pattern:', err);
             }
@@ -72,8 +87,17 @@ export class StitchRenderer {
         this.eventSubs.on(Events.STITCH_TYPE_CHANGED, ({ node }) => {
             try {
                 if (node) this.updateMeshForNode(node);
+                this.updateConnectionMeshes();
             } catch (err) {
                 console.error('Error updating mesh for type change:', err);
+            }
+        });
+
+        this.eventSubs.on(Events.PHYSICS_STEP, () => {
+            try {
+                this.updateConnectionMeshes();
+            } catch (err) {
+                console.error('Error updating connection meshes:', err);
             }
         });
     }
@@ -419,6 +443,108 @@ export class StitchRenderer {
             this.sceneManager.removeStitchMesh(mesh);
         });
         this.meshMap.clear();
+        this.clearConnectionMeshes();
+    }
+
+    /**
+     * Request a rebuild of connection meshes (batched per tick).
+     */
+    requestConnectionRebuild() {
+        if (this.connectionRebuildPending) return;
+        this.connectionRebuildPending = true;
+        const schedule = typeof queueMicrotask === 'function'
+            ? queueMicrotask
+            : (cb) => Promise.resolve().then(cb);
+        schedule(() => {
+            this.connectionRebuildPending = false;
+            this.rebuildConnectionMeshes();
+        });
+    }
+
+    /**
+     * Rebuild connection meshes between stitches.
+     */
+    rebuildConnectionMeshes() {
+        if (!this.pattern?.graph) return;
+
+        this.clearConnectionMeshes();
+
+        const nodes = this.pattern.graph.getAllNodes();
+        nodes.forEach(node => {
+            if (node.connections.right) {
+                this.ensureConnectionMesh(node, node.connections.right);
+            }
+            node.connections.below.forEach(below => {
+                this.ensureConnectionMesh(node, below);
+            });
+        });
+    }
+
+    /**
+     * Ensure a connection mesh exists between two nodes.
+     */
+    ensureConnectionMesh(nodeA, nodeB) {
+        if (!nodeA || !nodeB) return;
+        const key = this.getConnectionKey(nodeA, nodeB);
+        if (this.connectionMeshes.has(key)) return;
+
+        const material = this.getMaterial(nodeA.color);
+        const mesh = new THREE.Mesh(this.connectionGeometry, material);
+        mesh.userData.nodeA = nodeA;
+        mesh.userData.nodeB = nodeB;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        this.updateConnectionMesh(mesh, nodeA.position, nodeB.position);
+        this.connectionMeshes.set(key, mesh);
+        this.sceneManager.addStitchMesh(mesh);
+    }
+
+    /**
+     * Update all connection mesh positions.
+     */
+    updateConnectionMeshes() {
+        if (this.connectionMeshes.size === 0) return;
+
+        this.connectionMeshes.forEach(mesh => {
+            const nodeA = mesh.userData.nodeA;
+            const nodeB = mesh.userData.nodeB;
+            if (!nodeA?.position || !nodeB?.position) return;
+            this.updateConnectionMesh(mesh, nodeA.position, nodeB.position);
+        });
+    }
+
+    /**
+     * Update a connection mesh to span two points.
+     */
+    updateConnectionMesh(mesh, posA, posB) {
+        const dir = this.connectionTmpDir.subVectors(posB, posA);
+        const length = dir.length();
+        if (!Number.isFinite(length) || length === 0) return;
+
+        const midpoint = this.connectionTmpMid.addVectors(posA, posB).multiplyScalar(0.5);
+        mesh.position.copy(midpoint);
+        mesh.scale.set(1, length, 1);
+        mesh.quaternion.setFromUnitVectors(this.connectionUp, dir.normalize());
+    }
+
+    /**
+     * Remove all connection meshes.
+     */
+    clearConnectionMeshes() {
+        this.connectionMeshes.forEach(mesh => {
+            this.sceneManager.removeStitchMesh(mesh);
+        });
+        this.connectionMeshes.clear();
+    }
+
+    /**
+     * Build a stable key for a connection.
+     */
+    getConnectionKey(nodeA, nodeB) {
+        return nodeA.id < nodeB.id
+            ? `${nodeA.id}|${nodeB.id}`
+            : `${nodeB.id}|${nodeA.id}`;
     }
 
     /**
@@ -462,5 +588,9 @@ export class StitchRenderer {
 
         // Clear mesh map
         this.clearAllMeshes();
+
+        if (this.connectionGeometry) {
+            this.connectionGeometry.dispose();
+        }
     }
 }

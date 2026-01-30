@@ -1,7 +1,7 @@
 import { StitchType, StitchDefinitions, getStitchByKeyboard } from '../core/StitchTypes.js';
 import { EventBus, Events, EventSubscriptions } from '../utils/EventBus.js';
 import { YarnMaterial } from '../rendering/YarnMaterial.js';
-import { PatternConstants } from '../utils/Constants.js';
+import { PatternConstants, AttachmentConstants } from '../utils/Constants.js';
 import { showInstructions, showConfirm, showPrompt } from './Modal.js';
 
 /**
@@ -68,6 +68,13 @@ export class UIManager {
      */
     createStyles() {
         const style = document.createElement('style');
+        const toHex = (color) => '#' + color.toString(16).padStart(6, '0');
+        const markerColors = {
+            start: toHex(AttachmentConstants.CHAIN_START_COLOR),
+            end: toHex(AttachmentConstants.CHAIN_END_COLOR),
+            working: toHex(AttachmentConstants.WORKING_POSITION_COLOR),
+            newRow: toHex(AttachmentConstants.NEW_ROW_COLOR)
+        };
         style.textContent = `
             .crochet-ui {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -217,6 +224,41 @@ export class UIManager {
             .selection-info.hidden {
                 display: none;
             }
+
+            /* Working direction + marker legend */
+            .marker-legend {
+                margin-top: 12px;
+                padding-top: 10px;
+                border-top: 1px dashed #eee;
+                font-size: 12px;
+                color: #555;
+            }
+
+            .marker-legend-title {
+                font-weight: 600;
+                margin-bottom: 6px;
+                color: #333;
+            }
+
+            .legend-item {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                margin: 4px 0;
+            }
+
+            .legend-dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                display: inline-block;
+                box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+            }
+
+            .legend-dot.start { background: ${markerColors.start}; }
+            .legend-dot.end { background: ${markerColors.end}; }
+            .legend-dot.working { background: ${markerColors.working}; }
+            .legend-dot.new-row { background: ${markerColors.newRow}; }
 
             /* Color picker */
             .color-picker-row {
@@ -503,6 +545,10 @@ export class UIManager {
                 <span class="info-label">Current Row:</span>
                 <span class="info-value" id="info-current-row">1</span>
             </div>
+            <div class="info-row">
+                <span class="info-label">Working:</span>
+                <span class="info-value" id="info-working-direction">-</span>
+            </div>
             <div class="selection-info hidden" id="selection-info">
                 <div class="info-row">
                     <span class="info-label">Selected:</span>
@@ -518,6 +564,13 @@ export class UIManager {
                 <input type="color" id="color-picker" value="#8B4513">
             </div>
             <div class="color-palette" id="color-palette"></div>
+            <div class="marker-legend">
+                <div class="marker-legend-title">Markers</div>
+                <div class="legend-item"><span class="legend-dot start"></span>Chain start</div>
+                <div class="legend-item"><span class="legend-dot end"></span>Chain end</div>
+                <div class="legend-item"><span class="legend-dot working"></span>Next stitch</div>
+                <div class="legend-item"><span class="legend-dot new-row"></span>Turn / new row</div>
+            </div>
             <button class="toolbar-btn instructions-btn" id="btn-instructions">
                 View Instructions
             </button>
@@ -863,6 +916,20 @@ export class UIManager {
         this.infoPanel.querySelector('#info-total').textContent = stats.totalStitches;
         this.infoPanel.querySelector('#info-rows').textContent = stats.rowCount;
         this.infoPanel.querySelector('#info-current-row').textContent = this.pattern.currentRow + 1;
+
+        const workingEl = this.infoPanel.querySelector('#info-working-direction');
+        if (workingEl) {
+            const hasPattern = stats.totalStitches > 0;
+            if (!hasPattern) {
+                workingEl.textContent = '-';
+            } else {
+                const isLeft = this.pattern.workingDirection === 'left';
+                const directionLabel = isLeft ? '← left' : 'right →';
+                const isFoundation = this.pattern.currentRow === 0;
+                const hint = isFoundation ? ' (start at chain end)' : '';
+                workingEl.textContent = `${directionLabel}${hint}`;
+            }
+        }
     }
 
     /**
