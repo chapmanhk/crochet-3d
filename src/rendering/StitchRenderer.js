@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { StitchType, getStitchDefinition } from '../core/StitchTypes.js';
-import { EventBus, Events } from '../utils/EventBus.js';
+import { EventBus, Events, EventSubscriptions } from '../utils/EventBus.js';
 import { yarnMaterialInstance } from './YarnMaterial.js';
 
 /**
@@ -26,6 +26,9 @@ export class StitchRenderer {
         // Node to mesh mapping
         this.meshMap = new Map();
 
+        // Event subscriptions for cleanup
+        this.eventSubs = new EventSubscriptions();
+
         // Setup event listeners
         this.setupEventListeners();
     }
@@ -34,7 +37,7 @@ export class StitchRenderer {
      * Setup event listeners with error handling
      */
     setupEventListeners() {
-        EventBus.on(Events.STITCH_ADDED, ({ node }) => {
+        this.eventSubs.on(Events.STITCH_ADDED, ({ node }) => {
             try {
                 if (node) this.createMeshForNode(node);
             } catch (err) {
@@ -42,7 +45,7 @@ export class StitchRenderer {
             }
         });
 
-        EventBus.on(Events.STITCH_REMOVED, ({ node }) => {
+        this.eventSubs.on(Events.STITCH_REMOVED, ({ node }) => {
             try {
                 if (node) this.removeMeshForNode(node);
             } catch (err) {
@@ -50,7 +53,7 @@ export class StitchRenderer {
             }
         });
 
-        EventBus.on(Events.PATTERN_CLEARED, () => {
+        this.eventSubs.on(Events.PATTERN_CLEARED, () => {
             try {
                 this.clearAllMeshes();
             } catch (err) {
@@ -58,7 +61,7 @@ export class StitchRenderer {
             }
         });
 
-        EventBus.on(Events.PATTERN_LOADED, ({ pattern }) => {
+        this.eventSubs.on(Events.PATTERN_LOADED, ({ pattern }) => {
             try {
                 if (pattern) this.renderPattern(pattern);
             } catch (err) {
@@ -66,7 +69,7 @@ export class StitchRenderer {
             }
         });
 
-        EventBus.on(Events.STITCH_TYPE_CHANGED, ({ node }) => {
+        this.eventSubs.on(Events.STITCH_TYPE_CHANGED, ({ node }) => {
             try {
                 if (node) this.updateMeshForNode(node);
             } catch (err) {
@@ -448,6 +451,9 @@ export class StitchRenderer {
      * Dispose of all resources
      */
     dispose() {
+        // Clean up event subscriptions
+        this.eventSubs.dispose();
+
         // Dispose cached geometries
         this.geometryCache.forEach(geometry => geometry.dispose());
         this.geometryCache.clear();
