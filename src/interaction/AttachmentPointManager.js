@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { StitchType, getStitchDefinition } from '../core/StitchTypes.js';
-import { EventBus, Events } from '../utils/EventBus.js';
+import { EventBus, Events, EventSubscriptions } from '../utils/EventBus.js';
 import { AttachmentConstants } from '../utils/Constants.js';
 
 /**
@@ -48,6 +48,9 @@ export class AttachmentPointManager {
         // Geometry cache for ghost stitches
         this.geometryCache = new Map();
 
+        // Event subscriptions for cleanup
+        this.eventSubs = new EventSubscriptions();
+
         // Bind methods
         this.onMouseMove = this.onMouseMove.bind(this);
         this.onClick = this.onClick.bind(this);
@@ -70,12 +73,12 @@ export class AttachmentPointManager {
      * Setup pattern event listeners
      */
     setupPatternListeners() {
-        EventBus.on(Events.STITCH_ADDED, () => this.updateAttachmentPoints());
-        EventBus.on(Events.STITCH_REMOVED, () => this.updateAttachmentPoints());
-        EventBus.on(Events.PATTERN_LOADED, () => this.updateAttachmentPoints());
-        EventBus.on(Events.PATTERN_CLEARED, () => this.clearPoints());
-        EventBus.on(Events.ROW_ADDED, () => this.updateAttachmentPoints());
-        EventBus.on(Events.STITCH_TYPE_SELECTED, ({ type }) => {
+        this.eventSubs.on(Events.STITCH_ADDED, () => this.updateAttachmentPoints());
+        this.eventSubs.on(Events.STITCH_REMOVED, () => this.updateAttachmentPoints());
+        this.eventSubs.on(Events.PATTERN_LOADED, () => this.updateAttachmentPoints());
+        this.eventSubs.on(Events.PATTERN_CLEARED, () => this.clearPoints());
+        this.eventSubs.on(Events.ROW_ADDED, () => this.updateAttachmentPoints());
+        this.eventSubs.on(Events.STITCH_TYPE_SELECTED, ({ type }) => {
             this.previewStitchType = type;
             this.updateAttachmentPoints();
         });
@@ -245,6 +248,9 @@ export class AttachmentPointManager {
      * Dispose resources
      */
     dispose() {
+        // Clean up all event subscriptions
+        this.eventSubs.dispose();
+
         const canvas = this.sceneManager.domElement;
         canvas.removeEventListener('mousemove', this.onMouseMove);
         canvas.removeEventListener('click', this.onClick);
