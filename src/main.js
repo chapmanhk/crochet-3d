@@ -91,7 +91,7 @@ class CrochetApp {
             this.physicsEngine = new PhysicsEngine(this.pattern, this.sceneManager);
 
             // Create UI
-            this.uiManager = new UIManager(this.pattern);
+            this.uiManager = new UIManager(this.pattern, this.sceneManager);
 
             // Create physics control panel
             this.physicsPanel = new PhysicsPanel(this.physicsEngine);
@@ -271,7 +271,7 @@ class CrochetApp {
                 // Recreate managers with new pattern
                 this.attachmentManager = new AttachmentPointManager(this.sceneManager, this.pattern);
                 this.physicsEngine = new PhysicsEngine(this.pattern, this.sceneManager);
-                this.uiManager = new UIManager(this.pattern);
+                this.uiManager = new UIManager(this.pattern, this.sceneManager);
                 this.physicsPanel = new PhysicsPanel(this.physicsEngine);
 
                 // Re-render

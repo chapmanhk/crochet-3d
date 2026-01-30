@@ -164,7 +164,13 @@ export function showModal(options) {
         const footer = document.createElement('div');
         footer.className = 'modal-footer';
 
+        let keydownHandler = null;
+
         const closeModal = (result) => {
+            // Always remove the keydown handler when closing
+            if (keydownHandler) {
+                document.removeEventListener('keydown', keydownHandler);
+            }
             overlay.classList.remove('visible');
             setTimeout(() => {
                 overlay.remove();
@@ -202,13 +208,12 @@ export function showModal(options) {
         });
 
         // Close on Escape key
-        const handleKeyDown = (e) => {
+        keydownHandler = (e) => {
             if (e.key === 'Escape') {
-                document.removeEventListener('keydown', handleKeyDown);
                 closeModal(null);
             }
         };
-        document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('keydown', keydownHandler);
     });
 }
 
@@ -254,5 +259,128 @@ export function showInstructions(instructions) {
         content: instructions,
         monospace: true,
         buttons: [{ text: 'Close', primary: true }]
+    });
+}
+
+/**
+ * Show a prompt-style modal with input field (replacement for window.prompt)
+ * @param {string} message - The message to display
+ * @param {string} defaultValue - Default value for input
+ * @param {string} title - Optional title (default: 'Input')
+ * @returns {Promise<string|null>} - Resolves to input value if confirmed, null if cancelled
+ */
+export function showPrompt(message, defaultValue = '', title = 'Input') {
+    injectStyles();
+
+    // Inject additional styles for input if not already done
+    if (!document.querySelector('#modal-input-styles')) {
+        const inputStyle = document.createElement('style');
+        inputStyle.id = 'modal-input-styles';
+        inputStyle.textContent = `
+            .modal-input {
+                width: 100%;
+                padding: 8px 12px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                font-size: 14px;
+                margin-top: 12px;
+                box-sizing: border-box;
+            }
+            .modal-input:focus {
+                outline: none;
+                border-color: ${UIConstants.PRIMARY_COLOR};
+                box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+            }
+        `;
+        document.head.appendChild(inputStyle);
+    }
+
+    return new Promise((resolve) => {
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+
+        // Create container
+        const container = document.createElement('div');
+        container.className = 'modal-container';
+
+        // Header
+        const header = document.createElement('div');
+        header.className = 'modal-header';
+        header.textContent = title;
+        container.appendChild(header);
+
+        // Body
+        const body = document.createElement('div');
+        body.className = 'modal-body';
+        body.textContent = message;
+
+        // Input field
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'modal-input';
+        input.value = defaultValue;
+        body.appendChild(input);
+
+        container.appendChild(body);
+
+        // Footer
+        const footer = document.createElement('div');
+        footer.className = 'modal-footer';
+
+        let keydownHandler = null;
+
+        const closeModal = (result) => {
+            if (keydownHandler) {
+                document.removeEventListener('keydown', keydownHandler);
+            }
+            overlay.classList.remove('visible');
+            setTimeout(() => {
+                overlay.remove();
+                resolve(result);
+            }, UIConstants.TRANSITION_DURATION);
+        };
+
+        // Cancel button
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'modal-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', () => closeModal(null));
+        footer.appendChild(cancelBtn);
+
+        // OK button
+        const okBtn = document.createElement('button');
+        okBtn.className = 'modal-btn primary';
+        okBtn.textContent = 'OK';
+        okBtn.addEventListener('click', () => closeModal(input.value));
+        footer.appendChild(okBtn);
+
+        container.appendChild(footer);
+        overlay.appendChild(container);
+        document.body.appendChild(overlay);
+
+        // Trigger animation
+        requestAnimationFrame(() => {
+            overlay.classList.add('visible');
+            input.focus();
+            input.select();
+        });
+
+        // Close on overlay click (outside modal)
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                closeModal(null);
+            }
+        });
+
+        // Handle keyboard events
+        keydownHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeModal(null);
+            } else if (e.key === 'Enter') {
+                closeModal(input.value);
+            }
+        };
+        document.addEventListener('keydown', keydownHandler);
     });
 }

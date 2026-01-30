@@ -2,7 +2,7 @@ import { StitchType, StitchDefinitions, getStitchByKeyboard } from '../core/Stit
 import { EventBus, Events, EventSubscriptions } from '../utils/EventBus.js';
 import { YarnMaterial } from '../rendering/YarnMaterial.js';
 import { PatternConstants } from '../utils/Constants.js';
-import { showInstructions, showConfirm } from './Modal.js';
+import { showInstructions, showConfirm, showPrompt } from './Modal.js';
 
 /**
  * UIManager - Manages all HTML/CSS UI elements
@@ -269,7 +269,7 @@ export class UIManager {
             /* View Mode Selector */
             .view-mode-selector {
                 left: 16px;
-                bottom: 16px;
+                bottom: 70px;
                 display: flex;
                 gap: 4px;
                 padding: 8px;
@@ -812,16 +812,17 @@ export class UIManager {
      * Add stitch at next available position
      * With error handling for robustness
      */
-    addStitchAtNextPosition() {
+    async addStitchAtNextPosition() {
         try {
             const attachPoints = this.pattern.getAttachmentPoints();
 
             if (!attachPoints || attachPoints.length === 0) {
                 // No pattern started - create foundation chain
                 if (!this.pattern.graph || this.pattern.graph.size === 0) {
-                    const chainLength = prompt(
+                    const chainLength = await showPrompt(
                         `Enter foundation chain length (${PatternConstants.MIN_CHAIN_LENGTH}-${PatternConstants.MAX_CHAIN_LENGTH}):`,
-                        String(PatternConstants.DEFAULT_CHAIN_LENGTH)
+                        String(PatternConstants.DEFAULT_CHAIN_LENGTH),
+                        'Foundation Chain'
                     );
                     if (chainLength && !isNaN(chainLength)) {
                         // Validate bounds to prevent performance issues

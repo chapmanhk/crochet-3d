@@ -1,4 +1,4 @@
-import { EventBus, Events } from '../utils/EventBus.js';
+import { EventBus, Events, EventSubscriptions } from '../utils/EventBus.js';
 
 /**
  * PhysicsPanel - UI controls for physics simulation
@@ -9,6 +9,9 @@ export class PhysicsPanel {
         this.physicsEngine = physicsEngine;
         this.panel = null;
         this.isExpanded = false;
+
+        // Event subscriptions for cleanup
+        this.eventSubs = new EventSubscriptions();
 
         this.createPanel();
         this.setupEventListeners();
@@ -293,17 +296,17 @@ export class PhysicsPanel {
      * Setup event listeners
      */
     setupEventListeners() {
-        EventBus.on(Events.PHYSICS_STARTED, () => {
+        this.eventSubs.on(Events.PHYSICS_STARTED, () => {
             this.updateStatus('Simulating...', 'running');
             this.panel.querySelector('#btn-settle').disabled = true;
         });
 
-        EventBus.on(Events.PHYSICS_SETTLED, () => {
+        this.eventSubs.on(Events.PHYSICS_SETTLED, () => {
             this.updateStatus('Settled', '');
             this.panel.querySelector('#btn-settle').disabled = false;
         });
 
-        EventBus.on(Events.PHYSICS_STEP, ({ totalMovement, bodyCount, constraintCount }) => {
+        this.eventSubs.on(Events.PHYSICS_STEP, ({ totalMovement, bodyCount, constraintCount }) => {
             this.panel.querySelector('#physics-stats').textContent =
                 `Bodies: ${bodyCount} | Constraints: ${constraintCount}`;
 
@@ -335,6 +338,9 @@ export class PhysicsPanel {
      * Dispose
      */
     dispose() {
+        // Clean up all event subscriptions
+        this.eventSubs.dispose();
+
         if (this.panel && this.panel.parentNode) {
             this.panel.parentNode.removeChild(this.panel);
         }
