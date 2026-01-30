@@ -1,5 +1,6 @@
 import { StitchNode } from './StitchNode.js';
 import { StitchType, getStitchDefinition } from './StitchTypes.js';
+import { calculateFlatPosition, getNextColumn } from './StitchPlacement.js';
 
 /**
  * StitchGraph - Graph structure for managing the entire crochet pattern
@@ -299,28 +300,32 @@ export class StitchGraph {
 
         const existingRow = this.getRowSorted(rowNumber);
         const lastInRow = existingRow.length > 0 ? existingRow[existingRow.length - 1] : null;
-        const column = lastInRow ? lastInRow.column + 1 : 0;
+        const column = getNextColumn(existingRow, 'right');
 
         // Calculate position based on stitch type and previous stitch
         const def = getStitchDefinition(type);
         const defWidth = def?.width ?? 0.7;
         const defHeight = def?.height ?? 1.0;
-        let position = { x: 0, y: 0, z: 0 };
 
-        if (lastInRow) {
-            const lastWidth = lastInRow.width ?? defWidth;
-            position.x = lastInRow.position.x + (lastWidth + defWidth) / 2;
-            position.y = lastInRow.position.y;
-            position.z = lastInRow.position.z;
-        } else if (rowNumber > 0) {
-            // First stitch in new row - position above previous row
-            const prevRowFirst = this.getFirstInRow(rowNumber - 1);
-            if (prevRowFirst) {
-                position.x = prevRowFirst.position.x;
-                position.y = prevRowFirst.position.y + defHeight;
-                position.z = prevRowFirst.position.z;
-            }
-        }
+        const prevRowFirst = rowNumber > 0 ? this.getFirstInRow(rowNumber - 1) : null;
+        const attachForPosition = existingRow.length === 0
+            ? (connectTo || prevRowFirst)
+            : null;
+        const rowBaseY = Number.isFinite(lastInRow?.position?.y)
+            ? lastInRow.position.y
+            : rowNumber * defHeight;
+
+        const position = calculateFlatPosition({
+            rowStitches: existingRow,
+            attachTo: attachForPosition,
+            column,
+            row: rowNumber,
+            width: defWidth,
+            effectiveWidth: defWidth,
+            height: defHeight,
+            workingDirection: 'right',
+            rowBaseY
+        });
 
         const node = this.createNode(type, {
             row: rowNumber,

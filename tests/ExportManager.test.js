@@ -564,6 +564,14 @@ describe('ExportManager', () => {
             // DC should have '⊥' symbol (updated to unique symbol)
             expect(chartData.rows[2].stitches[0].symbol).toBe('⊥');
         });
+
+        it('should map lowercase stitch type values to symbols', async () => {
+            const module = await import('../src/utils/ExportManager.js');
+            const testExportManager = new module.ExportManager(mockPattern, mockRenderer);
+
+            expect(testExportManager.getStitchSymbol('single_crochet')).toBe('x');
+            expect(testExportManager.getStitchSymbol('double_crochet')).toBe('⊥');
+        });
     });
 });
 

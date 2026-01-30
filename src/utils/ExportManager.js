@@ -324,7 +324,16 @@ export class ExportManager {
      * @returns {string}
      */
     getStitchSymbol(stitchType) {
-        return STITCH_SYMBOLS[stitchType] || DEFAULT_SYMBOL;
+        if (!stitchType) {
+            return DEFAULT_SYMBOL;
+        }
+
+        const rawKey = String(stitchType);
+        const normalizedKey = rawKey.toUpperCase();
+
+        return STITCH_SYMBOLS[rawKey] ||
+            STITCH_SYMBOLS[normalizedKey] ||
+            DEFAULT_SYMBOL;
     }
 
     /**

@@ -103,6 +103,26 @@ describe('StitchValidator', () => {
             expect(result.errors.some(e => e.includes('no available connections'))).toBe(true);
         });
 
+        it('should ignore non-counting turning chains in availability checks', () => {
+            const localPattern = new Pattern();
+            localPattern.startWithChain(3);
+            localPattern.selectedStitchType = StitchType.SINGLE_CROCHET;
+            localPattern.startNewRow(); // Adds ch-1 turning chain that does not count
+
+            const attachPoint = {
+                stitch: localPattern.graph.getAt(0, 0),
+                type: 'above'
+            };
+
+            const result = StitchValidator.canPlaceStitch(
+                StitchType.SINGLE_CROCHET,
+                attachPoint,
+                localPattern
+            );
+
+            expect(result.valid).toBe(true);
+        });
+
         describe('decrease validation', () => {
             it('should error when decrease has no adjacent stitch', () => {
                 // Position at end of row
