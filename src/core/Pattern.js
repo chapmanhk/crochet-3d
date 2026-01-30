@@ -9,7 +9,7 @@ import {
     getStitchDisplayName
 } from './StitchTypes.js';
 import { EventBus, Events } from '../utils/EventBus.js';
-import { PatternConstants } from '../utils/Constants.js';
+import { PatternConstants, sanitizeObject } from '../utils/Constants.js';
 
 /**
  * Pattern - High-level pattern management
@@ -971,12 +971,15 @@ export class Pattern {
 
     /**
      * Import pattern from JSON
+     * Data is sanitized to prevent prototype pollution attacks
      */
     static fromJSON(data) {
         const pattern = new Pattern();
 
+        // Sanitize metadata to prevent prototype pollution
         if (data.metadata) {
-            pattern.metadata = { ...pattern.metadata, ...data.metadata };
+            const sanitizedMetadata = sanitizeObject(data.metadata);
+            pattern.metadata = { ...pattern.metadata, ...sanitizedMetadata };
         }
 
         // Handle legacy 'round' mode
@@ -990,7 +993,9 @@ export class Pattern {
         pattern.workingDirection = data.workingDirection || 'right';
         pattern.currentColor = data.currentColor || 0x8B4513;
         pattern.autoTurningChain = data.autoTurningChain ?? true;
-        pattern.turningChainOverrides = data.turningChainOverrides || {};
+
+        // Sanitize turningChainOverrides to prevent prototype pollution
+        pattern.turningChainOverrides = sanitizeObject(data.turningChainOverrides || {});
 
         // Legacy support: if old turningChainCountsAsStitch was used, ignore it
         // as the new system uses StitchTypes defaults with optional overrides

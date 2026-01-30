@@ -124,14 +124,31 @@ class CrochetApp {
         } catch (err) {
             console.error('Failed to initialize application:', err);
             // Show user-friendly error message
-            document.body.innerHTML = `
-                <div style="padding: 40px; text-align: center; font-family: sans-serif;">
-                    <h1 style="color: #d32f2f;">Initialization Error</h1>
-                    <p>Sorry, the application failed to start.</p>
-                    <p style="color: #666;">Error: ${err.message}</p>
-                    <p>Please try refreshing the page. If the problem persists, check that your browser supports WebGL.</p>
-                </div>
-            `;
+            // Use textContent to prevent XSS from error messages
+            const errorContainer = document.createElement('div');
+            errorContainer.style.cssText = 'padding: 40px; text-align: center; font-family: sans-serif;';
+
+            const heading = document.createElement('h1');
+            heading.style.color = '#d32f2f';
+            heading.textContent = 'Initialization Error';
+
+            const message1 = document.createElement('p');
+            message1.textContent = 'Sorry, the application failed to start.';
+
+            const message2 = document.createElement('p');
+            message2.style.color = '#666';
+            message2.textContent = `Error: ${err.message}`;
+
+            const message3 = document.createElement('p');
+            message3.textContent = 'Please try refreshing the page. If the problem persists, check that your browser supports WebGL.';
+
+            errorContainer.appendChild(heading);
+            errorContainer.appendChild(message1);
+            errorContainer.appendChild(message2);
+            errorContainer.appendChild(message3);
+
+            document.body.innerHTML = '';
+            document.body.appendChild(errorContainer);
         }
     }
 

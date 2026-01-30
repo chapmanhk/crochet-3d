@@ -7,6 +7,7 @@ import {
     getStitchDisplayName,
     getStitchPhysics
 } from './StitchTypes.js';
+import { sanitizeObject } from '../utils/Constants.js';
 
 /**
  * StitchNode - Represents a single stitch in the pattern graph
@@ -462,8 +463,12 @@ export class StitchNode {
 
     /**
      * Create from JSON data (connections resolved separately)
+     * Metadata is sanitized to prevent prototype pollution
      */
     static fromJSON(data) {
+        // Sanitize metadata to prevent prototype pollution
+        const safeMetadata = data.metadata ? sanitizeObject(data.metadata) : undefined;
+
         const node = new StitchNode(data.type, {
             row: data.row,
             column: data.column,
@@ -474,7 +479,7 @@ export class StitchNode {
             spikeDepth: data.spikeDepth || 0,
             isTurningChain: data.isTurningChain || false,
             turningChainCountsAsStitch: data.turningChainCountsAsStitch || false,
-            metadata: data.metadata
+            metadata: safeMetadata
         });
         node.id = data.id;
         node.position.set(data.position.x, data.position.y, data.position.z);
