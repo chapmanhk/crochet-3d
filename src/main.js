@@ -260,6 +260,11 @@ class CrochetApp {
                 this.uiManager.dispose();
                 this.attachmentManager.dispose();
 
+                // Dispose old pattern to clean up its graph listeners
+                if (this.pattern && typeof this.pattern.dispose === 'function') {
+                    this.pattern.dispose();
+                }
+
                 // Update pattern reference
                 this.pattern = newPattern;
 
@@ -295,6 +300,11 @@ class CrochetApp {
         this.raycastManager.dispose();
         this.stitchRenderer.dispose();
         this.sceneManager.dispose();
+
+        // Dispose pattern to clean up graph listeners
+        if (this.pattern && typeof this.pattern.dispose === 'function') {
+            this.pattern.dispose();
+        }
     }
 }
 

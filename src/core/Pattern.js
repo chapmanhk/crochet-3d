@@ -84,6 +84,9 @@ export class Pattern {
             category: ''         // e.g., 'amigurumi', 'blanket', 'garment', 'accessory'
         };
 
+        // Graph listener callbacks (stored for cleanup)
+        this.graphListeners = {};
+
         // Setup graph event forwarding
         this.setupGraphListeners();
     }
@@ -92,19 +95,24 @@ export class Pattern {
      * Setup listeners for graph events
      */
     setupGraphListeners() {
-        this.graph.on('nodeAdded', ({ node }) => {
+        // Store callbacks so they can be removed in dispose()
+        this.graphListeners.nodeAdded = ({ node }) => {
             EventBus.emit(Events.STITCH_ADDED, { node, pattern: this });
             this.metadata.modifiedAt = Date.now();
-        });
+        };
 
-        this.graph.on('nodeRemoved', ({ node }) => {
+        this.graphListeners.nodeRemoved = ({ node }) => {
             EventBus.emit(Events.STITCH_REMOVED, { node, pattern: this });
             this.metadata.modifiedAt = Date.now();
-        });
+        };
 
-        this.graph.on('graphCleared', () => {
+        this.graphListeners.graphCleared = () => {
             EventBus.emit(Events.PATTERN_CLEARED, { pattern: this });
-        });
+        };
+
+        this.graph.on('nodeAdded', this.graphListeners.nodeAdded);
+        this.graph.on('nodeRemoved', this.graphListeners.nodeRemoved);
+        this.graph.on('graphCleared', this.graphListeners.graphCleared);
     }
 
     /**
@@ -1012,5 +1020,33 @@ export class Pattern {
         }
 
         return lines.join('\n');
+    }
+
+    /**
+     * Dispose of pattern resources and clean up listeners
+     * Call this before replacing a pattern instance to prevent memory leaks
+     */
+    dispose() {
+        // Remove graph event listeners
+        if (this.graphListeners && this.graph) {
+            try {
+                if (this.graphListeners.nodeAdded) {
+                    this.graph.off('nodeAdded', this.graphListeners.nodeAdded);
+                }
+                if (this.graphListeners.nodeRemoved) {
+                    this.graph.off('nodeRemoved', this.graphListeners.nodeRemoved);
+                }
+                if (this.graphListeners.graphCleared) {
+                    this.graph.off('graphCleared', this.graphListeners.graphCleared);
+                }
+            } catch (err) {
+                console.error('Error during pattern disposal:', err);
+            }
+            this.graphListeners = {};
+        }
+
+        // Clear history to free memory
+        this.history = [];
+        this.historyIndex = -1;
     }
 }
