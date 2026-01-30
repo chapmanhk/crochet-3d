@@ -33,6 +33,10 @@ export class SceneManager {
         this.animationId = null;
         this.isRunning = false;
 
+        // Controls interaction tracking (for camera follow)
+        this.isUserInteracting = false;
+        this.lastControlInteraction = 0;
+
         // Callbacks for render loop
         this.updateCallbacks = [];
 
@@ -149,6 +153,16 @@ export class SceneManager {
         const target = SceneConstants.DEFAULT_CAMERA_TARGET;
         this.controls.target.set(target.x, target.y, target.z);
         this.controls.update();
+
+        this.controls.addEventListener('start', () => {
+            this.isUserInteracting = true;
+            this.lastControlInteraction = performance.now();
+        });
+
+        this.controls.addEventListener('end', () => {
+            this.isUserInteracting = false;
+            this.lastControlInteraction = performance.now();
+        });
     }
 
     /**

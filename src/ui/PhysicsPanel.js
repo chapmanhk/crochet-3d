@@ -53,6 +53,16 @@ export class PhysicsPanel {
                         Ground Collision
                     </label>
 
+                    <label>
+                        <input type="checkbox" id="chk-shear" checked>
+                        Shear Constraints
+                    </label>
+
+                    <label>
+                        <input type="checkbox" id="chk-bend" checked>
+                        Bend Constraints
+                    </label>
+
                     <div class="slider-group">
                         <label>Stiffness</label>
                         <input type="range" id="slider-stiffness"
@@ -262,6 +272,16 @@ export class PhysicsPanel {
         // Ground checkbox
         this.panel.querySelector('#chk-ground').addEventListener('change', (e) => {
             this.physicsEngine.setParams({ enableGround: e.target.checked });
+        });
+
+        // Shear checkbox
+        this.panel.querySelector('#chk-shear').addEventListener('change', (e) => {
+            this.physicsEngine.setParams({ enableShear: e.target.checked });
+        });
+
+        // Bend checkbox
+        this.panel.querySelector('#chk-bend').addEventListener('change', (e) => {
+            this.physicsEngine.setParams({ enableBend: e.target.checked });
         });
 
         // Stiffness slider
