@@ -186,3 +186,73 @@ export const SchemaConstants = {
     MAX_METADATA_NAME_LENGTH: 200,
     MAX_METADATA_NOTES_LENGTH: 5000
 };
+
+// =============================================================================
+// SECURITY UTILITIES
+// =============================================================================
+
+/**
+ * Dangerous keys that could lead to prototype pollution
+ */
+const DANGEROUS_KEYS = ['__proto__', 'constructor', 'prototype'];
+
+/**
+ * Check if a key is potentially dangerous for prototype pollution
+ * @param {string} key - The key to check
+ * @returns {boolean} - True if the key is dangerous
+ */
+export function isDangerousKey(key) {
+    return DANGEROUS_KEYS.includes(key);
+}
+
+/**
+ * Sanitize an object by removing dangerous keys that could lead to prototype pollution
+ * This creates a shallow copy with dangerous keys removed
+ * @param {Object} obj - The object to sanitize
+ * @returns {Object} - A sanitized shallow copy of the object
+ */
+export function sanitizeObject(obj) {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+        return obj;
+    }
+
+    const sanitized = {};
+    for (const key of Object.keys(obj)) {
+        if (!isDangerousKey(key)) {
+            sanitized[key] = obj[key];
+        }
+    }
+    return sanitized;
+}
+
+/**
+ * Deep sanitize an object by recursively removing dangerous keys
+ * @param {*} obj - The value to sanitize
+ * @param {number} maxDepth - Maximum recursion depth (default: 10)
+ * @returns {*} - A sanitized deep copy of the object
+ */
+export function deepSanitizeObject(obj, maxDepth = 10) {
+    if (maxDepth <= 0) {
+        return obj; // Stop recursion at max depth
+    }
+
+    if (obj === null || obj === undefined) {
+        return obj;
+    }
+
+    if (Array.isArray(obj)) {
+        return obj.map(item => deepSanitizeObject(item, maxDepth - 1));
+    }
+
+    if (typeof obj !== 'object') {
+        return obj;
+    }
+
+    const sanitized = {};
+    for (const key of Object.keys(obj)) {
+        if (!isDangerousKey(key)) {
+            sanitized[key] = deepSanitizeObject(obj[key], maxDepth - 1);
+        }
+    }
+    return sanitized;
+}

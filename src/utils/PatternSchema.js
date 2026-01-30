@@ -1,4 +1,4 @@
-import { SchemaConstants } from './Constants.js';
+import { SchemaConstants, isDangerousKey } from './Constants.js';
 import { StitchType } from '../core/StitchTypes.js';
 
 /**
@@ -20,6 +20,35 @@ import { StitchType } from '../core/StitchTypes.js';
  */
 
 /**
+ * Check an object for dangerous keys that could lead to prototype pollution
+ * @param {Object} obj - The object to check
+ * @param {string} path - The current path for error messages
+ * @returns {string[]} - Array of error messages for any dangerous keys found
+ */
+function checkForDangerousKeys(obj, path = '') {
+    const errors = [];
+
+    if (!obj || typeof obj !== 'object') {
+        return errors;
+    }
+
+    for (const key of Object.keys(obj)) {
+        const currentPath = path ? `${path}.${key}` : key;
+
+        if (isDangerousKey(key)) {
+            errors.push(`Dangerous key detected: "${currentPath}" - potential prototype pollution attempt`);
+        }
+
+        // Recursively check nested objects (but not arrays to avoid performance issues)
+        if (obj[key] && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+            errors.push(...checkForDangerousKeys(obj[key], currentPath));
+        }
+    }
+
+    return errors;
+}
+
+/**
  * Validate pattern JSON data
  * @param {Object} data - The pattern data to validate
  * @returns {ValidationResult} - Validation result
@@ -31,6 +60,13 @@ export function validatePatternData(data) {
     // Check if data is an object (and not an array or null)
     if (!data || typeof data !== 'object' || Array.isArray(data)) {
         errors.push('Pattern data must be an object');
+        return { valid: false, errors, warnings };
+    }
+
+    // Security check: detect prototype pollution attempts
+    const dangerousKeyErrors = checkForDangerousKeys(data);
+    if (dangerousKeyErrors.length > 0) {
+        errors.push(...dangerousKeyErrors);
         return { valid: false, errors, warnings };
     }
 
@@ -194,6 +230,13 @@ function validateNode(node, index, nodeIds) {
 
     if (typeof node !== 'object') {
         errors.push(`Node at index ${index} must be an object`);
+        return { errors, warnings };
+    }
+
+    // Security check: detect prototype pollution attempts in nodes
+    const dangerousKeyErrors = checkForDangerousKeys(node, `graph.nodes[${index}]`);
+    if (dangerousKeyErrors.length > 0) {
+        errors.push(...dangerousKeyErrors);
         return { errors, warnings };
     }
 
