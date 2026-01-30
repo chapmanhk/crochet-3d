@@ -287,7 +287,10 @@ export class Pattern {
             return [];
         }
 
-        const attachPoint = this.workingDirection === 'right'
+        // After startNewRow() toggles direction, we need to attach to where we ENDED the previous row
+        // If now working 'left', we just finished going 'right', so attach to rightmost (end of row)
+        // If now working 'right', we just finished going 'left', so attach to leftmost (end of row)
+        const attachPoint = this.workingDirection === 'left'
             ? prevRow[prevRow.length - 1]
             : prevRow[0];
 
@@ -767,8 +770,12 @@ export class Pattern {
             : null;
 
         prevRow.forEach((stitch, index) => {
-            // Count only working stitches (non-turning-chains) for connection checks
-            const workingStitchesAbove = stitch.connections.above.filter(s => !s.isTurningChain);
+            // Count working stitches for connection checks
+            // Filter out turning chains EXCEPT those that count as a stitch (like dc's ch-3)
+            // because those DO occupy the attachment point
+            const workingStitchesAbove = stitch.connections.above.filter(s =>
+                !s.isTurningChain || s.turningChainCountsAsStitch
+            );
             const hasWorkingConnection = workingStitchesAbove.length > 0;
             const hasAvailable = stitch.hasAvailableConnectionsAbove;
 

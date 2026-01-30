@@ -343,6 +343,54 @@ describe('Pattern', () => {
         });
     });
 
+    describe('addTurningChain', () => {
+        it('should attach turning chain to end of previous row when working left', () => {
+            // Create foundation chain of 5 (columns 0-4, working right)
+            pattern.startWithChain(5);
+            // Start row 1 - toggles direction to 'left'
+            pattern.startNewRow();
+
+            // Get the turning chains created
+            const row1 = pattern.graph.getRow(1);
+            const turningChains = row1.filter(s => s.isTurningChain);
+
+            // The turning chain should connect to the LAST chain (column 4)
+            // because we just finished row 0 going right, ending at column 4
+            expect(turningChains.length).toBeGreaterThan(0);
+            const firstTurningChain = turningChains[0];
+            expect(firstTurningChain.connections.below.length).toBeGreaterThan(0);
+            const attachedTo = firstTurningChain.connections.below[0];
+            expect(attachedTo.column).toBe(4); // Last chain of foundation
+        });
+
+        it('should attach turning chain to start of previous row when working right', () => {
+            // Create foundation chain, work row 1 (left), then start row 2 (right)
+            pattern.startWithChain(5);
+            pattern.startNewRow(); // Row 1, direction = left
+
+            // Add some stitches to row 1 (working left, so decreasing columns)
+            const chain = pattern.graph.getRowSorted(0);
+            pattern.addStitch(StitchType.SINGLE_CROCHET, chain[4]);
+            pattern.addStitch(StitchType.SINGLE_CROCHET, chain[3]);
+
+            pattern.startNewRow(); // Row 2, direction = right
+
+            // Get turning chains for row 2
+            const row2 = pattern.graph.getRow(2);
+            const turningChains = row2.filter(s => s.isTurningChain);
+
+            // Working direction is now 'right', so turning chain should attach to
+            // where we ended row 1 (the leftmost stitch, which is at the lower column)
+            if (turningChains.length > 0) {
+                const attachedTo = turningChains[0].connections.below[0];
+                const row1Sorted = pattern.graph.getRowSorted(1);
+                const row1Working = row1Sorted.filter(s => !s.isTurningChain);
+                // Should attach to first (leftmost) working stitch of row 1
+                expect(attachedTo.column).toBeLessThanOrEqual(row1Working[0]?.column ?? 0);
+            }
+        });
+    });
+
     describe('undo/redo', () => {
         beforeEach(() => {
             pattern.startWithChain(5);
@@ -491,6 +539,55 @@ describe('Pattern', () => {
             const suggested = points.find(p => p.suggested);
             if (suggested) {
                 expect(suggested.stitch.column).toBe(1);
+            }
+        });
+
+        it('should exclude stitches with turning chain that counts as stitch', () => {
+            // Use double crochet which has ch-3 that counts as first stitch
+            pattern.selectedStitchType = StitchType.DOUBLE_CROCHET;
+            pattern.startNewRow(); // Creates ch-3 turning chain
+
+            const row1 = pattern.graph.getRow(1);
+            const turningChains = row1.filter(s => s.isTurningChain);
+
+            // Find the turning chain that counts as stitch
+            const countingChain = turningChains.find(tc => tc.turningChainCountsAsStitch);
+
+            if (countingChain && countingChain.connections.below.length > 0) {
+                const attachedTo = countingChain.connections.below[0];
+
+                // Get attachment points - the stitch below the counting turning chain
+                // should NOT be available since it's effectively "worked into"
+                const points = pattern.getAttachmentPoints();
+                const pointForAttachedStitch = points.find(p => p.stitch === attachedTo);
+
+                // The stitch should either not be in points, or be marked as unavailable
+                if (pointForAttachedStitch) {
+                    expect(pointForAttachedStitch.available).toBe(false);
+                }
+            }
+        });
+
+        it('should not exclude stitches with turning chain that does not count', () => {
+            // Single crochet has ch-1 that does NOT count as first stitch
+            pattern.selectedStitchType = StitchType.SINGLE_CROCHET;
+            pattern.startNewRow(); // Creates ch-1 turning chain
+
+            const row1 = pattern.graph.getRow(1);
+            const turningChains = row1.filter(s => s.isTurningChain);
+
+            if (turningChains.length > 0) {
+                const attachedTo = turningChains[0].connections.below[0];
+
+                // Get attachment points - since the ch-1 doesn't count as a stitch,
+                // the underlying stitch should still be available
+                const points = pattern.getAttachmentPoints();
+                const pointForAttachedStitch = points.find(p => p.stitch === attachedTo);
+
+                // The stitch should be available since the turning chain doesn't count
+                if (pointForAttachedStitch) {
+                    expect(pointForAttachedStitch.available).toBe(true);
+                }
             }
         });
     });
