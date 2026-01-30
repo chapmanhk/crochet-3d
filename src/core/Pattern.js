@@ -1028,15 +1028,19 @@ export class Pattern {
      */
     dispose() {
         // Remove graph event listeners
-        if (this.graphListeners) {
-            if (this.graphListeners.nodeAdded) {
-                this.graph.off('nodeAdded', this.graphListeners.nodeAdded);
-            }
-            if (this.graphListeners.nodeRemoved) {
-                this.graph.off('nodeRemoved', this.graphListeners.nodeRemoved);
-            }
-            if (this.graphListeners.graphCleared) {
-                this.graph.off('graphCleared', this.graphListeners.graphCleared);
+        if (this.graphListeners && this.graph) {
+            try {
+                if (this.graphListeners.nodeAdded) {
+                    this.graph.off('nodeAdded', this.graphListeners.nodeAdded);
+                }
+                if (this.graphListeners.nodeRemoved) {
+                    this.graph.off('nodeRemoved', this.graphListeners.nodeRemoved);
+                }
+                if (this.graphListeners.graphCleared) {
+                    this.graph.off('graphCleared', this.graphListeners.graphCleared);
+                }
+            } catch (err) {
+                console.error('Error during pattern disposal:', err);
             }
             this.graphListeners = {};
         }
