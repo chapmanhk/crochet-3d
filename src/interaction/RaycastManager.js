@@ -70,75 +70,97 @@ export class RaycastManager {
 
     /**
      * Handle mouse move for hover detection
+     * Wrapped in try-catch to prevent UI freezes
      */
     onMouseMove(event) {
-        this.updateMousePosition(event);
+        try {
+            this.updateMousePosition(event);
 
-        const intersects = this.raycast();
+            const intersects = this.raycast();
 
-        if (intersects.length > 0) {
-            const mesh = intersects[0].object;
-            const node = mesh.userData.node;
+            if (intersects.length > 0) {
+                const mesh = intersects[0]?.object;
+                const node = mesh?.userData?.node;
 
-            if (node && node !== this.hoveredNode) {
-                // Unhover previous
+                if (node && node !== this.hoveredNode) {
+                    // Unhover previous
+                    if (this.hoveredNode) {
+                        try {
+                            this.hoveredNode.setHighlighted(false);
+                            this.stitchRenderer.updateSelectionVisual(this.hoveredNode);
+                            EventBus.emit(Events.STITCH_UNHOVERED, { node: this.hoveredNode });
+                        } catch (err) {
+                            console.warn('Error unhighlighting previous node:', err);
+                        }
+                    }
+
+                    // Hover new
+                    this.hoveredNode = node;
+                    node.setHighlighted(true);
+                    this.stitchRenderer.updateSelectionVisual(node);
+                    EventBus.emit(Events.STITCH_HOVERED, { node });
+
+                    // Change cursor
+                    if (this.sceneManager?.domElement) {
+                        this.sceneManager.domElement.style.cursor = 'pointer';
+                    }
+                }
+            } else {
+                // No intersection
                 if (this.hoveredNode) {
-                    this.hoveredNode.setHighlighted(false);
-                    this.stitchRenderer.updateSelectionVisual(this.hoveredNode);
-                    EventBus.emit(Events.STITCH_UNHOVERED, { node: this.hoveredNode });
+                    try {
+                        this.hoveredNode.setHighlighted(false);
+                        this.stitchRenderer.updateSelectionVisual(this.hoveredNode);
+                        EventBus.emit(Events.STITCH_UNHOVERED, { node: this.hoveredNode });
+                    } catch (err) {
+                        console.warn('Error unhighlighting node:', err);
+                    }
+                    this.hoveredNode = null;
                 }
 
-                // Hover new
-                this.hoveredNode = node;
-                node.setHighlighted(true);
-                this.stitchRenderer.updateSelectionVisual(node);
-                EventBus.emit(Events.STITCH_HOVERED, { node });
-
-                // Change cursor
-                this.sceneManager.domElement.style.cursor = 'pointer';
+                if (this.sceneManager?.domElement) {
+                    this.sceneManager.domElement.style.cursor = 'default';
+                }
             }
-        } else {
-            // No intersection
-            if (this.hoveredNode) {
-                this.hoveredNode.setHighlighted(false);
-                this.stitchRenderer.updateSelectionVisual(this.hoveredNode);
-                EventBus.emit(Events.STITCH_UNHOVERED, { node: this.hoveredNode });
-                this.hoveredNode = null;
-            }
-
-            this.sceneManager.domElement.style.cursor = 'default';
+        } catch (err) {
+            console.error('Error in mouse move handler:', err);
         }
     }
 
     /**
      * Handle click for selection
+     * Wrapped in try-catch to prevent UI freezes
      */
     onClick(event) {
-        this.updateMousePosition(event);
+        try {
+            this.updateMousePosition(event);
 
-        const intersects = this.raycast();
+            const intersects = this.raycast();
 
-        if (intersects.length > 0) {
-            const mesh = intersects[0].object;
-            const node = mesh.userData.node;
+            if (intersects.length > 0) {
+                const mesh = intersects[0]?.object;
+                const node = mesh?.userData?.node;
 
-            if (node) {
-                const isShiftClick = event.shiftKey;
-                const isCtrlClick = event.ctrlKey || event.metaKey;
+                if (node) {
+                    const isShiftClick = event.shiftKey;
+                    const isCtrlClick = event.ctrlKey || event.metaKey;
 
-                if (isShiftClick || isCtrlClick) {
-                    // Multi-select toggle
-                    this.toggleSelection(node);
-                } else {
-                    // Single select
-                    this.selectSingle(node);
+                    if (isShiftClick || isCtrlClick) {
+                        // Multi-select toggle
+                        this.toggleSelection(node);
+                    } else {
+                        // Single select
+                        this.selectSingle(node);
+                    }
+                }
+            } else {
+                // Clicked on empty space
+                if (!event.shiftKey && !event.ctrlKey && !event.metaKey) {
+                    this.clearSelection();
                 }
             }
-        } else {
-            // Clicked on empty space
-            if (!event.shiftKey && !event.ctrlKey && !event.metaKey) {
-                this.clearSelection();
-            }
+        } catch (err) {
+            console.error('Error in click handler:', err);
         }
     }
 
@@ -169,21 +191,34 @@ export class RaycastManager {
 
     /**
      * Select a single node (clears previous selection)
+     * @param {StitchNode} node - Node to select
      */
     selectSingle(node) {
+        if (!node) return;
+
         // Clear previous selection
         this.selectedNodes.forEach(n => {
-            n.setSelected(false);
-            this.stitchRenderer.updateSelectionVisual(n);
-            EventBus.emit(Events.STITCH_DESELECTED, { node: n });
+            try {
+                if (n) {
+                    n.setSelected(false);
+                    this.stitchRenderer.updateSelectionVisual(n);
+                    EventBus.emit(Events.STITCH_DESELECTED, { node: n });
+                }
+            } catch (err) {
+                console.warn('Error deselecting node:', err);
+            }
         });
         this.selectedNodes.clear();
 
         // Select new
-        node.setSelected(true);
-        this.selectedNodes.add(node);
-        this.stitchRenderer.updateSelectionVisual(node);
-        EventBus.emit(Events.STITCH_SELECTED, { node, isMultiple: false });
+        try {
+            node.setSelected(true);
+            this.selectedNodes.add(node);
+            this.stitchRenderer.updateSelectionVisual(node);
+            EventBus.emit(Events.STITCH_SELECTED, { node, isMultiple: false });
+        } catch (err) {
+            console.error('Error selecting node:', err);
+        }
     }
 
     /**
@@ -251,38 +286,62 @@ export class RaycastManager {
 
     /**
      * Show attachment point indicators
+     * @param {Array} points - Array of attachment points
      */
     showAttachmentPoints(points) {
         this.clearAttachmentPoints();
 
+        // Validate input
+        if (!Array.isArray(points)) {
+            console.warn('showAttachmentPoints expects an array');
+            return;
+        }
+
         points.forEach(point => {
             const indicator = this.createAttachmentIndicator(point);
-            this.attachmentIndicators.push(indicator);
-            this.attachmentGroup.add(indicator);
+            // Only add valid indicators
+            if (indicator) {
+                this.attachmentIndicators.push(indicator);
+                this.attachmentGroup.add(indicator);
+            }
         });
     }
 
     /**
      * Create a visual indicator for an attachment point
+     * @param {Object} point - Attachment point data
+     * @returns {THREE.Mesh|null} The indicator mesh, or null if creation failed
      */
     createAttachmentIndicator(point) {
-        const geometry = new THREE.SphereGeometry(0.1, 16, 16);
-        const material = new THREE.MeshBasicMaterial({
-            color: point.suggested ? 0x00ff00 : 0x0088ff,
-            transparent: true,
-            opacity: 0.7
-        });
+        // Validate input
+        if (!point || !point.stitch || !point.stitch.position) {
+            console.warn('Cannot create attachment indicator: invalid point data');
+            return null;
+        }
 
-        const mesh = new THREE.Mesh(geometry, material);
+        try {
+            const geometry = new THREE.SphereGeometry(0.1, 16, 16);
+            const material = new THREE.MeshBasicMaterial({
+                color: point.suggested ? 0x00ff00 : 0x0088ff,
+                transparent: true,
+                opacity: 0.7
+            });
 
-        // Position above the stitch
-        mesh.position.copy(point.stitch.position);
-        mesh.position.y += point.stitch.height * 0.8;
+            const mesh = new THREE.Mesh(geometry, material);
 
-        // Store reference for click handling
-        mesh.userData.attachmentPoint = point;
+            // Position above the stitch
+            mesh.position.copy(point.stitch.position);
+            const stitchHeight = Number.isFinite(point.stitch.height) ? point.stitch.height : 1;
+            mesh.position.y += stitchHeight * 0.8;
 
-        return mesh;
+            // Store reference for click handling
+            mesh.userData.attachmentPoint = point;
+
+            return mesh;
+        } catch (err) {
+            console.error('Error creating attachment indicator:', err);
+            return null;
+        }
     }
 
     /**

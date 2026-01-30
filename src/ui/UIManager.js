@@ -810,37 +810,47 @@ export class UIManager {
 
     /**
      * Add stitch at next available position
+     * With error handling for robustness
      */
     addStitchAtNextPosition() {
-        const attachPoints = this.pattern.getAttachmentPoints();
+        try {
+            const attachPoints = this.pattern.getAttachmentPoints();
 
-        if (attachPoints.length === 0) {
-            // No pattern started - create foundation chain
-            if (this.pattern.graph.size === 0) {
-                const chainLength = prompt(
-                    `Enter foundation chain length (${PatternConstants.MIN_CHAIN_LENGTH}-${PatternConstants.MAX_CHAIN_LENGTH}):`,
-                    String(PatternConstants.DEFAULT_CHAIN_LENGTH)
-                );
-                if (chainLength && !isNaN(chainLength)) {
-                    // Validate bounds to prevent performance issues
-                    const length = Math.max(
-                        PatternConstants.MIN_CHAIN_LENGTH,
-                        Math.min(PatternConstants.MAX_CHAIN_LENGTH, parseInt(chainLength, 10))
+            if (!attachPoints || attachPoints.length === 0) {
+                // No pattern started - create foundation chain
+                if (!this.pattern.graph || this.pattern.graph.size === 0) {
+                    const chainLength = prompt(
+                        `Enter foundation chain length (${PatternConstants.MIN_CHAIN_LENGTH}-${PatternConstants.MAX_CHAIN_LENGTH}):`,
+                        String(PatternConstants.DEFAULT_CHAIN_LENGTH)
                     );
-                    this.pattern.startWithChain(length);
+                    if (chainLength && !isNaN(chainLength)) {
+                        // Validate bounds to prevent performance issues
+                        const parsedLength = parseInt(chainLength, 10);
+                        if (Number.isFinite(parsedLength)) {
+                            const length = Math.max(
+                                PatternConstants.MIN_CHAIN_LENGTH,
+                                Math.min(PatternConstants.MAX_CHAIN_LENGTH, parsedLength)
+                            );
+                            this.pattern.startWithChain(length);
+                        }
+                    }
+                } else {
+                    // Start new row
+                    this.pattern.startNewRow();
+                    this.addStitchAtNextPosition();
                 }
-            } else {
-                // Start new row
-                this.pattern.startNewRow();
-                this.addStitchAtNextPosition();
+                return;
             }
-            return;
+
+            // Find suggested attachment point or use first available
+            const attachPoint = attachPoints.find(p => p.suggested) || attachPoints[0];
+
+            if (attachPoint && attachPoint.stitch) {
+                this.pattern.addStitch(this.selectedStitchType, attachPoint.stitch);
+            }
+        } catch (err) {
+            console.error('Error adding stitch:', err);
         }
-
-        // Find suggested attachment point or use first available
-        const attachPoint = attachPoints.find(p => p.suggested) || attachPoints[0];
-
-        this.pattern.addStitch(this.selectedStitchType, attachPoint.stitch);
     }
 
     /**

@@ -17,6 +17,37 @@ import { EventBus, Events } from './utils/EventBus.js';
 import { showAlert } from './ui/Modal.js';
 import { validatePatternData, formatValidationResult } from './utils/PatternSchema.js';
 
+/**
+ * Global error handler to catch unhandled errors
+ * Prevents application crashes and logs errors for debugging
+ */
+function setupGlobalErrorHandlers() {
+    // Handle uncaught errors
+    window.addEventListener('error', (event) => {
+        console.error('Uncaught error:', event.error || event.message);
+        // Prevent the error from bubbling up
+        event.preventDefault();
+    });
+
+    // Handle unhandled promise rejections
+    window.addEventListener('unhandledrejection', (event) => {
+        console.error('Unhandled promise rejection:', event.reason);
+        // Prevent the rejection from throwing
+        event.preventDefault();
+    });
+
+    // Handle WebGL context loss gracefully
+    window.addEventListener('webglcontextlost', (event) => {
+        console.error('WebGL context lost. The 3D view may need to be refreshed.');
+        event.preventDefault();
+    });
+
+    // Handle WebGL context restoration
+    window.addEventListener('webglcontextrestored', () => {
+        console.log('WebGL context restored.');
+    });
+}
+
 class CrochetApp {
     constructor() {
         // Core modules
@@ -35,59 +66,73 @@ class CrochetApp {
 
     /**
      * Initialize the application
+     * Wrapped in try-catch for graceful error handling
      */
     init() {
-        console.log('Initializing Crochet 3D Pattern Designer...');
+        try {
+            console.log('Initializing Crochet 3D Pattern Designer...');
 
-        // Create pattern manager
-        this.pattern = new Pattern();
+            // Create pattern manager
+            this.pattern = new Pattern();
 
-        // Create 3D scene
-        this.sceneManager = new SceneManager(document.body);
+            // Create 3D scene
+            this.sceneManager = new SceneManager(document.body);
 
-        // Create stitch renderer
-        this.stitchRenderer = new StitchRenderer(this.sceneManager);
+            // Create stitch renderer
+            this.stitchRenderer = new StitchRenderer(this.sceneManager);
 
-        // Create interaction manager
-        this.raycastManager = new RaycastManager(this.sceneManager, this.stitchRenderer);
+            // Create interaction manager
+            this.raycastManager = new RaycastManager(this.sceneManager, this.stitchRenderer);
 
-        // Create attachment point manager for click-to-add functionality
-        this.attachmentManager = new AttachmentPointManager(this.sceneManager, this.pattern);
+            // Create attachment point manager for click-to-add functionality
+            this.attachmentManager = new AttachmentPointManager(this.sceneManager, this.pattern);
 
-        // Create physics engine for fabric simulation
-        this.physicsEngine = new PhysicsEngine(this.pattern, this.sceneManager);
+            // Create physics engine for fabric simulation
+            this.physicsEngine = new PhysicsEngine(this.pattern, this.sceneManager);
 
-        // Create UI
-        this.uiManager = new UIManager(this.pattern);
+            // Create UI
+            this.uiManager = new UIManager(this.pattern);
 
-        // Create physics control panel
-        this.physicsPanel = new PhysicsPanel(this.physicsEngine);
+            // Create physics control panel
+            this.physicsPanel = new PhysicsPanel(this.physicsEngine);
 
-        // Setup application-level event handlers
-        this.setupEventHandlers();
+            // Setup application-level event handlers
+            this.setupEventHandlers();
 
-        // Start with a demo pattern
-        this.createDemoPattern();
+            // Start with a demo pattern
+            this.createDemoPattern();
 
-        // Start rendering
-        this.sceneManager.start();
+            // Start rendering
+            this.sceneManager.start();
 
-        console.log('Crochet 3D Pattern Designer ready!');
-        console.log('Keyboard shortcuts:');
-        console.log('  C - Chain stitch');
-        console.log('  S - Single crochet');
-        console.log('  D - Double crochet');
-        console.log('  H - Half double crochet');
-        console.log('  T - Triple crochet');
-        console.log('  I - Increase');
-        console.log('  X - Decrease');
-        console.log('  N - New row');
-        console.log('  Enter - Add stitch');
-        console.log('  Ctrl+Z - Undo');
-        console.log('  Ctrl+Y - Redo');
-        console.log('  P - Toggle physics panel');
-        console.log('');
-        console.log('Physics: Use the panel in bottom-left to simulate fabric drape');
+            console.log('Crochet 3D Pattern Designer ready!');
+            console.log('Keyboard shortcuts:');
+            console.log('  C - Chain stitch');
+            console.log('  S - Single crochet');
+            console.log('  D - Double crochet');
+            console.log('  H - Half double crochet');
+            console.log('  T - Triple crochet');
+            console.log('  I - Increase');
+            console.log('  X - Decrease');
+            console.log('  N - New row');
+            console.log('  Enter - Add stitch');
+            console.log('  Ctrl+Z - Undo');
+            console.log('  Ctrl+Y - Redo');
+            console.log('  P - Toggle physics panel');
+            console.log('');
+            console.log('Physics: Use the panel in bottom-left to simulate fabric drape');
+        } catch (err) {
+            console.error('Failed to initialize application:', err);
+            // Show user-friendly error message
+            document.body.innerHTML = `
+                <div style="padding: 40px; text-align: center; font-family: sans-serif;">
+                    <h1 style="color: #d32f2f;">Initialization Error</h1>
+                    <p>Sorry, the application failed to start.</p>
+                    <p style="color: #666;">Error: ${err.message}</p>
+                    <p>Please try refreshing the page. If the problem persists, check that your browser supports WebGL.</p>
+                </div>
+            `;
+        }
     }
 
     /**
@@ -121,23 +166,42 @@ class CrochetApp {
 
     /**
      * Calculate the bounding box of the current pattern
+     * With safety checks for empty or invalid patterns
+     * @returns {Object} Bounding box with centerX, centerY, width, height
      */
     calculatePatternBounds() {
+        const defaultBounds = { centerX: 0, centerY: 0, width: 0, height: 0 };
+
+        if (!this.pattern?.graph) {
+            return defaultBounds;
+        }
+
         const nodes = this.pattern.graph.getAllNodes();
 
-        if (nodes.length === 0) {
-            return { centerX: 0, centerY: 0, width: 0, height: 0 };
+        if (!nodes || nodes.length === 0) {
+            return defaultBounds;
         }
 
         let minX = Infinity, maxX = -Infinity;
         let minY = Infinity, maxY = -Infinity;
 
         nodes.forEach(node => {
-            minX = Math.min(minX, node.position.x);
-            maxX = Math.max(maxX, node.position.x);
-            minY = Math.min(minY, node.position.y);
-            maxY = Math.max(maxY, node.position.y);
+            // Safety check for valid position
+            if (node?.position) {
+                const x = Number.isFinite(node.position.x) ? node.position.x : 0;
+                const y = Number.isFinite(node.position.y) ? node.position.y : 0;
+                minX = Math.min(minX, x);
+                maxX = Math.max(maxX, x);
+                minY = Math.min(minY, y);
+                maxY = Math.max(maxY, y);
+            }
         });
+
+        // Check for valid bounds
+        if (!Number.isFinite(minX) || !Number.isFinite(maxX) ||
+            !Number.isFinite(minY) || !Number.isFinite(maxY)) {
+            return defaultBounds;
+        }
 
         return {
             centerX: (minX + maxX) / 2,
@@ -234,8 +298,16 @@ class CrochetApp {
     }
 }
 
+// Setup global error handlers before starting the app
+setupGlobalErrorHandlers();
+
 // Start the application
-const app = new CrochetApp();
+let app;
+try {
+    app = new CrochetApp();
+} catch (err) {
+    console.error('Critical error creating application:', err);
+}
 
 // Expose to window for debugging
 window.crochetApp = app;

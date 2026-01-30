@@ -555,11 +555,25 @@ export class ExportManager {
     /**
      * Escape special characters for PDF strings
      * Handles backslashes, parentheses, and control characters
-     * @param {string} str
-     * @returns {string}
+     * @param {string} str - String to escape (will convert non-strings to string)
+     * @returns {string} Escaped string safe for PDF
      */
     escapePDFString(str) {
-        return str
+        // Handle null, undefined, or non-string input
+        if (str === null || str === undefined) {
+            return '';
+        }
+
+        // Convert to string if needed
+        const safeStr = String(str);
+
+        // Limit string length to prevent PDF issues
+        const maxLength = 10000;
+        const truncated = safeStr.length > maxLength
+            ? safeStr.substring(0, maxLength) + '...'
+            : safeStr;
+
+        return truncated
             .replace(/\\/g, '\\\\')
             .replace(/\(/g, '\\(')
             .replace(/\)/g, '\\)')
