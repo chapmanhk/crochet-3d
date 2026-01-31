@@ -844,12 +844,9 @@ export class Pattern {
             // Count working stitches for connection checks
             // Filter out turning chains EXCEPT those that count as a stitch (like dc's ch-3)
             // because those DO occupy the attachment point
-            const workingStitchesAbove = stitch.connections.above.filter(s =>
-                !s.isTurningChain || s.turningChainCountsAsStitch
-            );
-            const hasWorkingConnection = workingStitchesAbove.length > 0;
             const maxConnections = stitch.effectiveConnections?.connectionsOut ?? 1;
-            const remainingConnections = Math.max(0, maxConnections - workingStitchesAbove.length);
+            const remainingConnections = stitch.availableConnectionsAbove;
+            const hasWorkingConnection = remainingConnections < maxConnections;
             const isAvailable = remainingConnections > 0;
 
             if (isAvailable) {
