@@ -623,7 +623,7 @@ describe('ExportManager', () => {
                 .toThrow('Invalid data URL format');
         });
 
-        it('should throw for invalid base64 in data URL', () => {
+        it('should throw for invalid base64 in data URL', async () => {
             const module = await import('../src/utils/ExportManager.js');
             const manager = new module.ExportManager(mockPattern, mockRenderer);
             const originalAtob = globalThis.atob;

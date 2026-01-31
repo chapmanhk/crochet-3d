@@ -735,11 +735,12 @@ describe('UIManager - Stitch options and actions', () => {
 
     it('adds a stitch at next available attachment point', async () => {
         const stitch = { id: 'attach', row: 0, column: 0, connections: { above: [] } };
+        const nextStitch = { id: 'next', row: 0, column: 1 };
         mockPattern.getAttachmentPoints.mockReturnValue([
             { stitch, type: 'above', available: true, suggested: true }
         ]);
-        mockPattern.graph.getRowSorted.mockReturnValue([stitch]);
-        mockPattern.graph.getRow.mockReturnValue([stitch]);
+        mockPattern.graph.getRowSorted.mockReturnValue([stitch, nextStitch]);
+        mockPattern.graph.getRow.mockReturnValue([stitch, nextStitch]);
         mockPattern.currentSkipCount = 1;
 
         await uiManager.addStitchAtNextPosition();
