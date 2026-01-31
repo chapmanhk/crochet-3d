@@ -828,7 +828,7 @@ describe('Pattern', () => {
             expect(instructions).toContain('Pattern:');
             expect(instructions).toContain('Foundation:');
             expect(instructions).toContain('ch');
-            expect(instructions).toContain('5 sts');
+            expect(instructions).toContain('5 ch');
         });
 
         it('should include pattern name', () => {
@@ -863,6 +863,36 @@ describe('Pattern', () => {
             expect(instructions).toContain('Row 1:');
             expect(instructions).toContain('sc');
             expect(instructions).toContain('dc');
+        });
+
+        it('should exclude magic ring from row stitch counts', () => {
+            pattern.startWithMagicRing(4);
+
+            const instructions = pattern.generateInstructions();
+            const rowLine = instructions.split('\n').find(line => line.startsWith('Row 1:'));
+
+            expect(rowLine).toContain('(4 sts)');
+        });
+
+        it('should omit trailing commas for turning-chain-only rows', () => {
+            pattern.startWithChain(2);
+            pattern.startNewRow();
+
+            const instructions = pattern.generateInstructions();
+            const rowLine = instructions.split('\n').find(line => line.startsWith('Row 1:'));
+
+            expect(rowLine).toContain('Ch 1');
+            expect(rowLine).not.toContain('Ch 1,');
+        });
+
+        it('should spell out skip instructions', () => {
+            pattern.startWithChain(3);
+            const chain = pattern.graph.getRowSorted(0);
+            pattern.addStitch(StitchType.SINGLE_CROCHET, chain[0], { skipCount: 1 });
+
+            const instructions = pattern.generateInstructions();
+
+            expect(instructions).toContain('skip 1 st, sc');
         });
     });
 

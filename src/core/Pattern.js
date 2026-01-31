@@ -1136,16 +1136,17 @@ export class Pattern {
 
         if (hasFoundation) {
             const foundationRow = this.graph.getRowSorted(0);
-            lines.push(`Foundation: ch ${foundationRow.length} (${foundationRow.length} sts)`);
+            lines.push(`Foundation: ch ${foundationRow.length} (${foundationRow.length} ch)`);
         }
 
         const startRow = hasFoundation ? 1 : 0;
         for (let row = startRow; row < rowCount; row++) {
             const stitches = this.graph.getRowSorted(row);
+            const rowStitches = stitches.filter(s => s.type !== StitchType.MAGIC_RING);
 
             // Separate turning chains from working stitches
-            const turningChains = stitches.filter(s => s.isTurningChain);
-            const workingStitches = stitches.filter(s => !s.isTurningChain);
+            const turningChains = rowStitches.filter(s => s.isTurningChain);
+            const workingStitches = rowStitches.filter(s => !s.isTurningChain);
 
             // Group consecutive same-type stitches
             const groups = [];
@@ -1165,32 +1166,44 @@ export class Pattern {
 
                 // Add skip prefix if stitches were skipped
                 const skipCount = s.skippedStitches?.length || 0;
-                const skipPrefix = skipCount > 0 ? `sk ${skipCount}, ` : '';
+                const skipPrefix = skipCount > 0
+                    ? `skip ${skipCount} st${skipCount === 1 ? '' : 's'}, `
+                    : '';
 
                 const displayName = skipPrefix + getStitchDisplayName(s.type, effectiveModifiers);
 
                 if (currentGroup && currentGroup.name === displayName && skipCount === 0) {
                     currentGroup.count++;
                 } else {
-                    currentGroup = { name: displayName, abbr: s.abbreviation, count: 1 };
+                    currentGroup = {
+                        name: displayName,
+                        abbr: skipCount > 0 ? displayName : s.abbreviation,
+                        count: 1
+                    };
                     groups.push(currentGroup);
                 }
             });
 
             // Build instruction string
-            let instruction = '';
+            const instructionParts = [];
 
             if (turningChains.length > 0) {
-                instruction += `Ch ${turningChains.length}`;
+                let chainInstruction = `Ch ${turningChains.length}`;
                 if (turningChains.some(tc => tc.turningChainCountsAsStitch)) {
-                    instruction += ' (counts as first st)';
+                    chainInstruction += ' (counts as first st)';
                 }
-                instruction += ', ';
+                instructionParts.push(chainInstruction);
             }
 
-            instruction += groups
-                .map(g => g.count > 1 ? `${g.count} ${g.abbr}` : g.abbr)
-                .join(', ');
+            if (groups.length > 0) {
+                instructionParts.push(
+                    groups
+                        .map(g => g.count > 1 ? `${g.count} ${g.abbr}` : g.abbr)
+                        .join(', ')
+                );
+            }
+
+            const instruction = instructionParts.join(', ');
 
             // Calculate working stitch count, accounting for increases
             const totalWorking = workingStitches.reduce((count, s) => {
