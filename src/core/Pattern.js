@@ -1,5 +1,4 @@
 import { StitchGraph } from './StitchGraph.js';
-import { StitchNode, createTurningChain } from './StitchNode.js';
 import {
     StitchType,
     StitchModifier,
@@ -124,6 +123,27 @@ export class Pattern {
     }
 
     /**
+     * Reset base pattern state before creating a new structure.
+     */
+    resetPatternState({ workingDirection, mode, resetHistory = true } = {}) {
+        this.graph.clear();
+        this.currentRow = 0;
+
+        if (workingDirection !== undefined) {
+            this.workingDirection = workingDirection;
+        }
+
+        if (mode !== undefined) {
+            this.mode = mode;
+        }
+
+        if (resetHistory) {
+            this.historyIndex = -1;
+            this.history = [];
+        }
+    }
+
+    /**
      * Start a new pattern with a foundation chain
      * @param {number} length - Number of chains (must be positive integer)
      * @returns {Array} Array of chain nodes, or empty array if invalid input
@@ -138,13 +158,9 @@ export class Pattern {
         // Clamp to reasonable bounds
         const safeLength = Math.min(Math.max(1, Math.floor(length)), PatternConstants.MAX_CHAIN_LENGTH || 1000);
 
-        this.graph.clear();
-        this.currentRow = 0;
+        this.resetPatternState({ workingDirection: 'left', resetHistory: true });
         // In crochet, when working the first row into a foundation chain,
         // you start at the right end (last chain made) and work left
-        this.workingDirection = 'left';
-        this.historyIndex = -1;
-        this.history = [];
 
         const chain = this.graph.createFoundationChain(safeLength);
         this.saveHistoryState('Create foundation chain');
@@ -168,11 +184,7 @@ export class Pattern {
         // Clamp to reasonable bounds
         const safeLength = Math.min(Math.max(1, Math.floor(length)), PatternConstants.MAX_CHAIN_LENGTH || 1000);
 
-        this.graph.clear();
-        this.currentRow = 0;
-        this.workingDirection = 'right';
-        this.historyIndex = -1;
-        this.history = [];
+        this.resetPatternState({ workingDirection: 'right', resetHistory: true });
 
         const stitches = [];
         let prevNode = null;
@@ -221,11 +233,8 @@ export class Pattern {
             roundMode = 'joined';
         }
 
-        this.graph.clear();
-        this.currentRow = 0;
-        this.mode = roundMode === 'spiral' ? 'round-spiral' : 'round-joined';
-        this.historyIndex = -1;
-        this.history = [];
+        const targetMode = roundMode === 'spiral' ? 'round-spiral' : 'round-joined';
+        this.resetPatternState({ mode: targetMode, resetHistory: true });
 
         // Create the magic ring center
         const ring = this.graph.createNode(StitchType.MAGIC_RING, {
@@ -589,9 +598,7 @@ export class Pattern {
      * Clear the pattern (undoable)
      */
     clearPattern() {
-        this.graph.clear();
-        this.currentRow = 0;
-        this.workingDirection = 'right';
+        this.resetPatternState({ workingDirection: 'right', resetHistory: false });
         this.metadata.modifiedAt = Date.now();
         this.saveHistoryState('Clear pattern');
     }
@@ -718,7 +725,7 @@ export class Pattern {
      */
     findPreviousInRow(row, column) {
         const rowStitches = this.graph.getRowSorted(row);
-        return findPreviousInRowInRow(rowStitches, column, this.workingDirection);
+        return findPreviousInRowInRow(rowStitches, column, this.workingDirection, true);
     }
 
     /**
@@ -837,12 +844,9 @@ export class Pattern {
             // Count working stitches for connection checks
             // Filter out turning chains EXCEPT those that count as a stitch (like dc's ch-3)
             // because those DO occupy the attachment point
-            const workingStitchesAbove = stitch.connections.above.filter(s =>
-                !s.isTurningChain || s.turningChainCountsAsStitch
-            );
-            const hasWorkingConnection = workingStitchesAbove.length > 0;
             const maxConnections = stitch.effectiveConnections?.connectionsOut ?? 1;
-            const remainingConnections = Math.max(0, maxConnections - workingStitchesAbove.length);
+            const remainingConnections = stitch.availableConnectionsAbove;
+            const hasWorkingConnection = remainingConnections < maxConnections;
             const isAvailable = remainingConnections > 0;
 
             if (isAvailable) {

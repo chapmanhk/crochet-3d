@@ -37,6 +37,43 @@ function validateTemplateOptions(options, limits) {
 }
 
 /**
+ * Create a row builder for sequential stitches.
+ */
+function createRowBuilder(pattern, { row, startColumn = 0, columnStep = 1, color, connectDirection = 'right' }) {
+    let column = startColumn;
+    let prevNode = null;
+
+    const addNode = (type, options = {}, connectToPrev = true) => {
+        const nodeColumn = options.column ?? column;
+        const node = pattern.graph.createNode(type, {
+            ...options,
+            row,
+            column: nodeColumn,
+            color: options.color ?? color
+        });
+
+        if (connectToPrev && prevNode) {
+            if (connectDirection === 'left') {
+                pattern.graph.connectHorizontal(node, prevNode);
+            } else {
+                pattern.graph.connectHorizontal(prevNode, node);
+            }
+        }
+
+        prevNode = node;
+        column = nodeColumn + columnStep;
+        return node;
+    };
+
+    return {
+        addNode,
+        getColumn: () => column,
+        getPrevNode: () => prevNode,
+        setPrevNode: (node) => { prevNode = node; }
+    };
+}
+
+/**
  * Create a granny square pattern
  * @param {Object} options - Configuration options
  * @param {number} options.rounds - Number of rounds (default: 1, min: 1, max: 50)
@@ -51,7 +88,7 @@ export function createGrannySquare(options = {}) {
     const {
         rounds = 1,
         color = 0x8B4513
-    } = { ...options, ...validated };
+    } = validated;
 
     const pattern = new Pattern();
     pattern.metadata.name = 'Granny Square';
@@ -72,9 +109,9 @@ export function createGrannySquare(options = {}) {
     const dcPerCluster = 3;
     const cornerChainLength = 2;
 
-    let prevNode = ring;
-    let column = 1;
+    const rowBuilder = createRowBuilder(pattern, { row: 0, startColumn: 1, color });
     const radius = 1.0;
+    let firstDC = null;
 
     for (let corner = 0; corner < clusterCount; corner++) {
         const baseAngle = (corner / clusterCount) * Math.PI * 2;
@@ -82,38 +119,32 @@ export function createGrannySquare(options = {}) {
         // Add 3 dc in cluster - all worked into the ring
         for (let dc = 0; dc < dcPerCluster; dc++) {
             const angle = baseAngle + (dc - 1) * 0.15;
-            const node = pattern.graph.createNode(StitchType.DOUBLE_CROCHET, {
-                row: 0,
-                column: column++,
+            const node = rowBuilder.addNode(StitchType.DOUBLE_CROCHET, {
                 position: {
                     x: Math.cos(angle) * radius,
                     y: 0.5,
                     z: Math.sin(angle) * radius
-                },
-                color
+                }
             });
+
+            if (!firstDC) {
+                firstDC = node;
+            }
 
             // All DCs are worked into the magic ring
             pattern.graph.connectVertical(node, ring);
-            if (prevNode !== ring) {
-                pattern.graph.connectHorizontal(prevNode, node);
-            }
-            prevNode = node;
         }
 
         // Add ch-2 corner - chains are also part of working into the ring
         // They form the corner space for the next round
         for (let ch = 0; ch < cornerChainLength; ch++) {
             const angle = baseAngle + Math.PI / clusterCount;
-            const chainNode = pattern.graph.createNode(StitchType.CHAIN, {
-                row: 0,
-                column: column++,
+            const chainNode = rowBuilder.addNode(StitchType.CHAIN, {
                 position: {
                     x: Math.cos(angle) * (radius + 0.3),
                     y: 0.5 + ch * 0.2,
                     z: Math.sin(angle) * (radius + 0.3)
                 },
-                color,
                 metadata: {
                     isCorner: ch === cornerChainLength - 1,
                     isCornerSpace: true  // Marks this as a corner chain space
@@ -123,15 +154,13 @@ export function createGrannySquare(options = {}) {
             // Corner chains connect to the ring (they're part of working into it)
             // and also connect horizontally to form the sequence
             pattern.graph.connectVertical(chainNode, ring);
-            pattern.graph.connectHorizontal(prevNode, chainNode);
-            prevNode = chainNode;
         }
     }
 
     // Connect last stitch to first dc (after ring)
-    const firstDC = pattern.graph.getAt(0, 1);
-    if (firstDC && prevNode) {
-        pattern.graph.connectHorizontal(prevNode, firstDC);
+    const lastNode = rowBuilder.getPrevNode();
+    if (firstDC && lastNode) {
+        pattern.graph.connectHorizontal(lastNode, firstDC);
     }
 
     // Add additional rounds if requested
@@ -153,11 +182,11 @@ function addGrannySquareRound(pattern, roundNumber, color) {
     pattern.currentRow = roundNumber - 1;
     const radius = 1.0 + (roundNumber - 1) * 0.8;
 
-    // Find corners (ch-2 spaces) from previous round
-    const corners = prevRound.filter(n => n.metadata?.isCorner);
-
-    let column = 0;
-    let prevNode = null;
+    const rowBuilder = createRowBuilder(pattern, {
+        row: roundNumber - 1,
+        startColumn: 0,
+        color
+    });
     const clusterCount = 4;
 
     for (let corner = 0; corner < clusterCount; corner++) {
@@ -166,40 +195,26 @@ function addGrannySquareRound(pattern, roundNumber, color) {
         // Add 3 dc in corner space
         for (let dc = 0; dc < 3; dc++) {
             const angle = baseAngle + (dc - 1) * 0.12;
-            const node = pattern.graph.createNode(StitchType.DOUBLE_CROCHET, {
-                row: roundNumber - 1,
-                column: column++,
+            rowBuilder.addNode(StitchType.DOUBLE_CROCHET, {
                 position: {
                     x: Math.cos(angle) * radius,
                     y: 0.5 * roundNumber,
                     z: Math.sin(angle) * radius
-                },
-                color
+                }
             });
-
-            if (prevNode) {
-                pattern.graph.connectHorizontal(prevNode, node);
-            }
-            prevNode = node;
         }
 
         // Add ch-2 corner
         for (let ch = 0; ch < 2; ch++) {
             const angle = baseAngle + Math.PI / clusterCount * 0.5;
-            const chainNode = pattern.graph.createNode(StitchType.CHAIN, {
-                row: roundNumber - 1,
-                column: column++,
+            rowBuilder.addNode(StitchType.CHAIN, {
                 position: {
                     x: Math.cos(angle) * (radius + 0.3),
                     y: 0.5 * roundNumber + ch * 0.2,
                     z: Math.sin(angle) * (radius + 0.3)
                 },
-                color,
                 metadata: { isCorner: ch === 1 }
             });
-
-            pattern.graph.connectHorizontal(prevNode, chainNode);
-            prevNode = chainNode;
         }
 
         // Add side clusters (one more per round)
@@ -208,43 +223,33 @@ function addGrannySquareRound(pattern, roundNumber, color) {
             const sideAngle = baseAngle + (side + 1) * (Math.PI / 2 / (sideClusters + 1));
 
             // ch 1 between clusters
-            const spaceChain = pattern.graph.createNode(StitchType.CHAIN, {
-                row: roundNumber - 1,
-                column: column++,
+            rowBuilder.addNode(StitchType.CHAIN, {
                 position: {
                     x: Math.cos(sideAngle) * radius,
                     y: 0.5 * roundNumber,
                     z: Math.sin(sideAngle) * radius
-                },
-                color
+                }
             });
-            pattern.graph.connectHorizontal(prevNode, spaceChain);
-            prevNode = spaceChain;
 
             // 3 dc cluster
             for (let dc = 0; dc < 3; dc++) {
                 const clusterAngle = sideAngle + (dc - 1) * 0.1;
-                const node = pattern.graph.createNode(StitchType.DOUBLE_CROCHET, {
-                    row: roundNumber - 1,
-                    column: column++,
+                rowBuilder.addNode(StitchType.DOUBLE_CROCHET, {
                     position: {
                         x: Math.cos(clusterAngle) * radius,
                         y: 0.5 * roundNumber,
                         z: Math.sin(clusterAngle) * radius
-                    },
-                    color
+                    }
                 });
-
-                pattern.graph.connectHorizontal(prevNode, node);
-                prevNode = node;
             }
         }
     }
 
     // Connect last to first
     const firstInRound = pattern.graph.getAt(roundNumber - 1, 0);
-    if (firstInRound && prevNode) {
-        pattern.graph.connectHorizontal(prevNode, firstInRound);
+    const lastNode = rowBuilder.getPrevNode();
+    if (firstInRound && lastNode) {
+        pattern.graph.connectHorizontal(lastNode, firstInRound);
     }
 }
 
@@ -270,7 +275,7 @@ export function createBasicCircle(options = {}) {
         stitchType = StitchType.SINGLE_CROCHET,
         mode = 'joined',
         color = 0x8B4513
-    } = { ...options, ...validated };
+    } = validated;
 
     const pattern = new Pattern();
     pattern.metadata.name = 'Basic Circle';
@@ -320,8 +325,11 @@ function addCircleRound(pattern, roundNumber, baseStitches, stitchType, color) {
     const height = def?.height || 1.0;
     const radius = 1.0 + (roundNumber - 1) * 0.6;
 
-    let column = 0;
-    let prevNode = null;
+    const rowBuilder = createRowBuilder(pattern, {
+        row: roundNumber - 1,
+        startColumn: 0,
+        color
+    });
     let stitchesAdded = 0;
     let increasesAdded = 0;
 
@@ -330,22 +338,15 @@ function addCircleRound(pattern, roundNumber, baseStitches, stitchType, color) {
 
         // Add regular stitch
         const angle = (stitchesAdded / targetStitches) * Math.PI * 2;
-        const node = pattern.graph.createNode(stitchType, {
-            row: roundNumber - 1,
-            column: column++,
+        const node = rowBuilder.addNode(stitchType, {
             position: {
                 x: Math.cos(angle) * radius,
                 y: height * (roundNumber - 1) * 0.5,
                 z: Math.sin(angle) * radius
-            },
-            color
+            }
         });
 
         pattern.graph.connectVertical(node, attachTo);
-        if (prevNode) {
-            pattern.graph.connectHorizontal(prevNode, node);
-        }
-        prevNode = node;
         stitchesAdded++;
 
         // Add increase if needed - use proper distribution calculation
@@ -358,21 +359,16 @@ function addCircleRound(pattern, roundNumber, baseStitches, stitchType, color) {
 
         if (shouldIncrease) {
             const incAngle = (stitchesAdded / targetStitches) * Math.PI * 2;
-            const incNode = pattern.graph.createNode(stitchType, {
-                row: roundNumber - 1,
-                column: column++,
+            const incNode = rowBuilder.addNode(stitchType, {
                 position: {
                     x: Math.cos(incAngle) * radius,
                     y: height * (roundNumber - 1) * 0.5,
                     z: Math.sin(incAngle) * radius
                 },
-                color,
                 metadata: { isIncrease: true }
             });
 
             pattern.graph.connectVertical(incNode, attachTo);
-            pattern.graph.connectHorizontal(prevNode, incNode);
-            prevNode = incNode;
             stitchesAdded++;
             increasesAdded++;
         }
@@ -381,8 +377,9 @@ function addCircleRound(pattern, roundNumber, baseStitches, stitchType, color) {
     // Connect last to first for joined rounds
     if (pattern.mode === 'round-joined') {
         const firstInRound = pattern.graph.getAt(roundNumber - 1, 0);
-        if (firstInRound && prevNode) {
-            pattern.graph.connectHorizontal(prevNode, firstInRound);
+        const lastNode = rowBuilder.getPrevNode();
+        if (firstInRound && lastNode) {
+            pattern.graph.connectHorizontal(lastNode, firstInRound);
         }
     }
 }
@@ -407,7 +404,7 @@ export function createBasicSquare(options = {}) {
         rows = null,
         stitchType = StitchType.SINGLE_CROCHET,
         color = 0x8B4513
-    } = { ...options, ...validated };
+    } = validated;
 
     const targetRows = rows || size;
 
@@ -450,32 +447,28 @@ function addSquareRow(pattern, rowNumber, width, stitchType, color) {
     const height = def?.height || 1.0;
     const stitchWidth = def?.width || 0.7;
 
-    let prevNode = null;
+    const columnStep = leftToRight ? 1 : -1;
+    const startColumn = leftToRight ? 0 : width - 1;
+    const rowBuilder = createRowBuilder(pattern, {
+        row: rowNumber,
+        startColumn,
+        columnStep,
+        color,
+        connectDirection: leftToRight ? 'right' : 'left'
+    });
 
     for (let i = 0; i < width && i < orderedPrevRow.length; i++) {
         const attachTo = orderedPrevRow[i];
-        const column = leftToRight ? i : width - 1 - i;
-
-        const node = pattern.graph.createNode(stitchType, {
-            row: rowNumber,
-            column,
+        const column = rowBuilder.getColumn();
+        const node = rowBuilder.addNode(stitchType, {
             position: {
                 x: column * stitchWidth,
                 y: rowNumber * height,
                 z: 0
-            },
-            color
+            }
         });
 
         pattern.graph.connectVertical(node, attachTo);
-        if (prevNode) {
-            if (leftToRight) {
-                pattern.graph.connectHorizontal(prevNode, node);
-            } else {
-                pattern.graph.connectHorizontal(node, prevNode);
-            }
-        }
-        prevNode = node;
     }
 }
 
@@ -501,7 +494,7 @@ export function createTriangle(options = {}) {
         rows = null,
         stitchType = StitchType.SINGLE_CROCHET,
         color = 0x8B4513
-    } = { ...options, ...validated };
+    } = validated;
 
     const pattern = new Pattern();
     pattern.metadata.name = 'Triangle';
@@ -547,36 +540,32 @@ function createTopDownTriangle(pattern, baseWidth, rows, stitchType, color) {
         const height = def?.height || 1.0;
         const stitchWidth = def?.width || 0.7;
 
-        let prevNode = null;
         const startOffset = Math.floor(decrease / 2);
+        const columnStep = leftToRight ? 1 : -1;
+        const startColumn = leftToRight ? 0 : currentWidth - 1;
+        const rowBuilder = createRowBuilder(pattern, {
+            row,
+            startColumn,
+            columnStep,
+            color,
+            connectDirection: leftToRight ? 'right' : 'left'
+        });
 
         for (let i = 0; i < currentWidth; i++) {
             const prevIndex = startOffset + i;
             if (prevIndex >= orderedPrevRow.length) break;
 
             const attachTo = orderedPrevRow[prevIndex];
-            const column = leftToRight ? i : currentWidth - 1 - i;
-
-            const node = pattern.graph.createNode(stitchType, {
-                row,
-                column,
+            const column = rowBuilder.getColumn();
+            const node = rowBuilder.addNode(stitchType, {
                 position: {
                     x: (startOffset + column) * stitchWidth,
                     y: row * height,
                     z: 0
-                },
-                color
+                }
             });
 
             pattern.graph.connectVertical(node, attachTo);
-            if (prevNode) {
-                if (leftToRight) {
-                    pattern.graph.connectHorizontal(prevNode, node);
-                } else {
-                    pattern.graph.connectHorizontal(node, prevNode);
-                }
-            }
-            prevNode = node;
         }
     }
 
@@ -611,36 +600,30 @@ function createBottomUpTriangle(pattern, baseWidth, rows, stitchType, color) {
         // Increase by 1-2 stitches per row
         currentWidth = Math.min(baseWidth, currentWidth + 2);
 
-        const leftToRight = row % 2 === 1;
-
-        let prevNode = null;
+        const rowBuilder = createRowBuilder(pattern, {
+            row,
+            startColumn: 0,
+            columnStep: 1,
+            color
+        });
 
         for (let i = 0; i < currentWidth; i++) {
             // Attach to previous row, reusing stitches for increases
             const prevIndex = Math.min(i, prevRow.length - 1);
             const attachTo = prevRow[Math.max(0, prevIndex)];
 
-            const column = leftToRight ? i : currentWidth - 1 - i;
-
-            const node = pattern.graph.createNode(stitchType, {
-                row,
-                column: i,
+            const column = rowBuilder.getColumn();
+            const node = rowBuilder.addNode(stitchType, {
                 position: {
-                    x: i * stitchWidth,
+                    x: column * stitchWidth,
                     y: row * height,
                     z: 0
-                },
-                color
+                }
             });
 
             if (attachTo) {
                 pattern.graph.connectVertical(node, attachTo);
             }
-
-            if (prevNode) {
-                pattern.graph.connectHorizontal(prevNode, node);
-            }
-            prevNode = node;
         }
     }
 

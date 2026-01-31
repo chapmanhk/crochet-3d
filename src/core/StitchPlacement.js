@@ -34,14 +34,17 @@ export function getNextColumn(rowStitches, workingDirection = 'right') {
  * @param {Array} rowStitches - Stitches in the row (unsorted OK)
  * @param {number} column - Target column
  * @param {string} workingDirection - 'right' or 'left'
+ * @param {boolean} [isSorted=false] - Whether rowStitches is already sorted
  * @returns {Object|null}
  */
-export function findPreviousInRow(rowStitches, column, workingDirection = 'right') {
+export function findPreviousInRow(rowStitches, column, workingDirection = 'right', isSorted = false) {
     if (!Array.isArray(rowStitches) || rowStitches.length === 0) {
         return null;
     }
 
-    const sorted = [...rowStitches].sort((a, b) => (a?.column ?? 0) - (b?.column ?? 0));
+    const sorted = isSorted
+        ? rowStitches
+        : [...rowStitches].sort((a, b) => (a?.column ?? 0) - (b?.column ?? 0));
 
     if (workingDirection === 'right') {
         for (let i = sorted.length - 1; i >= 0; i--) {
