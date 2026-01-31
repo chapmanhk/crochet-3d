@@ -3,6 +3,7 @@ import { EventBus, Events, EventSubscriptions } from '../utils/EventBus.js';
 import { YarnMaterial } from '../rendering/YarnMaterial.js';
 import { PatternConstants, AttachmentConstants } from '../utils/Constants.js';
 import { showInstructions, showConfirm, showPrompt, showAlert } from './Modal.js';
+import { StitchValidator } from '../core/StitchValidator.js';
 
 /**
  * UIManager - Manages all HTML/CSS UI elements
@@ -1035,12 +1036,31 @@ export class UIManager {
             if (attachPoint && attachPoint.stitch) {
                 const useSpace = attachPoint.type === 'chain-space' || this.pattern.currentWorkIntoSpace;
                 const skipCount = useSpace ? 0 : (this.pattern.currentSkipCount || 0);
-                this.pattern.addStitch(this.selectedStitchType, attachPoint.stitch, {
+                const stitchOptions = {
                     modifiers: this.pattern.currentModifiers,
                     skipCount,
                     loopSelection: this.pattern.currentLoopSelection,
                     workIntoSpace: useSpace
-                });
+                };
+
+                // Validate stitch placement before adding
+                const validation = StitchValidator.canPlaceStitch(
+                    this.selectedStitchType,
+                    attachPoint,
+                    this.pattern,
+                    stitchOptions
+                );
+
+                if (!validation.valid) {
+                    await showAlert(validation.errors.join('\n'), 'Cannot Place Stitch');
+                    return;
+                }
+
+                if (validation.warnings.length > 0) {
+                    console.warn('Stitch placement warnings:', validation.warnings);
+                }
+
+                this.pattern.addStitch(this.selectedStitchType, attachPoint.stitch, stitchOptions);
             }
         } catch (err) {
             console.error('Error adding stitch:', err);
