@@ -2,7 +2,7 @@
  * Tests for PhysicsEngine
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PhysicsEngine } from '../src/physics/PhysicsEngine.js';
 import { Pattern } from '../src/core/Pattern.js';
 import { StitchType } from '../src/core/StitchTypes.js';
@@ -90,5 +90,23 @@ describe('PhysicsEngine', () => {
         engine.applyImpulse(stitch, { x: 1, y: 0, z: 0 });
 
         expect(body.position.x).toBe(beforeX + 1);
+    });
+
+    it('subscribes to updates once and unsubscribes on stop', () => {
+        const unsubscribe = vi.fn();
+        sceneManager = {
+            onUpdate: vi.fn(() => unsubscribe)
+        };
+        const engine = new PhysicsEngine(pattern, sceneManager);
+
+        engine.start();
+        engine.start();
+
+        expect(sceneManager.onUpdate).toHaveBeenCalledTimes(1);
+
+        engine.stop();
+
+        expect(unsubscribe).toHaveBeenCalledTimes(1);
+        expect(sceneManager.onUpdate).toHaveBeenCalledTimes(1);
     });
 });
