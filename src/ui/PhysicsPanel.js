@@ -135,6 +135,11 @@ export class PhysicsPanel {
                 transition: transform 0.2s;
             }
 
+            .physics-toggle:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
             .physics-panel.expanded .physics-toggle {
                 transform: rotate(180deg);
             }
@@ -167,6 +172,11 @@ export class PhysicsPanel {
 
             .physics-btn:hover {
                 background: #f5f5f5;
+            }
+
+            .physics-btn:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
             }
 
             .physics-btn.primary {
@@ -242,6 +252,13 @@ export class PhysicsPanel {
                 text-align: center;
                 padding-top: 8px;
                 border-top: 1px solid #eee;
+            }
+
+            /* Focus styles for interactive elements */
+            .physics-controls input[type="checkbox"]:focus-visible,
+            .physics-controls input[type="range"]:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
             }
         `;
 

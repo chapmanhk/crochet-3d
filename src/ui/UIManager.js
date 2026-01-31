@@ -139,6 +139,11 @@ export class UIManager {
                 background: #f5f5f5;
             }
 
+            .stitch-btn:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
             .stitch-btn.selected {
                 border-color: #2196F3;
                 background: #e3f2fd;
@@ -178,6 +183,11 @@ export class UIManager {
 
             .toolbar-btn:hover {
                 background: #f0f0f0;
+            }
+
+            .toolbar-btn:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
             }
 
             .toolbar-btn:disabled {
@@ -403,6 +413,11 @@ export class UIManager {
                 background: #f0f0f0;
             }
 
+            .view-mode-btn:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
             .view-mode-btn.selected {
                 background: #2196F3;
                 color: white;
@@ -445,6 +460,11 @@ export class UIManager {
                 background: #f0f0f0;
             }
 
+            .template-btn:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
             /* Selection actions */
             .selection-actions {
                 margin-top: 8px;
@@ -466,6 +486,11 @@ export class UIManager {
 
             .info-action-btn:hover {
                 background: #f0f0f0;
+            }
+
+            .info-action-btn:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
             }
 
             /* Row Navigation */
@@ -511,6 +536,11 @@ export class UIManager {
                 background: #f0f0f0;
             }
 
+            .row-nav-btn:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
             .row-nav-btn:disabled {
                 opacity: 0.5;
                 cursor: not-allowed;
@@ -535,6 +565,11 @@ export class UIManager {
                 background: #ffebee;
             }
 
+            .row-goto-row input:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
             .row-goto-row button {
                 padding: 6px 12px;
                 border: 1px solid #ddd;
@@ -546,6 +581,30 @@ export class UIManager {
 
             .row-goto-row button:hover {
                 background: #f0f0f0;
+            }
+
+            .row-goto-row button:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
+            /* Focus styles for form inputs */
+            input[type="number"]:focus-visible,
+            input[type="color"]:focus-visible,
+            select:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
+            input[type="checkbox"]:focus-visible,
+            input[type="range"]:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
+            .color-swatch:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
             }
         `;
         document.head.appendChild(style);
