@@ -116,7 +116,7 @@ and attachment/interaction. Each task appears once.
   - **Symptoms:** Ghost stitches distinguished only by color (green=ghost, orange=new row, purple=chain space). Unusable for colorblind users.
   - **WCAG:** Level A violation
   - **Fix:** Add pattern/shape differentiation (e.g., different geometries) or text labels on hover/focus. Add `aria-label` describing the attachment type.
-  - **Status:** Fixed - Implemented different geometries for attachment types: Cone for new row indicators, Torus ring for chain spaces, and Sphere for regular stitches. Added descriptive aria labels to mesh userData (AttachmentPointManager.js:79-83, 330, 360, 382-386, 440-473).
+  - **Status:** Fixed - Implemented different geometries for attachment types: Cone for new row indicators, Torus ring for chain spaces, and Sphere for regular stitches. Added descriptive aria labels to mesh userData. Commit f041b3e.
 - [ ] **Bug: No keyboard navigation between panels**
   - **Location:** UIManager.js
   - **Symptoms:** Tab key doesn't move focus through UI panels. Panels not in tab order.
