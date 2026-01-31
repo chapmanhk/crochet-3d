@@ -118,6 +118,8 @@ class CrochetApp {
             console.log('  T - Triple crochet');
             console.log('  I - Increase');
             console.log('  X - Decrease');
+            console.log('  M - Magic ring');
+            console.log('  L - Slip stitch');
             console.log('  N - New row');
             console.log('  Enter - Add stitch');
             console.log('  Ctrl+Z - Undo');
