@@ -37,6 +37,14 @@ function validateTemplateOptions(options, limits) {
 }
 
 /**
+ * Sync current row and working direction after template generation.
+ */
+function syncPatternAfterTemplate(pattern) {
+    const lastRow = Math.max(0, pattern.graph.getRowCount() - 1);
+    pattern.goToRow(lastRow);
+}
+
+/**
  * Create a row builder for sequential stitches.
  */
 function createRowBuilder(pattern, { row, startColumn = 0, columnStep = 1, color, connectDirection = 'right' }) {
@@ -168,6 +176,7 @@ export function createGrannySquare(options = {}) {
         addGrannySquareRound(pattern, round, color);
     }
 
+    syncPatternAfterTemplate(pattern);
     pattern.saveHistoryState('Create granny square template');
     return pattern;
 }
@@ -297,6 +306,7 @@ export function createBasicCircle(options = {}) {
         addCircleRound(pattern, round, initialStitches, stitchType, color);
     }
 
+    syncPatternAfterTemplate(pattern);
     return pattern;
 }
 
@@ -427,6 +437,7 @@ export function createBasicSquare(options = {}) {
         addSquareRow(pattern, row, size, stitchType, color);
     }
 
+    syncPatternAfterTemplate(pattern);
     return pattern;
 }
 
@@ -569,6 +580,7 @@ function createTopDownTriangle(pattern, baseWidth, rows, stitchType, color) {
         }
     }
 
+    syncPatternAfterTemplate(pattern);
     pattern.saveHistoryState('Create triangle template');
     return pattern;
 }
@@ -627,6 +639,7 @@ function createBottomUpTriangle(pattern, baseWidth, rows, stitchType, color) {
         }
     }
 
+    syncPatternAfterTemplate(pattern);
     pattern.saveHistoryState('Create triangle template');
     return pattern;
 }

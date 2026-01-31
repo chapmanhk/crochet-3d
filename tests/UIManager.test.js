@@ -23,6 +23,7 @@ vi.mock('../src/ui/Modal.js', () => ({
 class MockPattern {
     constructor() {
         this.currentRow = 0;
+        this.workingDirection = 'right';
         this.selectedStitchType = 'SINGLE_CROCHET';
         this.currentColor = 0x8B4513;
         this.currentLoopSelection = 'both';
@@ -35,6 +36,8 @@ class MockPattern {
                 totalStitches: 10,
                 rowCount: 3
             }),
+            getRowSorted: vi.fn(() => []),
+            getRow: vi.fn(() => []),
             clear: vi.fn()
         };
         this.history = [];
@@ -731,10 +734,13 @@ describe('UIManager - Stitch options and actions', () => {
     });
 
     it('adds a stitch at next available attachment point', async () => {
-        const stitch = { id: 'attach', row: 0, column: 0 };
+        const stitch = { id: 'attach', row: 0, column: 0, connections: { above: [] } };
+        const nextStitch = { id: 'next', row: 0, column: 1 };
         mockPattern.getAttachmentPoints.mockReturnValue([
             { stitch, type: 'above', available: true, suggested: true }
         ]);
+        mockPattern.graph.getRowSorted.mockReturnValue([stitch, nextStitch]);
+        mockPattern.graph.getRow.mockReturnValue([stitch, nextStitch]);
         mockPattern.currentSkipCount = 1;
 
         await uiManager.addStitchAtNextPosition();

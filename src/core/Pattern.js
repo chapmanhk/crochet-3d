@@ -402,7 +402,7 @@ export class Pattern {
             row,
             column,
             color
-        } = this.normalizeAddOptions(options, attachToNode);
+        } = this.normalizeAddOptions(options, attachToNode, type);
 
         const { actualAttachNode, skippedStitches } =
             this.resolveAttachmentForSkip(attachToNode, skipCount);
@@ -450,7 +450,7 @@ export class Pattern {
     /**
      * Normalize addStitch options into a consistent shape.
      */
-    normalizeAddOptions(options, attachToNode) {
+    normalizeAddOptions(options, attachToNode, type) {
         const modifiers = Array.isArray(options.modifiers)
             ? options.modifiers
             : (this.currentModifiers || []);
@@ -458,6 +458,14 @@ export class Pattern {
             ? options.skipCount
             : (Number.isFinite(this.currentSkipCount) ? this.currentSkipCount : 0);
         const skipCount = skipSource >= 0 ? Math.floor(skipSource) : 0;
+        const isDecrease = modifiers.includes(StitchModifier.DECREASE) ||
+            modifiers.includes(StitchModifier.DECREASE_3) ||
+            type === StitchType.DECREASE ||
+            type === StitchType.CLUSTER;
+        const resolvedSkipCount = isDecrease ? 0 : skipCount;
+        if (isDecrease && skipCount > 0) {
+            console.warn('Skip count ignored for decreases');
+        }
         const workIntoSpace = options.workIntoSpace !== undefined
             ? Boolean(options.workIntoSpace)
             : Boolean(this.currentWorkIntoSpace);
@@ -472,7 +480,7 @@ export class Pattern {
 
         return {
             modifiers,
-            skipCount,
+            skipCount: resolvedSkipCount,
             workIntoSpace,
             loopSelection,
             row,
@@ -825,7 +833,6 @@ export class Pattern {
         // Determine which row we're working into (previous row)
         // If currentRow is 0, we're working into the foundation to create row 1
         const targetRow = this.currentRow === 0 ? 0 : this.currentRow - 1;
-        const workingRow = this.currentRow === 0 ? 1 : this.currentRow;
 
         // Get stitches from the row we're working into
         const prevRow = this.workingDirection === 'right'
@@ -836,15 +843,10 @@ export class Pattern {
             return points;
         }
 
-        // Get the last stitch in the row we're building (to determine suggested point)
-        // Exclude turning chains when finding the last working stitch
-        const workingRowStitches = this.graph.getRowSorted(workingRow)
-            .filter(s => !s.isTurningChain);
-        const lastWorkingStitch = workingRowStitches.length > 0
-            ? workingRowStitches[workingRowStitches.length - 1]
-            : null;
+        // Track the first available stitch in working direction order
+        let suggestedStitch = null;
 
-        prevRow.forEach((stitch, index) => {
+        prevRow.forEach((stitch) => {
             // Count working stitches for connection checks
             // Filter out turning chains EXCEPT those that count as a stitch (like dc's ch-3)
             // because those DO occupy the attachment point
@@ -854,29 +856,10 @@ export class Pattern {
             const isAvailable = remainingConnections > 0;
 
             if (isAvailable) {
-                // Determine if this is the suggested next attachment point
-                let isSuggested = false;
-                const lastWorkedIntoStitch = lastWorkingStitch?.connections?.below?.[0] ?? null;
-
-                if (lastWorkedIntoStitch && lastWorkedIntoStitch === stitch) {
-                    // For increases, keep suggesting the same stitch until it fills
-                    isSuggested = remainingConnections > 0;
-                } else if (!hasWorkingConnection) {
-                    if (!lastWorkingStitch) {
-                        // No working stitches yet - suggest first available
-                        isSuggested = index === 0;
-                    } else {
-                        // Suggest the stitch adjacent to the last one worked
-                        const lastWorkedIntoCol = lastWorkingStitch.connections.below[0]?.column;
-                        if (lastWorkedIntoCol !== undefined) {
-                            const expectedNextCol = this.workingDirection === 'right'
-                                ? lastWorkedIntoCol + 1
-                                : lastWorkedIntoCol - 1;
-                            isSuggested = stitch.column === expectedNextCol;
-                        }
-                    }
+                if (!suggestedStitch) {
+                    suggestedStitch = stitch;
                 }
-
+                const isSuggested = stitch === suggestedStitch;
                 points.push({
                     stitch,
                     type: 'above',
@@ -1009,7 +992,7 @@ export class Pattern {
         const listeners = this.graph.listeners;
         this.graph = StitchGraph.fromJSON(stateData);
         this.graph.listeners = listeners;
-        this.currentRow = this.graph.getRowCount() - 1;
+        this.currentRow = Math.max(0, this.graph.getRowCount() - 1);
         EventBus.emit(Events.PATTERN_LOADED, { pattern: this });
     }
 
@@ -1136,16 +1119,17 @@ export class Pattern {
 
         if (hasFoundation) {
             const foundationRow = this.graph.getRowSorted(0);
-            lines.push(`Foundation: ch ${foundationRow.length} (${foundationRow.length} sts)`);
+            lines.push(`Foundation: ch ${foundationRow.length} (${foundationRow.length} ch)`);
         }
 
         const startRow = hasFoundation ? 1 : 0;
         for (let row = startRow; row < rowCount; row++) {
             const stitches = this.graph.getRowSorted(row);
+            const rowStitches = stitches.filter(s => s.type !== StitchType.MAGIC_RING);
 
             // Separate turning chains from working stitches
-            const turningChains = stitches.filter(s => s.isTurningChain);
-            const workingStitches = stitches.filter(s => !s.isTurningChain);
+            const turningChains = rowStitches.filter(s => s.isTurningChain);
+            const workingStitches = rowStitches.filter(s => !s.isTurningChain);
 
             // Group consecutive same-type stitches
             const groups = [];
@@ -1165,32 +1149,44 @@ export class Pattern {
 
                 // Add skip prefix if stitches were skipped
                 const skipCount = s.skippedStitches?.length || 0;
-                const skipPrefix = skipCount > 0 ? `sk ${skipCount}, ` : '';
+                const skipPrefix = skipCount > 0
+                    ? `skip ${skipCount} st${skipCount === 1 ? '' : 's'}, `
+                    : '';
 
                 const displayName = skipPrefix + getStitchDisplayName(s.type, effectiveModifiers);
 
                 if (currentGroup && currentGroup.name === displayName && skipCount === 0) {
                     currentGroup.count++;
                 } else {
-                    currentGroup = { name: displayName, abbr: s.abbreviation, count: 1 };
+                    currentGroup = {
+                        name: displayName,
+                        abbr: skipCount > 0 ? displayName : s.abbreviation,
+                        count: 1
+                    };
                     groups.push(currentGroup);
                 }
             });
 
             // Build instruction string
-            let instruction = '';
+            const instructionParts = [];
 
             if (turningChains.length > 0) {
-                instruction += `Ch ${turningChains.length}`;
+                let chainInstruction = `Ch ${turningChains.length}`;
                 if (turningChains.some(tc => tc.turningChainCountsAsStitch)) {
-                    instruction += ' (counts as first st)';
+                    chainInstruction += ' (counts as first st)';
                 }
-                instruction += ', ';
+                instructionParts.push(chainInstruction);
             }
 
-            instruction += groups
-                .map(g => g.count > 1 ? `${g.count} ${g.abbr}` : g.abbr)
-                .join(', ');
+            if (groups.length > 0) {
+                instructionParts.push(
+                    groups
+                        .map(g => g.count > 1 ? `${g.count} ${g.abbr}` : g.abbr)
+                        .join(', ')
+                );
+            }
+
+            const instruction = instructionParts.join(', ');
 
             // Calculate working stitch count, accounting for increases
             const totalWorking = workingStitches.reduce((count, s) => {

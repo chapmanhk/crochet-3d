@@ -54,6 +54,7 @@ export class PhysicsEngine {
 
         // Store unsubscribe functions for cleanup
         this.eventUnsubscribers = [];
+        this.updateUnsubscribe = null;
 
         // Setup event listeners
         this.setupEventListeners();
@@ -301,7 +302,9 @@ export class PhysicsEngine {
         if (this.isRunning) return;
 
         this.isRunning = true;
-        this.sceneManager.onUpdate(this.update);
+        if (!this.updateUnsubscribe) {
+            this.updateUnsubscribe = this.sceneManager.onUpdate(this.update);
+        }
         EventBus.emit(Events.PHYSICS_STARTED);
     }
 
@@ -309,6 +312,10 @@ export class PhysicsEngine {
      * Stop physics simulation
      */
     stop() {
+        if (this.updateUnsubscribe) {
+            this.updateUnsubscribe();
+            this.updateUnsubscribe = null;
+        }
         this.isRunning = false;
         this.isSettling = false;
     }
@@ -414,8 +421,7 @@ export class PhysicsEngine {
                 const avgMovement = totalMovement / Math.max(1, this.bodies.size);
 
                 if (avgMovement < this.settleThreshold || this.settleFrames >= this.maxSettleFrames) {
-                    this.isSettling = false;
-                    this.isRunning = false;
+                    this.stop();
                     EventBus.emit(Events.PHYSICS_SETTLED);
                 }
             }

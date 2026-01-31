@@ -6,6 +6,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AttachmentPointManager } from '../src/interaction/AttachmentPointManager.js';
 import { EventBus, Events } from '../src/utils/EventBus.js';
 import { StitchType } from '../src/core/StitchTypes.js';
+import { StitchValidator } from '../src/core/StitchValidator.js';
+import { AttachmentConstants } from '../src/utils/Constants.js';
+import { showAlert } from '../src/ui/Modal.js';
+
+vi.mock('../src/ui/Modal.js', () => ({
+    showAlert: vi.fn(() => Promise.resolve())
+}));
 
 describe('AttachmentPointManager', () => {
     let sceneManager;
@@ -15,6 +22,7 @@ describe('AttachmentPointManager', () => {
 
     beforeEach(() => {
         EventBus.clear();
+        showAlert.mockClear();
         row0 = [
             { position: { x: 0, y: 0, z: 0 }, height: 1, column: 0, connections: {} },
             { position: { x: 1, y: 0, z: 0 }, height: 1, column: 1, connections: {} }
@@ -35,7 +43,8 @@ describe('AttachmentPointManager', () => {
                 { stitch: row0[0], type: 'above', available: true, suggested: true }
             ]),
             getChainSpaces: vi.fn(() => []),
-            startNewRow: vi.fn()
+            startNewRow: vi.fn(),
+            addStitch: vi.fn()
         };
 
         sceneManager = {
@@ -70,14 +79,14 @@ describe('AttachmentPointManager', () => {
         expect(manager.pointMeshes[0].userData.isNewRowIndicator).toBe(true);
     });
 
-    it('handles click on new row indicator', () => {
+    it('handles click on new row indicator', async () => {
         const mesh = {
             userData: { isNewRowIndicator: true, isAttachmentPoint: true }
         };
         manager.hoveredPoint = mesh;
         const updateSpy = vi.spyOn(manager, 'updateAttachmentPoints');
 
-        manager.onClick();
+        await manager.onClick();
 
         expect(pattern.startNewRow).toHaveBeenCalledWith({ stitchType: manager.previewStitchType });
         expect(updateSpy).toHaveBeenCalled();
@@ -103,5 +112,43 @@ describe('AttachmentPointManager', () => {
         expect(pattern.getChainSpaces).toHaveBeenCalled();
         expect(manager.pointMeshes).toHaveLength(1);
         expect(manager.pointMeshes[0].userData.attachmentPoint.suggested).toBe(true);
+    });
+
+    it('restores suggested scale after hover ends', () => {
+        manager.updateAttachmentPoints();
+        const mesh = manager.pointMeshes[0];
+        manager.hoveredPoint = mesh;
+        mesh.scale.setScalar(AttachmentConstants.HOVER_SCALE);
+
+        sceneManager.domElement.getBoundingClientRect = () => ({
+            left: 0,
+            top: 0,
+            width: 100,
+            height: 100
+        });
+
+        manager.onMouseMove({ clientX: 0, clientY: 0 });
+
+        expect(mesh.scale.x).toBeCloseTo(AttachmentConstants.GHOST_SCALE * 1.2);
+        expect(manager.hoveredPoint).toBe(null);
+    });
+
+    it('blocks invalid stitch placements and shows modal', async () => {
+        const validationSpy = vi.spyOn(StitchValidator, 'canPlaceStitch').mockReturnValue({
+            valid: false,
+            warnings: [],
+            errors: ['Invalid stitch'],
+            suggestions: []
+        });
+
+        manager.updateAttachmentPoints();
+        manager.hoveredPoint = manager.pointMeshes[0];
+
+        await manager.onClick({});
+
+        expect(validationSpy).toHaveBeenCalled();
+        expect(showAlert).toHaveBeenCalledWith('Invalid stitch', 'Cannot Place Stitch');
+        expect(pattern.addStitch).not.toHaveBeenCalled();
+        validationSpy.mockRestore();
     });
 });

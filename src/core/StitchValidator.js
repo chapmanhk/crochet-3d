@@ -58,7 +58,8 @@ export class StitchValidator {
         const connectionsOut = attachStitch.effectiveConnections?.connectionsOut
             || attachStitch.definition?.connectionsOut || 1;
 
-        const workingConnectionsAbove = attachStitch.connections.above.filter(stitch =>
+        const attachConnectionsAbove = attachStitch.connections?.above || [];
+        const workingConnectionsAbove = attachConnectionsAbove.filter(stitch =>
             !stitch.isTurningChain || stitch.turningChainCountsAsStitch
         );
 
@@ -74,35 +75,43 @@ export class StitchValidator {
                           stitchType === StitchType.DECREASE ||
                           stitchType === StitchType.CLUSTER;
 
+        const effectiveSkipCount = isDecrease && skipCount > 0 ? 0 : skipCount;
+        if (isDecrease && skipCount > 0) {
+            result.warnings.push('Skip count is ignored for decreases');
+        }
+
         if (isDecrease) {
             const decreaseCount = modifiers.includes(StitchModifier.DECREASE_3) ? 3 :
                                  stitchType === StitchType.CLUSTER ? 3 : 2;
             const row = attachStitch.row;
             const rowStitches = pattern.graph.getRowSorted(row);
-            const attachIndex = rowStitches.indexOf(attachStitch);
+            const workingRowStitches = rowStitches.filter(stitch =>
+                !stitch.isTurningChain || stitch.turningChainCountsAsStitch
+            );
+            const orderedRowStitches = pattern.workingDirection === 'left'
+                ? [...workingRowStitches].reverse()
+                : workingRowStitches;
+            const attachIndex = orderedRowStitches.indexOf(attachStitch);
+            const targetStitches = attachIndex === -1
+                ? []
+                : orderedRowStitches.slice(attachIndex, attachIndex + decreaseCount);
 
-            // Check bounds based on working direction
-            const direction = pattern.workingDirection === 'left' ? -1 : 1;
-            const hasEnoughStitches = direction === 1
-                ? attachIndex !== -1 && attachIndex <= rowStitches.length - decreaseCount
-                : attachIndex !== -1 && attachIndex >= decreaseCount - 1;
-
-            if (!hasEnoughStitches) {
+            if (attachIndex === -1 || targetStitches.length < decreaseCount) {
                 result.errors.push(`Decrease requires ${decreaseCount} adjacent stitches`);
                 result.valid = false;
                 return result;
             }
 
             // Check that all stitches needed for decrease are available
-            for (let i = 1; i < decreaseCount; i++) {
-                const nextIndex = attachIndex + (i * direction);
-                const nextStitch = rowStitches[nextIndex];
+            for (let i = 1; i < targetStitches.length; i++) {
+                const nextStitch = targetStitches[i];
                 if (!nextStitch) {
                     result.errors.push(`Not enough stitches for ${decreaseCount}-stitch decrease`);
                     result.valid = false;
                     return result;
                 }
-                const workingAbove = nextStitch.connections.above.filter(stitch =>
+                const nextConnectionsAbove = nextStitch.connections?.above || [];
+                const workingAbove = nextConnectionsAbove.filter(stitch =>
                     !stitch.isTurningChain || stitch.turningChainCountsAsStitch
                 );
                 if (workingAbove.length > 0) {
@@ -114,16 +123,16 @@ export class StitchValidator {
         }
 
         // Validate skip stitches
-        if (skipCount > 0) {
+        if (effectiveSkipCount > 0) {
             const row = attachStitch.row;
             const rowStitches = pattern.graph.getRowSorted(row);
             const attachIndex = rowStitches.indexOf(attachStitch);
 
             // Find actual attachment after skip, respecting working direction
             const direction = pattern.workingDirection === 'left' ? -1 : 1;
-            const actualAttachIndex = attachIndex + (skipCount * direction);
+            const actualAttachIndex = attachIndex + (effectiveSkipCount * direction);
             if (actualAttachIndex < 0 || actualAttachIndex >= rowStitches.length) {
-                result.errors.push(`Cannot skip ${skipCount} stitches - not enough stitches in row`);
+                result.errors.push(`Cannot skip ${effectiveSkipCount} stitches - not enough stitches in row`);
                 result.valid = false;
                 return result;
             }

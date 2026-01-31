@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { StitchType, getStitchDefinition } from '../core/StitchTypes.js';
+import { StitchValidator } from '../core/StitchValidator.js';
 import { EventBus, Events, EventSubscriptions } from '../utils/EventBus.js';
 import { AttachmentConstants } from '../utils/Constants.js';
+import { showAlert } from '../ui/Modal.js';
 
 /**
  * AttachmentPointManager - Manages clickable attachment points for adding stitches
@@ -331,7 +333,9 @@ export class AttachmentPointManager {
         // Mark as new row indicator
         mesh.userData.isNewRowIndicator = true;
         mesh.userData.isAttachmentPoint = true;
-        mesh.scale.setScalar(AttachmentConstants.GHOST_SCALE * 1.1);
+        const baseScale = AttachmentConstants.GHOST_SCALE * 1.1;
+        mesh.userData.baseScale = baseScale;
+        mesh.scale.setScalar(baseScale);
 
         this.pointMeshes.push(mesh);
         this.group.add(mesh);
@@ -364,12 +368,11 @@ export class AttachmentPointManager {
         mesh.userData.isChainSpace = point.type === 'chain-space';
 
         // Scale down slightly for ghost effect
-        mesh.scale.setScalar(AttachmentConstants.GHOST_SCALE);
-
-        // Highlight suggested attachment point
-        if (point.suggested) {
-            mesh.scale.setScalar(AttachmentConstants.GHOST_SCALE * 1.2);
-        }
+        const baseScale = point.suggested
+            ? AttachmentConstants.GHOST_SCALE * 1.2
+            : AttachmentConstants.GHOST_SCALE;
+        mesh.userData.baseScale = baseScale;
+        mesh.scale.setScalar(baseScale);
 
         return mesh;
     }
@@ -433,7 +436,8 @@ export class AttachmentPointManager {
                 ? this.newRowMaterial
                 : (this.hoveredPoint.userData.isChainSpace ? this.chainSpaceMaterial : this.ghostMaterial);
             this.hoveredPoint.material = baseMaterial;
-            this.hoveredPoint.scale.setScalar(AttachmentConstants.GHOST_SCALE);
+            const baseScale = this.hoveredPoint.userData.baseScale ?? AttachmentConstants.GHOST_SCALE;
+            this.hoveredPoint.scale.setScalar(baseScale);
             this.hoveredPoint = null;
         }
 
@@ -457,7 +461,7 @@ export class AttachmentPointManager {
     /**
      * Handle click on attachment points
      */
-    onClick(event) {
+    async onClick(event) {
         if (!this.hoveredPoint) return;
 
         // Handle new row indicator click
@@ -475,12 +479,27 @@ export class AttachmentPointManager {
         // Add stitch at this attachment point
         const useSpace = point.type === 'chain-space' || this.pattern.currentWorkIntoSpace;
         const skipCount = useSpace ? 0 : (this.pattern.currentSkipCount || 0);
-        this.pattern.addStitch(this.previewStitchType, point.stitch, {
+        const stitchOptions = {
             modifiers: this.pattern.currentModifiers,
             skipCount,
             loopSelection: this.pattern.currentLoopSelection,
             workIntoSpace: useSpace
-        });
+        };
+        const validation = StitchValidator.canPlaceStitch(
+            this.previewStitchType,
+            point,
+            this.pattern,
+            stitchOptions
+        );
+        if (!validation.valid) {
+            await showAlert(validation.errors.join('\n'), 'Cannot Place Stitch');
+            return;
+        }
+        if (validation.warnings.length > 0) {
+            console.warn('Stitch placement warnings:', validation.warnings);
+        }
+
+        this.pattern.addStitch(this.previewStitchType, point.stitch, stitchOptions);
 
         // Update attachment points after adding
         this.updateAttachmentPoints();

@@ -13,7 +13,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Pattern } from '../src/core/Pattern.js';
-import { StitchType } from '../src/core/StitchTypes.js';
+import { StitchType, StitchModifier } from '../src/core/StitchTypes.js';
 import { EventBus, Events } from '../src/utils/EventBus.js';
 import { PatternConstants } from '../src/utils/Constants.js';
 
@@ -243,12 +243,25 @@ describe('Pattern', () => {
 
         it('should support skipping stitches when adding', () => {
             const chain = pattern.graph.getRowSorted(0);
-            const stitch = pattern.addStitch(StitchType.SINGLE_CROCHET, chain[0], {
+            const stitch = pattern.addStitch(StitchType.SINGLE_CROCHET, chain[4], {
                 skipCount: 1
             });
 
-            expect(stitch.connections.below).toContain(chain[1]);
-            expect(stitch.skippedStitches).toContain(chain[0]);
+            expect(stitch.connections.below).toContain(chain[3]);
+            expect(stitch.skippedStitches).toContain(chain[4]);
+        });
+
+        it('should ignore skip count for decreases', () => {
+            const chain = pattern.graph.getRowSorted(0);
+            const stitch = pattern.addStitch(StitchType.SINGLE_CROCHET, chain[4], {
+                modifiers: [StitchModifier.DECREASE],
+                skipCount: 1
+            });
+
+            expect(stitch.connections.below).toContain(chain[4]);
+            expect(stitch.connections.below).toContain(chain[3]);
+            expect(stitch.connections.below).not.toContain(chain[2]);
+            expect(stitch.skippedStitches).toHaveLength(0);
         });
 
         it('should mark stitches worked into spaces', () => {
@@ -571,6 +584,16 @@ describe('Pattern', () => {
             expect(pattern.graph.size).toBe(6);
         });
 
+        it('should clamp currentRow when redoing to empty pattern', () => {
+            pattern.clearPattern();
+
+            pattern.undo();
+            pattern.redo();
+
+            expect(pattern.graph.size).toBe(0);
+            expect(pattern.currentRow).toBe(0);
+        });
+
         it('should report canUndo correctly', () => {
             expect(pattern.canUndo()).toBe(false);
 
@@ -692,6 +715,18 @@ describe('Pattern', () => {
             if (suggested) {
                 expect(suggested.stitch.column).toBe(1);
             }
+        });
+
+        it('should suggest first unworked stitch after out-of-order placement', () => {
+            pattern.startNewRow();
+            pattern.workingDirection = 'right';
+            const chain = pattern.graph.getRowSorted(0);
+            pattern.addStitch(StitchType.SINGLE_CROCHET, chain[2]);
+
+            const points = pattern.getAttachmentPoints();
+
+            const suggested = points.find(p => p.suggested);
+            expect(suggested.stitch).toBe(chain[0]);
         });
 
         it('should exclude stitches with turning chain that counts as stitch', () => {
@@ -828,7 +863,7 @@ describe('Pattern', () => {
             expect(instructions).toContain('Pattern:');
             expect(instructions).toContain('Foundation:');
             expect(instructions).toContain('ch');
-            expect(instructions).toContain('5 sts');
+            expect(instructions).toContain('5 ch');
         });
 
         it('should include pattern name', () => {
@@ -863,6 +898,36 @@ describe('Pattern', () => {
             expect(instructions).toContain('Row 1:');
             expect(instructions).toContain('sc');
             expect(instructions).toContain('dc');
+        });
+
+        it('should exclude magic ring from row stitch counts', () => {
+            pattern.startWithMagicRing(4);
+
+            const instructions = pattern.generateInstructions();
+            const rowLine = instructions.split('\n').find(line => line.startsWith('Row 1:'));
+
+            expect(rowLine).toContain('(4 sts)');
+        });
+
+        it('should omit trailing commas for turning-chain-only rows', () => {
+            pattern.startWithChain(2);
+            pattern.startNewRow();
+
+            const instructions = pattern.generateInstructions();
+            const rowLine = instructions.split('\n').find(line => line.startsWith('Row 1:'));
+
+            expect(rowLine).toContain('Ch 1');
+            expect(rowLine).not.toContain('Ch 1,');
+        });
+
+        it('should spell out skip instructions', () => {
+            pattern.startWithChain(3);
+            const chain = pattern.graph.getRowSorted(0);
+            pattern.addStitch(StitchType.SINGLE_CROCHET, chain[0], { skipCount: 1 });
+
+            const instructions = pattern.generateInstructions();
+
+            expect(instructions).toContain('skip 1 st, sc');
         });
     });
 

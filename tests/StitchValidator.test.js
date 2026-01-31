@@ -127,6 +127,7 @@ describe('StitchValidator', () => {
             it('should error when decrease has no adjacent stitch', () => {
                 // Position at end of row
                 const lastChain = pattern.graph.getAt(0, 4);
+                pattern.workingDirection = 'right';
 
                 const attachPoint = {
                     stitch: lastChain,
@@ -141,6 +142,24 @@ describe('StitchValidator', () => {
 
                 expect(result.valid).toBe(false);
                 expect(result.errors.some(e => e.includes('adjacent stitches'))).toBe(true);
+            });
+
+            it('should allow decrease at row end when working left', () => {
+                const lastChain = pattern.graph.getAt(0, 4);
+                pattern.workingDirection = 'left';
+
+                const attachPoint = {
+                    stitch: lastChain,
+                    type: 'above'
+                };
+
+                const result = StitchValidator.canPlaceStitch(
+                    StitchType.DECREASE,
+                    attachPoint,
+                    pattern
+                );
+
+                expect(result.valid).toBe(true);
             });
 
             it('should error when second stitch for decrease is connected', () => {

@@ -161,6 +161,13 @@ describe('ExportManager', () => {
             expect(parsed.metadata.author).toBe('Test Author');
         });
 
+        it('should include turning chain column note in JSON export', () => {
+            const json = exportManager.exportJSON();
+            const parsed = JSON.parse(json);
+
+            expect(parsed.exportNotes?.turningChainColumns).toBeDefined();
+        });
+
         it('should format JSON with indentation when pretty option is true', () => {
             const json = exportManager.exportJSON({ pretty: true });
 
@@ -608,7 +615,7 @@ describe('ExportManager', () => {
             vi.restoreAllMocks();
         });
 
-        it('should throw for invalid data URL format', () => {
+        it('should throw for invalid data URL format', async () => {
             const module = await import('../src/utils/ExportManager.js');
             const manager = new module.ExportManager(mockPattern, mockRenderer);
 
@@ -616,7 +623,7 @@ describe('ExportManager', () => {
                 .toThrow('Invalid data URL format');
         });
 
-        it('should throw for invalid base64 in data URL', () => {
+        it('should throw for invalid base64 in data URL', async () => {
             const module = await import('../src/utils/ExportManager.js');
             const manager = new module.ExportManager(mockPattern, mockRenderer);
             const originalAtob = globalThis.atob;
@@ -633,7 +640,7 @@ describe('ExportManager', () => {
             }
         });
 
-        it('should escape PDF strings safely', () => {
+        it('should escape PDF strings safely', async () => {
             const module = await import('../src/utils/ExportManager.js');
             const manager = new module.ExportManager(mockPattern, mockRenderer);
 
