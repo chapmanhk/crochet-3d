@@ -11,20 +11,23 @@ and attachment/interaction. Each task appears once.
 
 ### Foundations, start flow & templates
 
-- [ ] **Bug: No explicit "Start Pattern" action**
+- [x] **Bug: No explicit "Start Pattern" action**
   - **Symptoms:** Empty canvas has no clickable ghosts; user must press
     "Add Stitch" to discover the foundation chain prompt.
   - **Fix:** Add a primary "Start Pattern" button (or onboarding modal) that
     offers foundation chain, foundation SC, or magic ring options.
-- [ ] **Bug: Templates exist but are inaccessible in the UI**
+  - **Status:** Fixed - Primary "Start Pattern" button added to toolbar (UIManager.js:708) with complete modal implementation (UIManager.js:1482-1569).
+- [x] **Bug: Templates exist but are inaccessible in the UI**
   - **Symptoms:** `PatternTemplates` is unused in UI; no entry point for
     granny square, circle, square, or triangle.
   - **Fix:** Add a "Templates" panel to create starter patterns.
-- [ ] **Bug: No UI for alternate starts (foundation SC/DC, magic ring)**
+  - **Status:** Fixed - Templates panel added with Granny Square, Basic Circle, Basic Square, and Triangle options (UIManager.js:680-694).
+- [x] **Bug: No UI for alternate starts (foundation SC/DC, magic ring)**
   - **Symptoms:** Foundation SC, foundation DC, and magic ring exist in core
     but cannot be selected from the UI.
   - **Fix:** Add a "Start Method" modal on new pattern with Foundation Chain,
     Foundation SC, Foundation DC, and Magic Ring options.
+  - **Status:** Fixed - Start Pattern modal includes all foundation methods: Foundation Chain, Foundation SC, Foundation DC, and Magic Ring with proper prompts (UIManager.js:1482-1569).
 
 ### Row navigation, inputs & shortcuts
 
@@ -62,28 +65,31 @@ and attachment/interaction. Each task appears once.
   - **Fix:** In `UIManager.onKeyDown`, ignore events from `SELECT` elements,
     contentEditable nodes, and when a modal overlay is active.
   - **Status:** Fixed - onKeyDown checks for modal overlays (line 1202), SELECT/INPUT/TEXTAREA (line 1208), and contentEditable (line 1211).
-- [ ] **Issue: Working direction label "start at chain end" is ambiguous**
+- [x] **Issue: Working direction label "start at chain end" is ambiguous**
   - **Symptoms:** The label "← left (start at chain end)" could confuse
     beginners who think "chain end" means the slip knot end (start of chain).
   - **Fix:** Rephrase to "← left (start at last chain made)" or add a tooltip
     explaining that you work back toward the beginning.
+  - **Status:** Fixed - Working direction label now shows "(start at last chain made)" for foundation rows (UIManager.js:1984).
 
 ### Selection & color
 
 - [ ] **Bug: Color changes apply only to future stitches**
   - **Symptoms:** Selecting stitches doesn't allow recolor.
   - **Fix:** Add "Apply color to selection" action in the info panel.
-- [ ] **Bug: Selection persists across pattern loads**
+- [x] **Bug: Selection persists across pattern loads**
   - **Symptoms:** Selected nodes from a previous pattern remain in
     `RaycastManager.selectedNodes`, and Delete attempts remove stale nodes.
   - **Fix:** Clear selection on `PATTERN_LOADED`/`PATTERN_CLEARED` and prune
     selections on `STITCH_REMOVED`.
+  - **Status:** Fixed - RaycastManager now clears selection on PATTERN_LOADED/PATTERN_CLEARED and prunes on STITCH_REMOVED (RaycastManager.js:51-54, 269-293).
 
 ### Guides & enhancements
 
-- [ ] **Enhancement: Add "Crown Shaping Guide" for beanies**
+- [x] **Enhancement: Add "Crown Shaping Guide" for beanies**
   - Similar to the existing ShapingGuide, add specific guidance for closing
     circular patterns (decrease evenly, close with drawstring, etc.).
+  - **Status:** Fixed - Crown Shaping Guide button added with full implementation using getCrownShapingGuide() (UIManager.js:867-868, 1014-1019, 1784-1809).
 - [ ] **Enhancement: Show stitch count per row in real-time**
   - While working a row, display running stitch count vs. previous row count
     to help crocheters track increases/decreases.
@@ -93,22 +99,24 @@ and attachment/interaction. Each task appears once.
 
 ### Accessibility (CRITICAL - WCAG Compliance)
 
-- [ ] **Bug: Missing ARIA labels on all interactive elements**
+- [x] **Bug: Missing ARIA labels on all interactive elements**
   - **Location:** UIManager.js, PhysicsPanel.js, Modal.js
   - **Symptoms:** Buttons, sliders, inputs lack `aria-label` attributes. Screen readers cannot identify element purpose.
   - **WCAG:** Level A violation
   - **Fix:** Add `aria-label` to all buttons (e.g., `aria-label="Chain stitch (ch), keyboard shortcut: C"`), sliders (with `aria-valuetext`), and inputs. Add `aria-describedby` for complex interactions.
+  - **Status:** Fixed - Comprehensive ARIA labels added to all interactive elements including buttons, inputs, selects, panels, and toolbars with aria-pressed states and aria-live regions (commit 29b842d).
 - [x] **Bug: No semantic HTML structure**
   - **Location:** UIManager.js:77-550
   - **Symptoms:** Uses `<div>` instead of `<button>`, `<nav>`, `<main>`, `<aside>`. Buttons created with `document.createElement('button')` but without proper roles.
   - **WCAG:** Level A violation
   - **Fix:** Replace divs with semantic elements: `<aside>` for panels, `<nav role="toolbar">` for stitch grid, `<main>` for canvas area, proper `<button>` elements throughout.
   - **Status:** Fixed - All panels converted to semantic HTML (aside, nav, main). Proper ARIA labels added. Commit 000d855.
-- [ ] **Bug: Color-only communication for attachment points**
+- [x] **Bug: Color-only communication for attachment points**
   - **Location:** AttachmentPointManager.js
   - **Symptoms:** Ghost stitches distinguished only by color (green=ghost, orange=new row, purple=chain space). Unusable for colorblind users.
   - **WCAG:** Level A violation
   - **Fix:** Add pattern/shape differentiation (e.g., different geometries) or text labels on hover/focus. Add `aria-label` describing the attachment type.
+  - **Status:** Fixed - Implemented different geometries for attachment types: Cone for new row indicators, Torus ring for chain spaces, and Sphere for regular stitches. Added descriptive aria labels to mesh userData (AttachmentPointManager.js:79-83, 330, 360, 382-386, 440-473).
 - [ ] **Bug: No keyboard navigation between panels**
   - **Location:** UIManager.js
   - **Symptoms:** Tab key doesn't move focus through UI panels. Panels not in tab order.
