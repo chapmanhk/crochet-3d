@@ -22,6 +22,7 @@ import {
     getStitchWidth,
     getTurningChainLength,
     doesTurningChainCount,
+    getFoundationChainSkipCount,
     getStitchPhysics,
     getModifiedConnections,
     getStitchDisplayName,
@@ -279,6 +280,17 @@ describe('getStitchByKeyboard', () => {
         expect(getStitchByKeyboard('k')).toBe(StitchType.SPIKE);
     });
 
+    it('should return newly added keyboard shortcuts', () => {
+        // Added keyboard shortcuts for previously unmapped stitches
+        expect(getStitchByKeyboard('r')).toBe(StitchType.FRONT_POST_TRIPLE_CROCHET);
+        expect(getStitchByKeyboard('a')).toBe(StitchType.BACK_POST_TRIPLE_CROCHET);
+        expect(getStitchByKeyboard('q')).toBe(StitchType.POPCORN);
+        expect(getStitchByKeyboard('g')).toBe(StitchType.PICOT);
+        expect(getStitchByKeyboard('w')).toBe(StitchType.FOUNDATION_SINGLE_CROCHET);
+        expect(getStitchByKeyboard('y')).toBe(StitchType.FOUNDATION_DOUBLE_CROCHET);
+        expect(getStitchByKeyboard('j')).toBe(StitchType.CLUSTER);
+    });
+
     it('should be case-insensitive', () => {
         expect(getStitchByKeyboard('C')).toBe(StitchType.CHAIN);
         expect(getStitchByKeyboard('S')).toBe(StitchType.SINGLE_CROCHET);
@@ -355,6 +367,32 @@ describe('doesTurningChainCount', () => {
         expect(doesTurningChainCount(StitchType.HALF_DOUBLE_CROCHET)).toBe(false);
         expect(doesTurningChainCount(StitchType.DOUBLE_CROCHET)).toBe(true);
         expect(doesTurningChainCount(StitchType.TRIPLE_CROCHET)).toBe(true);
+    });
+});
+
+describe('getFoundationChainSkipCount', () => {
+    it('should return correct skip count for basic stitches', () => {
+        // SC: work in 2nd chain from hook = skip 1
+        expect(getFoundationChainSkipCount(StitchType.SINGLE_CROCHET)).toBe(1);
+        // HDC: work in 3rd chain from hook = skip 2
+        expect(getFoundationChainSkipCount(StitchType.HALF_DOUBLE_CROCHET)).toBe(2);
+        // DC: work in 4th chain from hook = skip 3
+        expect(getFoundationChainSkipCount(StitchType.DOUBLE_CROCHET)).toBe(3);
+        // TR: work in 5th chain from hook = skip 4
+        expect(getFoundationChainSkipCount(StitchType.TRIPLE_CROCHET)).toBe(4);
+    });
+
+    it('should return correct skip count for post stitches', () => {
+        expect(getFoundationChainSkipCount(StitchType.FRONT_POST_DOUBLE_CROCHET)).toBe(3);
+        expect(getFoundationChainSkipCount(StitchType.BACK_POST_DOUBLE_CROCHET)).toBe(3);
+        expect(getFoundationChainSkipCount(StitchType.FRONT_POST_TRIPLE_CROCHET)).toBe(4);
+        expect(getFoundationChainSkipCount(StitchType.BACK_POST_TRIPLE_CROCHET)).toBe(4);
+    });
+
+    it('should return 1 as default for unknown types', () => {
+        expect(getFoundationChainSkipCount('unknown_type')).toBe(1);
+        expect(getFoundationChainSkipCount(null)).toBe(1);
+        expect(getFoundationChainSkipCount(undefined)).toBe(1);
     });
 });
 
@@ -472,5 +510,33 @@ describe('getStitchCategories', () => {
         expect(categories.texture).toContain(StitchType.BOBBLE);
         expect(categories.decorative).toContain(StitchType.SHELL);
         expect(categories.starting).toContain(StitchType.MAGIC_RING);
+    });
+
+    it('should have CLUSTER in decreases category, not texture', () => {
+        const categories = getStitchCategories();
+
+        // CLUSTER (dc3tog) is a decrease stitch, not a texture stitch
+        expect(categories.decreases).toContain(StitchType.CLUSTER);
+        expect(categories.texture).not.toContain(StitchType.CLUSTER);
+    });
+
+    it('should include chainless foundation stitches', () => {
+        const categories = getStitchCategories();
+
+        expect(categories.chainless).toContain(StitchType.FOUNDATION_SINGLE_CROCHET);
+        expect(categories.chainless).toContain(StitchType.FOUNDATION_DOUBLE_CROCHET);
+    });
+});
+
+describe('Cluster stitch naming', () => {
+    it('should have correct name as DC3tog (not misleading "Cluster")', () => {
+        const def = getStitchDefinition(StitchType.CLUSTER);
+
+        // Name should clearly indicate it's a decrease stitch
+        expect(def.name).toBe('DC3tog');
+        expect(def.abbreviation).toBe('dc3tog');
+        expect(def.isDecreaseType).toBe(true);
+        expect(def.isTextureStitch).toBe(false);
+        expect(def.connectionsIn).toBe(3); // Works into 3 consecutive stitches
     });
 });

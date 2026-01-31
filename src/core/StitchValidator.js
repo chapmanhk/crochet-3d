@@ -166,10 +166,34 @@ export class StitchValidator {
         }
 
         // Post stitches require working around a post from previous row
-        if (def.isPostStitch && attachStitch.row < 1) {
-            result.errors.push('Post stitches require at least one previous row to work around');
-            result.valid = false;
-            return result;
+        if (def.isPostStitch) {
+            if (attachStitch.row < 1) {
+                result.errors.push('Post stitches require at least one previous row to work around');
+                result.valid = false;
+                return result;
+            }
+
+            // Check if the stitch below has sufficient height for a post
+            const attachDef = getStitchDefinition(attachStitch.type);
+            const stitchHeight = attachDef?.height || 0;
+            const minPostHeight = 1.0; // SC height is the minimum for a workable post
+
+            if (stitchHeight < minPostHeight) {
+                result.warnings.push(
+                    `Post stitch around ${attachDef?.abbreviation || 'this stitch'} may be difficult - ` +
+                    `stitch is very short (height ${stitchHeight}). Consider using a taller stitch (sc or higher).`
+                );
+            }
+
+            // Chains and slip stitches don't have workable posts
+            if (attachStitch.type === StitchType.CHAIN || attachStitch.type === StitchType.SLIP_STITCH) {
+                result.errors.push(
+                    `Cannot work post stitch around ${attachDef?.name || 'this stitch'} - ` +
+                    `it does not have a post to work around`
+                );
+                result.valid = false;
+                return result;
+            }
         }
 
         // Spike stitches need rows below to work into

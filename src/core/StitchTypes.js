@@ -367,6 +367,7 @@ export const StitchDefinitions = {
             density: 0.65,
             bendResistance: 0.3
         },
+        keyboard: 'r',
         canBeWorkedInto: true,
         isPostStitch: true,
         postDirection: 'front',
@@ -396,6 +397,7 @@ export const StitchDefinitions = {
             density: 0.65,
             bendResistance: 0.3
         },
+        keyboard: 'a',
         canBeWorkedInto: true,
         isPostStitch: true,
         postDirection: 'back',
@@ -461,6 +463,7 @@ export const StitchDefinitions = {
             density: 1.3,
             bendResistance: 0.65
         },
+        keyboard: 'q',
         canBeWorkedInto: true,
         isTextureStitch: true,
         componentStitches: 5,  // Default, can be overridden per-stitch
@@ -499,13 +502,13 @@ export const StitchDefinitions = {
     },
 
     [StitchType.CLUSTER]: {
-        name: 'DC3tog (3 DC Decrease)',
+        name: 'DC3tog',
         abbreviation: 'dc3tog',
         height: 1.8,
         width: 0.6,
         connectionsIn: 3,  // Works into 3 consecutive stitches
         connectionsOut: 1,
-        description: '3 double crochets worked into consecutive stitches, joined at top (decrease stitch)',
+        description: '3 double crochets worked across consecutive stitches, joined at top - a decrease stitch',
         color: 0x8B4513,
         geometry: {
             type: 'custom',
@@ -519,14 +522,15 @@ export const StitchDefinitions = {
             density: 0.9,
             bendResistance: 0.45
         },
+        keyboard: 'j',
         canBeWorkedInto: true,
         isTextureStitch: false,  // This is a decrease, not a texture stitch
         isDecreaseType: true,
         componentStitches: 3,
         componentType: StitchType.DOUBLE_CROCHET,
-        // Note: Traditional "cluster" (multiple dc into same stitch, joined at top)
-        // is similar to a bobble. This stitch is specifically dc3tog (decrease).
-        alternateNames: ['cluster', 'dc3tog', '3-dc decrease']
+        // Note: This is dc3tog (decrease across 3 stitches), not a traditional "cluster"
+        // which would be multiple dc into the SAME stitch (similar to a bobble).
+        alternateNames: ['dc3tog', '3-dc decrease']
     },
 
     // -------------------------------------------------------------------------
@@ -553,6 +557,7 @@ export const StitchDefinitions = {
             density: 0.7,
             bendResistance: 0.3
         },
+        keyboard: 'g',
         canBeWorkedInto: false,  // Typically decorative, not worked into
         isDecorativeStitch: true,
         chainCount: 3,  // Default chain count, can be overridden per-stitch
@@ -686,6 +691,7 @@ export const StitchDefinitions = {
             density: 0.95,
             bendResistance: 0.45
         },
+        keyboard: 'w',
         canBeWorkedInto: true,
         isFoundationStitch: true,
         baseStitchType: StitchType.SINGLE_CROCHET
@@ -712,6 +718,7 @@ export const StitchDefinitions = {
             density: 0.65,
             bendResistance: 0.3
         },
+        keyboard: 'y',
         canBeWorkedInto: true,
         isFoundationStitch: true,
         baseStitchType: StitchType.DOUBLE_CROCHET
@@ -898,6 +905,35 @@ export function doesTurningChainCount(type) {
 }
 
 /**
+ * Get the recommended skip count for working into a foundation chain
+ * This tells you how many chains to skip before working the first stitch.
+ * For example: SC skips 1 (work in 2nd chain from hook),
+ *              DC skips 3 (work in 4th chain from hook)
+ * @param {string} type - Stitch type that will be worked into the chain
+ * @returns {number} Number of chains to skip
+ */
+export function getFoundationChainSkipCount(type) {
+    const def = getStitchDefinition(type);
+    if (!def) return 1;
+
+    // For basic stitches, skip count equals turning chain height
+    // SC: 1, HDC: 2, DC: 3, TR: 4
+    const turningChain = def.turningChain;
+    if (turningChain !== undefined) {
+        return turningChain;
+    }
+
+    // Fallback based on TurningChainHeight lookup
+    const height = TurningChainHeight[type];
+    if (height !== undefined) {
+        return height;
+    }
+
+    // Default to 1 for unknown types
+    return 1;
+}
+
+/**
  * Get physics properties for a stitch type
  */
 export function getStitchPhysics(type) {
@@ -1015,8 +1051,10 @@ export function getStitchCategories() {
         texture: [
             StitchType.BOBBLE,
             StitchType.POPCORN,
-            StitchType.PUFF,
-            StitchType.CLUSTER
+            StitchType.PUFF
+        ],
+        decreases: [
+            StitchType.CLUSTER  // dc3tog - works across 3 consecutive stitches
         ],
         decorative: [
             StitchType.PICOT,
