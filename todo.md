@@ -49,10 +49,11 @@ via click-based interactions, plus recommended fixes.
 
 ## Stitch Options & Pattern Output
 
-- [ ] **Bug: Loop selection (FLO/BLO) not reflected in instructions**
+- [x] **Bug: Loop selection (FLO/BLO) not reflected in instructions**
   - **Symptoms:** Pattern instructions omit loop selection even if set.
   - **Fix:** Include loop selection in `getStitchDisplayName` or per-stitch
     metadata when generating instructions.
+  - **Status:** Fixed - generateInstructions now includes loopSelection as FLO/BLO modifier.
 
 - [ ] **Bug: Skip and “work into space” are not reflected in instructions**
   - **Symptoms:** Generated instructions omit skips and ch-space instructions.

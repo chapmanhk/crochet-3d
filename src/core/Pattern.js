@@ -1152,7 +1152,14 @@ export class Pattern {
             let currentGroup = null;
 
             workingStitches.forEach(s => {
-                const displayName = getStitchDisplayName(s.type, s.modifiers);
+                // Include loop selection as a modifier for display
+                const effectiveModifiers = [...(s.modifiers || [])];
+                if (s.loopSelection === 'front' && !effectiveModifiers.includes(StitchModifier.FRONT_LOOP_ONLY)) {
+                    effectiveModifiers.push(StitchModifier.FRONT_LOOP_ONLY);
+                } else if (s.loopSelection === 'back' && !effectiveModifiers.includes(StitchModifier.BACK_LOOP_ONLY)) {
+                    effectiveModifiers.push(StitchModifier.BACK_LOOP_ONLY);
+                }
+                const displayName = getStitchDisplayName(s.type, effectiveModifiers);
 
                 if (currentGroup && currentGroup.name === displayName) {
                     currentGroup.count++;
