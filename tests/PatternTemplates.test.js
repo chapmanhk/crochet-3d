@@ -301,6 +301,13 @@ describe('PatternTemplates', () => {
             expect(pattern.mode).toBe('flat');
         });
 
+        it('should align working direction with last row', () => {
+            const pattern = createBasicSquare({ size: 4, rows: 4 });
+
+            expect(pattern.currentRow).toBe(3);
+            expect(pattern.workingDirection).toBe('right');
+        });
+
         it('should start with foundation chain', () => {
             const pattern = createBasicSquare();
             const row0 = pattern.graph.getRowSorted(0);
@@ -388,6 +395,13 @@ describe('PatternTemplates', () => {
             const pattern = createTriangle();
 
             expect(pattern.mode).toBe('flat');
+        });
+
+        it('should align working direction with last row', () => {
+            const pattern = createTriangle({ direction: 'top-down', baseWidth: 5, rows: 4 });
+
+            expect(pattern.currentRow).toBe(3);
+            expect(pattern.workingDirection).toBe('right');
         });
 
         it('should decrease stitch count each row (top-down triangle)', () => {
