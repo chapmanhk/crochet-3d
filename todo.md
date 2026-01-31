@@ -236,10 +236,11 @@ and attachment/interaction. Each task appears once.
   - **Location:** StitchRenderer.js:122-128
   - **Symptoms:** `updateConnectionMeshes()` called 60× per second during physics. With 1000 stitches = 3000 connections, extremely expensive.
   - **Fix:** Only rebuild when flagged: `if (!this.connectionRebuildPending) return;`. Set flag on stitch add/remove, clear after rebuild.
-- [ ] **Bug: Full raycast on every mouse move**
-  - **Location:** RaycastManager.js:69-74, main.js
+- [x] **Bug: Full raycast on every mouse move**
+  - **Location:** src/interaction/RaycastManager.js
   - **Symptoms:** Raycasts all meshes on every mousemove event (100+ times/second). With 5000 stitches, extremely expensive.
   - **Fix:** Throttle mouse move handling: `const throttled = throttle(this.onMouseMove, 50);` (~20 FPS max). Consider spatial indexing for raycasting.
+  - **Status:** Fixed - Added throttle utility (src/utils/throttle.js) and modified RaycastManager to throttle mousemove events (default 50ms, configurable via options.throttleMs). Added RaycastManager.dispose() method for proper cleanup. Added comprehensive unit tests for both throttle utility and RaycastManager.
 - [ ] **Bug: Material instances not pooled**
   - **Location:** YarnMaterial.js
   - **Symptoms:** Creates new material instances for each stitch. Could reuse materials with same color.
