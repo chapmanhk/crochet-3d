@@ -76,6 +76,12 @@ export class AttachmentPointManager {
             emissiveIntensity: AttachmentConstants.HOVER_EMISSIVE_INTENSITY
         });
 
+        // Geometry cache for different attachment point types (for accessibility)
+        this.attachmentGeometries = {
+            newRow: null, // Will be created as cone (pointing up)
+            chainSpace: null // Will be created as ring/torus (to indicate "space")
+        };
+
         // Chain marker materials
         this.chainStartMaterial = new THREE.MeshStandardMaterial({
             color: AttachmentConstants.CHAIN_START_COLOR,
@@ -320,7 +326,8 @@ export class AttachmentPointManager {
             ? currentRowStitches[0]
             : currentRowStitches[currentRowStitches.length - 1];
 
-        const geometry = this.getGeometry(this.previewStitchType);
+        // Use cone geometry for new row indicators (accessibility: shape differentiation)
+        const geometry = this.getNewRowGeometry();
         const mesh = new THREE.Mesh(geometry, this.newRowMaterial);
 
         // Position above and slightly to the side to indicate "turn"
@@ -333,9 +340,10 @@ export class AttachmentPointManager {
             endStitch.position.z
         );
 
-        // Mark as new row indicator
+        // Mark as new row indicator with descriptive label for accessibility
         mesh.userData.isNewRowIndicator = true;
         mesh.userData.isAttachmentPoint = true;
+        mesh.userData.ariaLabel = 'New row attachment point - turn and start next row';
         const baseScale = AttachmentConstants.GHOST_SCALE * 1.1;
         mesh.userData.baseScale = baseScale;
         mesh.scale.setScalar(baseScale);
@@ -348,8 +356,12 @@ export class AttachmentPointManager {
      * Create a mesh for an attachment point
      */
     createPointMesh(point, index) {
-        const geometry = this.getGeometry(this.previewStitchType);
-        const baseMaterial = point.type === 'chain-space' ? this.chainSpaceMaterial : this.ghostMaterial;
+        // Use different geometries for accessibility (not just color)
+        const isChainSpace = point.type === 'chain-space';
+        const geometry = isChainSpace
+            ? this.getChainSpaceGeometry()
+            : this.getGeometry(this.previewStitchType);
+        const baseMaterial = isChainSpace ? this.chainSpaceMaterial : this.ghostMaterial;
         // Use shared material instead of cloning - disposed in dispose() not clearPoints()
         const mesh = new THREE.Mesh(geometry, baseMaterial);
 
@@ -364,11 +376,16 @@ export class AttachmentPointManager {
 
         mesh.position.set(x, y, z);
 
-        // Store reference data
+        // Store reference data with descriptive labels for accessibility
         mesh.userData.attachmentPoint = point;
         mesh.userData.index = index;
         mesh.userData.isAttachmentPoint = true;
-        mesh.userData.isChainSpace = point.type === 'chain-space';
+        mesh.userData.isChainSpace = isChainSpace;
+        mesh.userData.ariaLabel = isChainSpace
+            ? 'Chain space attachment point'
+            : point.suggested
+                ? 'Suggested next stitch attachment point'
+                : 'Stitch attachment point';
 
         // Scale down slightly for ghost effect
         const baseScale = point.suggested
@@ -413,6 +430,45 @@ export class AttachmentPointManager {
         }
 
         this.geometryCache.set(type, geometry);
+        return geometry;
+    }
+
+    /**
+     * Get cone geometry for new row indicators (cached)
+     * Uses cone shape to differentiate from regular stitches (accessibility)
+     */
+    getNewRowGeometry() {
+        if (this.attachmentGeometries.newRow) {
+            return this.attachmentGeometries.newRow;
+        }
+
+        // Create cone pointing upward to indicate "next row"
+        const geometry = new THREE.ConeGeometry(0.25, 0.5, 8);
+        // Rotate so cone points up
+        geometry.rotateX(Math.PI);
+        this.attachmentGeometries.newRow = geometry;
+        return geometry;
+    }
+
+    /**
+     * Get ring/torus geometry for chain space indicators (cached)
+     * Uses hollow ring shape to indicate "space" (accessibility)
+     */
+    getChainSpaceGeometry() {
+        if (this.attachmentGeometries.chainSpace) {
+            return this.attachmentGeometries.chainSpace;
+        }
+
+        // Create ring/torus to indicate chain space
+        const geometry = new THREE.TorusGeometry(
+            0.3,  // radius
+            0.08, // tube thickness
+            8,    // radial segments
+            12    // tubular segments
+        );
+        // Rotate to lay flat
+        geometry.rotateX(Math.PI / 2);
+        this.attachmentGeometries.chainSpace = geometry;
         return geometry;
     }
 
@@ -548,6 +604,14 @@ export class AttachmentPointManager {
 
         this.geometryCache.forEach(g => g.dispose());
         this.geometryCache.clear();
+
+        // Dispose attachment point geometries
+        if (this.attachmentGeometries.newRow) {
+            this.attachmentGeometries.newRow.dispose();
+        }
+        if (this.attachmentGeometries.chainSpace) {
+            this.attachmentGeometries.chainSpace.dispose();
+        }
 
         this.ghostMaterial.dispose();
         this.hoverMaterial.dispose();

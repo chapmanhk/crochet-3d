@@ -201,6 +201,12 @@ class MockTorusGeometry {
     dispose() {}
 }
 
+class MockConeGeometry {
+    constructor() {}
+    rotateX() { return this; }
+    dispose() {}
+}
+
 class MockExtrudeGeometry {
     constructor() {}
     rotateY() { return this; }
@@ -252,6 +258,7 @@ vi.mock('three', () => ({
     GridHelper: MockGridHelper,
     AxesHelper: MockAxesHelper,
     TorusGeometry: MockTorusGeometry,
+    ConeGeometry: MockConeGeometry,
     ExtrudeGeometry: MockExtrudeGeometry,
     Shape: MockShape,
     // Add minimal mocks for other THREE classes as needed
