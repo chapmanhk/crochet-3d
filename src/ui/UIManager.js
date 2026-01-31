@@ -866,6 +866,9 @@ export class UIManager {
             this.updateInfoPanel();
             this.updateRowNavigation();
         });
+        this.eventSubs.on(Events.ROW_NAVIGATED, () => {
+            this.updateInfoPanel();
+        });
 
         this.eventSubs.on(Events.HISTORY_CHANGED, () => this.updateUndoRedoButtons());
 

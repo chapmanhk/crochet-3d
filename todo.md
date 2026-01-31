@@ -33,11 +33,12 @@ via click-based interactions, plus recommended fixes.
   - **Fix:** Use a consistent display index. If foundation exists, map display
     row 1 -> internal row 1, and show “Foundation” as a special entry.
 
-- [ ] **Bug: Row navigation does not refresh attachments or info panel**
+- [x] **Bug: Row navigation does not refresh attachments or info panel**
   - **Symptoms:** Clicking prev/next or Go to Row updates the row display, but
     ghost attachments and info panel can remain stale.
   - **Fix:** On `ROW_NAVIGATED`, trigger `updateAttachmentPoints()` and
     `updateInfoPanel()`.
+  - **Status:** Fixed - Added ROW_NAVIGATED listeners in AttachmentPointManager and UIManager.
 
 - [ ] **Bug: Working direction can be wrong after large row jumps**
   - **Symptoms:** `goToRow` toggles direction by row delta parity instead of
