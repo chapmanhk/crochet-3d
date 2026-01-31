@@ -828,14 +828,22 @@ export class UIManager {
         // Clear any previous error state
         input.classList.remove('error');
 
-        // Validate: must be positive and within range
-        if (isNaN(rowNum) || rowNum < 1) {
+        // Check if foundation chain exists
+        const hasFoundation = typeof this.pattern.hasFoundationChain === 'function'
+            ? this.pattern.hasFoundationChain()
+            : false;
+
+        // Validate input: with foundation, 0 is valid (goes to foundation); otherwise must be >= 1
+        const minRow = hasFoundation ? 0 : 1;
+        if (isNaN(rowNum) || rowNum < minRow) {
             input.classList.add('error');
             return;
         }
 
-        // Convert from 1-indexed display to 0-indexed internal
-        const rowIndex = rowNum - 1;
+        // Convert display row to internal row index
+        // With foundation: display N -> internal N (foundation is 0)
+        // Without foundation: display N -> internal N-1
+        const rowIndex = hasFoundation ? rowNum : rowNum - 1;
         const success = this.goToRow(rowIndex);
 
         if (success) {

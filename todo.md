@@ -27,11 +27,12 @@ via click-based interactions, plus recommended fixes.
 
 ## Row Navigation & View State
 
-- [ ] **Bug: Row navigation index is inconsistent with foundation chain**
-  - **Symptoms:** The display hides the foundation row, but “Go to Row 1”
-    navigates to row 0 (foundation). The UI shows “Row 0 of 0” with only a chain.
+- [x] **Bug: Row navigation index is inconsistent with foundation chain**
+  - **Symptoms:** The display hides the foundation row, but "Go to Row 1"
+    navigates to row 0 (foundation). The UI shows "Row 0 of 0" with only a chain.
   - **Fix:** Use a consistent display index. If foundation exists, map display
-    row 1 -> internal row 1, and show “Foundation” as a special entry.
+    row 1 -> internal row 1, and show "Foundation" as a special entry.
+  - **Status:** Fixed - handleGoToRow now maps display rows correctly based on foundation presence.
 
 - [x] **Bug: Row navigation does not refresh attachments or info panel**
   - **Symptoms:** Clicking prev/next or Go to Row updates the row display, but
