@@ -197,17 +197,20 @@ export class AttachmentPointManager {
      * Shows markers for: chain start (green), chain end (blue), working position (yellow)
      */
     updateNavigationMarkers(availablePoints) {
-        // Get foundation chain (row 0)
-        const foundationRow = this.pattern.graph.getRowSorted(0);
-        if (foundationRow.length === 0) return;
+        const hasFoundation = typeof this.pattern.hasFoundationChain === 'function'
+            ? this.pattern.hasFoundationChain()
+            : false;
+        const foundationRow = hasFoundation ? this.pattern.graph.getRowSorted(0) : [];
 
-        // Chain start marker (leftmost chain stitch)
-        const chainStart = foundationRow[0];
-        this.addMarker(chainStart, this.chainStartMaterial, AttachmentConstants.CHAIN_START_SCALE, 'start');
+        if (foundationRow.length > 0) {
+            // Chain start marker (leftmost chain stitch)
+            const chainStart = foundationRow[0];
+            this.addMarker(chainStart, this.chainStartMaterial, AttachmentConstants.CHAIN_START_SCALE, 'start');
 
-        // Chain end marker (rightmost chain stitch - where you begin working)
-        const chainEnd = foundationRow[foundationRow.length - 1];
-        this.addMarker(chainEnd, this.chainEndMaterial, AttachmentConstants.CHAIN_END_SCALE, 'end');
+            // Chain end marker (rightmost chain stitch - where you begin working)
+            const chainEnd = foundationRow[foundationRow.length - 1];
+            this.addMarker(chainEnd, this.chainEndMaterial, AttachmentConstants.CHAIN_END_SCALE, 'end');
+        }
 
         // Working position marker - show at suggested next stitch position
         const suggestedPoint = availablePoints.find(p => p.suggested);

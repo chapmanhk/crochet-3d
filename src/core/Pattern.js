@@ -741,10 +741,7 @@ export class Pattern {
         const height = def?.height ?? PatternConstants.DEFAULT_STITCH_HEIGHT;
 
         // For spiral, use previous round count to keep even spacing
-        const prevRowStitches = this.graph.getRow(row - 1);
-        let stitchCount = prevRowStitches.length || PatternConstants.MAGIC_RING_INITIAL_STITCHES;
-
-        // Guard against division by zero or NaN
+        let stitchCount = this.getEffectiveRowStitchCount(row - 1);
         if (stitchCount <= 0 || !Number.isFinite(stitchCount)) {
             stitchCount = PatternConstants.MAGIC_RING_INITIAL_STITCHES;
         }
@@ -830,7 +827,7 @@ export class Pattern {
         // Join round with slip stitch if in joined round mode
         if (this.mode === 'round-joined' && !options.skipJoin) {
             // Close the previous round by connecting last to first
-            const prevRow = this.graph.getRowSorted(this.currentRow - 1);
+            const prevRow = this.getWorkingRowStitches(this.currentRow - 1);
             if (prevRow.length > 1) {
                 const firstStitch = prevRow[0];
                 const lastStitch = prevRow[prevRow.length - 1];
@@ -864,6 +861,52 @@ export class Pattern {
     }
 
     /**
+     * Get working stitches for a row, excluding non-counting elements.
+     * @param {number} row - Row number
+     * @param {Object} options - Options for inclusion
+     * @param {boolean} options.includeCountingTurningChains - Include turning chains that count as stitches
+     * @returns {Array} Array of working stitches, sorted by column
+     */
+    getWorkingRowStitches(row, { includeCountingTurningChains = false } = {}) {
+        if (!Number.isFinite(row) || row < 0) {
+            return [];
+        }
+        const stitches = this.graph.getRowSorted(row);
+        return stitches.filter(stitch => {
+            if (!stitch) return false;
+            if (stitch.type === StitchType.MAGIC_RING) return false;
+            if (stitch.isTurningChain) {
+                return includeCountingTurningChains && stitch.turningChainCountsAsStitch;
+            }
+            return true;
+        });
+    }
+
+    /**
+     * Get effective stitch count for a row, accounting for increases.
+     * @param {number} row - Row number
+     * @returns {number} Effective stitch count
+     */
+    getEffectiveRowStitchCount(row) {
+        if (!Number.isFinite(row) || row < 0) {
+            return 0;
+        }
+        const stitches = this.graph.getRow(row) || [];
+        return stitches.reduce((count, stitch) => {
+            if (!stitch) return count;
+            if (stitch.type === StitchType.MAGIC_RING) return count;
+            if (stitch.isTurningChain && !stitch.turningChainCountsAsStitch) return count;
+            if (stitch.isIncrease) {
+                const increaseCount = Number.isFinite(stitch.metadata?.increasesTo)
+                    ? stitch.metadata.increasesTo
+                    : 2;
+                return count + Math.max(2, increaseCount);
+            }
+            return count + 1;
+        }, 0);
+    }
+
+    /**
      * Get available attachment points for adding new stitches
      */
     getAttachmentPoints(options = {}) {
@@ -875,9 +918,12 @@ export class Pattern {
         const targetRow = this.currentRow === 0 ? 0 : this.currentRow - 1;
 
         // Get stitches from the row we're working into
+        const rowStitches = this.getWorkingRowStitches(targetRow, {
+            includeCountingTurningChains: true
+        });
         const prevRow = this.workingDirection === 'right'
-            ? this.graph.getRowSorted(targetRow)
-            : this.graph.getRowSorted(targetRow).reverse();
+            ? rowStitches
+            : [...rowStitches].reverse();
 
         if (prevRow.length === 0) {
             return points;

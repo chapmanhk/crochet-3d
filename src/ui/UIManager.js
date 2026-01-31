@@ -1313,7 +1313,16 @@ export class UIManager {
             }
             const roundMode = modeChoice === 'Spiral Rounds' ? 'spiral' : 'joined';
 
-            this.pattern.startWithMagicRing(stitches, StitchType.SINGLE_CROCHET, roundMode);
+            const selectedType = this.selectedStitchType;
+            const def = StitchDefinitions[selectedType];
+            const canUseSelected = Boolean(def) &&
+                !def.deprecated &&
+                selectedType !== StitchType.MAGIC_RING &&
+                selectedType !== StitchType.CHAIN &&
+                selectedType !== StitchType.SLIP_STITCH;
+            const ringStitchType = canUseSelected ? selectedType : StitchType.SINGLE_CROCHET;
+
+            this.pattern.startWithMagicRing(stitches, ringStitchType, roundMode);
             this.resetStitchOptions();
         }
     }
@@ -1420,16 +1429,25 @@ export class UIManager {
         if (!this.pattern.graph || rowIndex < 0) {
             return 0;
         }
+        if (typeof this.pattern.getEffectiveRowStitchCount === 'function') {
+            return this.pattern.getEffectiveRowStitchCount(rowIndex);
+        }
         const row = this.pattern.graph.getRow(rowIndex) || [];
-        return row.filter(stitch => {
+        return row.reduce((count, stitch) => {
             if (stitch.type === StitchType.MAGIC_RING) {
-                return false;
+                return count;
             }
             if (stitch.isTurningChain && !stitch.turningChainCountsAsStitch) {
-                return false;
+                return count;
             }
-            return true;
-        }).length;
+            if (stitch.isIncrease) {
+                const increaseCount = Number.isFinite(stitch.metadata?.increasesTo)
+                    ? stitch.metadata.increasesTo
+                    : 2;
+                return count + Math.max(2, increaseCount);
+            }
+            return count + 1;
+        }, 0);
     }
 
     /**
@@ -1478,6 +1496,19 @@ export class UIManager {
         const previousCount = this.getRowStitchCount(currentRow - 1);
 
         if (currentCount === 0 || previousCount === 0 || currentCount === previousCount) {
+            return true;
+        }
+
+        const currentRowStitches = this.pattern.graph.getRow(currentRow) || [];
+        const hasExplicitShaping = currentRowStitches.some(stitch => {
+            if (!stitch) return false;
+            if (stitch.isIncrease || stitch.isDecrease) return true;
+            if ((stitch.skippedStitches?.length || 0) > 0) return true;
+            const connectionsOut = stitch.effectiveConnections?.connectionsOut ?? 1;
+            const connectionsIn = stitch.effectiveConnections?.connectionsIn ?? 1;
+            return connectionsOut > 1 || connectionsIn > 1;
+        });
+        if (hasExplicitShaping) {
             return true;
         }
 
