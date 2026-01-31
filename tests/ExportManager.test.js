@@ -640,7 +640,7 @@ describe('ExportManager', () => {
             }
         });
 
-        it('should escape PDF strings safely', () => {
+        it('should escape PDF strings safely', async () => {
             const module = await import('../src/utils/ExportManager.js');
             const manager = new module.ExportManager(mockPattern, mockRenderer);
 
