@@ -704,6 +704,18 @@ describe('Pattern', () => {
             }
         });
 
+        it('should suggest first unworked stitch after out-of-order placement', () => {
+            pattern.startNewRow();
+            pattern.workingDirection = 'right';
+            const chain = pattern.graph.getRowSorted(0);
+            pattern.addStitch(StitchType.SINGLE_CROCHET, chain[2]);
+
+            const points = pattern.getAttachmentPoints();
+
+            const suggested = points.find(p => p.suggested);
+            expect(suggested.stitch).toBe(chain[0]);
+        });
+
         it('should exclude stitches with turning chain that counts as stitch', () => {
             // Use double crochet which has ch-3 that counts as first stitch
             pattern.selectedStitchType = StitchType.DOUBLE_CROCHET;

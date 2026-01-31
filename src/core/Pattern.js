@@ -825,7 +825,6 @@ export class Pattern {
         // Determine which row we're working into (previous row)
         // If currentRow is 0, we're working into the foundation to create row 1
         const targetRow = this.currentRow === 0 ? 0 : this.currentRow - 1;
-        const workingRow = this.currentRow === 0 ? 1 : this.currentRow;
 
         // Get stitches from the row we're working into
         const prevRow = this.workingDirection === 'right'
@@ -836,15 +835,10 @@ export class Pattern {
             return points;
         }
 
-        // Get the last stitch in the row we're building (to determine suggested point)
-        // Exclude turning chains when finding the last working stitch
-        const workingRowStitches = this.graph.getRowSorted(workingRow)
-            .filter(s => !s.isTurningChain);
-        const lastWorkingStitch = workingRowStitches.length > 0
-            ? workingRowStitches[workingRowStitches.length - 1]
-            : null;
+        // Track the first available stitch in working direction order
+        let suggestedStitch = null;
 
-        prevRow.forEach((stitch, index) => {
+        prevRow.forEach((stitch) => {
             // Count working stitches for connection checks
             // Filter out turning chains EXCEPT those that count as a stitch (like dc's ch-3)
             // because those DO occupy the attachment point
@@ -854,29 +848,10 @@ export class Pattern {
             const isAvailable = remainingConnections > 0;
 
             if (isAvailable) {
-                // Determine if this is the suggested next attachment point
-                let isSuggested = false;
-                const lastWorkedIntoStitch = lastWorkingStitch?.connections?.below?.[0] ?? null;
-
-                if (lastWorkedIntoStitch && lastWorkedIntoStitch === stitch) {
-                    // For increases, keep suggesting the same stitch until it fills
-                    isSuggested = remainingConnections > 0;
-                } else if (!hasWorkingConnection) {
-                    if (!lastWorkingStitch) {
-                        // No working stitches yet - suggest first available
-                        isSuggested = index === 0;
-                    } else {
-                        // Suggest the stitch adjacent to the last one worked
-                        const lastWorkedIntoCol = lastWorkingStitch.connections.below[0]?.column;
-                        if (lastWorkedIntoCol !== undefined) {
-                            const expectedNextCol = this.workingDirection === 'right'
-                                ? lastWorkedIntoCol + 1
-                                : lastWorkedIntoCol - 1;
-                            isSuggested = stitch.column === expectedNextCol;
-                        }
-                    }
+                if (!suggestedStitch) {
+                    suggestedStitch = stitch;
                 }
-
+                const isSuggested = stitch === suggestedStitch;
                 points.push({
                     stitch,
                     type: 'above',
