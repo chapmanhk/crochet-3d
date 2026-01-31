@@ -74,6 +74,11 @@ export class StitchValidator {
                           stitchType === StitchType.DECREASE ||
                           stitchType === StitchType.CLUSTER;
 
+        const effectiveSkipCount = isDecrease && skipCount > 0 ? 0 : skipCount;
+        if (isDecrease && skipCount > 0) {
+            result.warnings.push('Skip count is ignored for decreases');
+        }
+
         if (isDecrease) {
             const decreaseCount = modifiers.includes(StitchModifier.DECREASE_3) ? 3 :
                                  stitchType === StitchType.CLUSTER ? 3 : 2;
@@ -116,16 +121,16 @@ export class StitchValidator {
         }
 
         // Validate skip stitches
-        if (skipCount > 0) {
+        if (effectiveSkipCount > 0) {
             const row = attachStitch.row;
             const rowStitches = pattern.graph.getRowSorted(row);
             const attachIndex = rowStitches.indexOf(attachStitch);
 
             // Find actual attachment after skip, respecting working direction
             const direction = pattern.workingDirection === 'left' ? -1 : 1;
-            const actualAttachIndex = attachIndex + (skipCount * direction);
+            const actualAttachIndex = attachIndex + (effectiveSkipCount * direction);
             if (actualAttachIndex < 0 || actualAttachIndex >= rowStitches.length) {
-                result.errors.push(`Cannot skip ${skipCount} stitches - not enough stitches in row`);
+                result.errors.push(`Cannot skip ${effectiveSkipCount} stitches - not enough stitches in row`);
                 result.valid = false;
                 return result;
             }

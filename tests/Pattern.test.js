@@ -13,7 +13,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Pattern } from '../src/core/Pattern.js';
-import { StitchType } from '../src/core/StitchTypes.js';
+import { StitchType, StitchModifier } from '../src/core/StitchTypes.js';
 import { EventBus, Events } from '../src/utils/EventBus.js';
 import { PatternConstants } from '../src/utils/Constants.js';
 
@@ -249,6 +249,19 @@ describe('Pattern', () => {
 
             expect(stitch.connections.below).toContain(chain[1]);
             expect(stitch.skippedStitches).toContain(chain[0]);
+        });
+
+        it('should ignore skip count for decreases', () => {
+            const chain = pattern.graph.getRowSorted(0);
+            const stitch = pattern.addStitch(StitchType.SINGLE_CROCHET, chain[0], {
+                modifiers: [StitchModifier.DECREASE],
+                skipCount: 1
+            });
+
+            expect(stitch.connections.below).toContain(chain[0]);
+            expect(stitch.connections.below).toContain(chain[1]);
+            expect(stitch.connections.below).not.toContain(chain[2]);
+            expect(stitch.skippedStitches).toHaveLength(0);
         });
 
         it('should mark stitches worked into spaces', () => {

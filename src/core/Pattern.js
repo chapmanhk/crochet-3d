@@ -402,7 +402,7 @@ export class Pattern {
             row,
             column,
             color
-        } = this.normalizeAddOptions(options, attachToNode);
+        } = this.normalizeAddOptions(options, attachToNode, type);
 
         const { actualAttachNode, skippedStitches } =
             this.resolveAttachmentForSkip(attachToNode, skipCount);
@@ -450,7 +450,7 @@ export class Pattern {
     /**
      * Normalize addStitch options into a consistent shape.
      */
-    normalizeAddOptions(options, attachToNode) {
+    normalizeAddOptions(options, attachToNode, type) {
         const modifiers = Array.isArray(options.modifiers)
             ? options.modifiers
             : (this.currentModifiers || []);
@@ -458,6 +458,14 @@ export class Pattern {
             ? options.skipCount
             : (Number.isFinite(this.currentSkipCount) ? this.currentSkipCount : 0);
         const skipCount = skipSource >= 0 ? Math.floor(skipSource) : 0;
+        const isDecrease = modifiers.includes(StitchModifier.DECREASE) ||
+            modifiers.includes(StitchModifier.DECREASE_3) ||
+            type === StitchType.DECREASE ||
+            type === StitchType.CLUSTER;
+        const resolvedSkipCount = isDecrease ? 0 : skipCount;
+        if (isDecrease && skipCount > 0) {
+            console.warn('Skip count ignored for decreases');
+        }
         const workIntoSpace = options.workIntoSpace !== undefined
             ? Boolean(options.workIntoSpace)
             : Boolean(this.currentWorkIntoSpace);
@@ -472,7 +480,7 @@ export class Pattern {
 
         return {
             modifiers,
-            skipCount,
+            skipCount: resolvedSkipCount,
             workIntoSpace,
             loopSelection,
             row,
