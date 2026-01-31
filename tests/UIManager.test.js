@@ -10,13 +10,14 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EventBus, Events } from '../src/utils/EventBus.js';
-import { showConfirm, showPrompt, showAlert, showInstructions } from '../src/ui/Modal.js';
+import { showConfirm, showPrompt, showAlert, showInstructions, showModal } from '../src/ui/Modal.js';
 
 vi.mock('../src/ui/Modal.js', () => ({
     showConfirm: vi.fn(() => Promise.resolve(true)),
     showPrompt: vi.fn(() => Promise.resolve('10')),
     showAlert: vi.fn(() => Promise.resolve()),
-    showInstructions: vi.fn(() => Promise.resolve())
+    showInstructions: vi.fn(() => Promise.resolve()),
+    showModal: vi.fn(() => Promise.resolve('Cancel'))
 }));
 
 // Mock Pattern class for UIManager
@@ -24,12 +25,15 @@ class MockPattern {
     constructor() {
         this.currentRow = 0;
         this.workingDirection = 'right';
+        this.mode = 'flat';
         this.selectedStitchType = 'SINGLE_CROCHET';
         this.currentColor = 0x8B4513;
         this.currentLoopSelection = 'both';
         this.currentModifiers = [];
         this.currentSkipCount = 0;
         this.currentWorkIntoSpace = false;
+        this.autoTurningChain = true;
+        this.turningChainOverrides = {};
         this.graph = {
             size: 0,
             getStats: () => ({
@@ -38,7 +42,8 @@ class MockPattern {
             }),
             getRowSorted: vi.fn(() => []),
             getRow: vi.fn(() => []),
-            clear: vi.fn()
+            clear: vi.fn(),
+            toJSON: vi.fn(() => ({}))
         };
         this.history = [];
         this.historyIndex = -1;
@@ -48,6 +53,12 @@ class MockPattern {
         this.startWithChain = vi.fn((length) => {
             this.graph.size = length;
         });
+        this.startWithFoundationSC = vi.fn();
+        this.startWithFoundationDC = vi.fn();
+        this.startWithMagicRing = vi.fn();
+        this.hasFoundationChain = vi.fn(() => false);
+        this.loadState = vi.fn();
+        this.metadata = { name: 'Mock' };
     }
     canUndo() { return false; }
     canRedo() { return false; }
@@ -212,6 +223,27 @@ describe('UIManager - View Modes', () => {
             // Should still be perspective since we're typing in input
             expect(mockSceneManager.currentViewMode).toBe('perspective');
         });
+
+        it('should not trigger view mode change when focus is on select', () => {
+            const select = document.querySelector('#select-loop');
+            const event = new KeyboardEvent('keydown', { key: '2' });
+            Object.defineProperty(event, 'target', { value: select });
+            window.dispatchEvent(event);
+
+            expect(mockSceneManager.currentViewMode).toBe('perspective');
+        });
+
+        it('should not trigger view mode change when modal is open', () => {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            document.body.appendChild(overlay);
+
+            const event = new KeyboardEvent('keydown', { key: '2' });
+            window.dispatchEvent(event);
+
+            expect(mockSceneManager.currentViewMode).toBe('perspective');
+            overlay.remove();
+        });
     });
 
     describe('Schematic View Mode', () => {
@@ -309,6 +341,41 @@ describe('UIManager - Row Navigation', () => {
             const totalRowsDisplay = document.querySelector('#total-rows-display');
             expect(totalRowsDisplay).not.toBeNull();
             expect(totalRowsDisplay.textContent).toContain('3');
+        });
+
+        it('shows foundation row label when on foundation row', () => {
+            mockPattern.hasFoundationChain = vi.fn(() => true);
+            mockPattern.graph.getStats = () => ({
+                totalStitches: 5,
+                rowCount: 1
+            });
+            mockPattern.currentRow = 0;
+
+            uiManager.updateRowNavigation();
+
+            const rowLabel = document.querySelector('#row-label');
+            const currentRowDisplay = document.querySelector('#current-row-display');
+            const totalRowsDisplay = document.querySelector('#total-rows-display');
+            const rowOfLabel = document.querySelector('#row-of-label');
+
+            expect(rowLabel.textContent).toBe('Foundation Row');
+            expect(currentRowDisplay.style.display).toBe('none');
+            expect(totalRowsDisplay.style.display).toBe('none');
+            expect(rowOfLabel.style.display).toBe('none');
+        });
+
+        it('sets go-to-row min to 0 when foundation exists', () => {
+            mockPattern.hasFoundationChain = vi.fn(() => true);
+            mockPattern.graph.getStats = () => ({
+                totalStitches: 5,
+                rowCount: 1
+            });
+            mockPattern.currentRow = 0;
+
+            uiManager.updateRowNavigation();
+
+            const input = document.querySelector('#input-go-to-row');
+            expect(input.min).toBe('0');
         });
 
         it('should have previous row button', () => {
@@ -708,6 +775,13 @@ describe('UIManager - Stitch options and actions', () => {
         expect(callback).toHaveBeenCalledWith({ type: 'skip', value: 2 });
     });
 
+    it('updates skip input value when set programmatically', () => {
+        uiManager.updateSkipInput(3);
+
+        const skipInput = document.querySelector('#input-skip-count');
+        expect(skipInput.value).toBe('3');
+    });
+
     it('toggles work into space option', () => {
         const callback = vi.fn();
         EventBus.on(Events.ATTACHMENT_OPTIONS_CHANGED, callback);
@@ -731,6 +805,21 @@ describe('UIManager - Stitch options and actions', () => {
 
         const colorPicker = document.querySelector('#color-picker');
         expect(colorPicker.value).toBe('#ff0000');
+    });
+
+    it('applies current color to selected stitches', () => {
+        const node = { name: 'Single Crochet', row: 0, column: 0, type: 'sc', isTurningChain: false };
+        const callback = vi.fn();
+        EventBus.on(Events.STITCH_COLOR_CHANGED, callback);
+
+        EventBus.emit(Events.STITCH_SELECTED, { node });
+        uiManager.selectColor(0x123456);
+
+        const button = document.querySelector('#btn-apply-selection-color');
+        button.click();
+
+        expect(node.color).toBe(0x123456);
+        expect(callback).toHaveBeenCalledWith({ nodes: [node], color: 0x123456 });
     });
 
     it('adds a stitch at next available attachment point', async () => {
@@ -774,12 +863,107 @@ describe('UIManager - Stitch options and actions', () => {
         expect(showInstructions).toHaveBeenCalled();
     });
 
-    it('uses alert when chain length is adjusted', async () => {
+    it('opens start pattern modal when no pattern exists', async () => {
         mockPattern.graph.size = 0;
-        showPrompt.mockResolvedValueOnce('999');
+        showModal.mockResolvedValueOnce('Foundation Chain');
+        showPrompt.mockResolvedValueOnce('5');
 
         await uiManager.addStitchAtNextPosition();
 
-        expect(showAlert).toHaveBeenCalled();
+        expect(showModal).toHaveBeenCalled();
+        expect(mockPattern.startWithChain).toHaveBeenCalledWith(5);
+    });
+});
+
+describe('UIManager - Start Pattern and Templates', () => {
+    let UIManager;
+    let uiManager;
+    let mockPattern;
+    let mockSceneManager;
+
+    beforeEach(async () => {
+        EventBus.clear();
+        document.body.innerHTML = '';
+
+        mockPattern = new MockPattern();
+        mockSceneManager = new MockSceneManager();
+
+        const module = await import('../src/ui/UIManager.js');
+        UIManager = module.UIManager;
+        uiManager = new UIManager(mockPattern, mockSceneManager);
+    });
+
+    afterEach(() => {
+        if (uiManager && uiManager.dispose) {
+            uiManager.dispose();
+        }
+        document.body.innerHTML = '';
+    });
+
+    it('renders start pattern button', () => {
+        const button = document.querySelector('#btn-start-pattern');
+        expect(button).not.toBeNull();
+    });
+
+    it('renders templates panel with buttons', () => {
+        const panel = document.querySelector('.templates-panel');
+        expect(panel).not.toBeNull();
+
+        const buttons = panel.querySelectorAll('.template-btn');
+        expect(buttons.length).toBeGreaterThan(0);
+    });
+
+    it('starts foundation double crochet from start modal', async () => {
+        showModal.mockResolvedValueOnce('Foundation DC');
+        showPrompt.mockResolvedValueOnce('8');
+
+        await uiManager.showStartPatternModal();
+
+        expect(mockPattern.startWithFoundationDC).toHaveBeenCalledWith(8);
+    });
+});
+
+describe('UIManager - Row Count Warnings', () => {
+    let UIManager;
+    let uiManager;
+    let mockPattern;
+    let mockSceneManager;
+
+    beforeEach(async () => {
+        EventBus.clear();
+        document.body.innerHTML = '';
+
+        mockPattern = new MockPattern();
+        mockSceneManager = new MockSceneManager();
+
+        const module = await import('../src/ui/UIManager.js');
+        UIManager = module.UIManager;
+        uiManager = new UIManager(mockPattern, mockSceneManager);
+    });
+
+    afterEach(() => {
+        if (uiManager && uiManager.dispose) {
+            uiManager.dispose();
+        }
+        document.body.innerHTML = '';
+    });
+
+    it('warns when row stitch count differs before starting new row', async () => {
+        mockPattern.currentRow = 1;
+        mockPattern.hasFoundationChain = vi.fn(() => false);
+        mockPattern.graph.getRow.mockImplementation((row) => {
+            if (row === 1) {
+                return [{ type: 'sc' }, { type: 'sc' }];
+            }
+            return [{ type: 'sc' }, { type: 'sc' }, { type: 'sc' }];
+        });
+
+        const startSpy = vi.spyOn(mockPattern, 'startNewRow');
+        showConfirm.mockResolvedValueOnce(false);
+
+        await uiManager.handleStartNewRow();
+
+        expect(showConfirm).toHaveBeenCalled();
+        expect(startSpy).not.toHaveBeenCalled();
     });
 });

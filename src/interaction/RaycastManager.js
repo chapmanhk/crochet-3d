@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { EventBus, Events } from '../utils/EventBus.js';
+import { EventBus, Events, createEventSubscriptions } from '../utils/EventBus.js';
 
 /**
  * RaycastManager - Handles mouse interaction with 3D objects
@@ -22,6 +22,7 @@ export class RaycastManager {
         // Current hover/selection state
         this.hoveredNode = null;
         this.selectedNodes = new Set();
+        this.eventSubs = createEventSubscriptions();
 
         // Bind methods
         this.onMouseMove = this.onMouseMove.bind(this);
@@ -30,6 +31,7 @@ export class RaycastManager {
 
         // Setup listeners
         this.setupEventListeners();
+        this.setupSelectionListeners();
     }
 
     /**
@@ -41,6 +43,15 @@ export class RaycastManager {
         canvas.addEventListener('mousemove', this.onMouseMove);
         canvas.addEventListener('click', this.onClick);
         window.addEventListener('keydown', this.onKeyDown);
+    }
+
+    /**
+     * Subscribe to events that should clear or prune selection
+     */
+    setupSelectionListeners() {
+        this.eventSubs.on(Events.PATTERN_LOADED, () => this.clearSelection());
+        this.eventSubs.on(Events.PATTERN_CLEARED, () => this.clearSelection());
+        this.eventSubs.on(Events.STITCH_REMOVED, ({ node }) => this.pruneSelection(node));
     }
 
     /**
@@ -253,6 +264,23 @@ export class RaycastManager {
     }
 
     /**
+     * Remove a node from selection if it was deleted
+     */
+    pruneSelection(node) {
+        if (!node || !this.selectedNodes.has(node)) {
+            return;
+        }
+
+        try {
+            node.setSelected(false);
+            this.stitchRenderer.updateSelectionVisual(node);
+            EventBus.emit(Events.STITCH_DESELECTED, { node });
+        } catch (err) {
+            console.warn('Error pruning selection:', err);
+        }
+        this.selectedNodes.delete(node);
+    }
+    /**
      * Clear all selection
      */
     clearSelection() {
@@ -307,6 +335,7 @@ export class RaycastManager {
         window.removeEventListener('keydown', this.onKeyDown);
 
         // Clear stale references to prevent memory leaks
+        this.eventSubs.dispose();
         this.hoveredNode = null;
         this.selectedNodes.clear();
     }

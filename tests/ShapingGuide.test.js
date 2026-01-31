@@ -13,6 +13,7 @@ import {
     ShapingGuide,
     calculateCircleIncreases,
     calculateDecreases,
+    getCrownShapingGuide,
     suggestShaping,
     getShapingForRow,
     ShapeType
@@ -160,6 +161,22 @@ describe('ShapingGuide', () => {
             expect(result.decreases).toBe(6);
             // Every other stitch should be a decrease
             expect(result.spacing).toBe(2);
+        });
+    });
+
+    describe('getCrownShapingGuide', () => {
+        it('should build crown shaping rounds and finish instruction', () => {
+            const guide = getCrownShapingGuide(24, { decreasesPerRound: 6, targetStitches: 6, stitchAbbr: 'sc' });
+
+            expect(guide.rounds.length).toBeGreaterThan(0);
+            expect(guide.finish).toContain('drawstring');
+            expect(guide.rounds[0].instruction).toContain('dec');
+        });
+
+        it('should return empty rounds when already at target', () => {
+            const guide = getCrownShapingGuide(6, { decreasesPerRound: 6, targetStitches: 6 });
+
+            expect(guide.rounds).toHaveLength(0);
         });
     });
 

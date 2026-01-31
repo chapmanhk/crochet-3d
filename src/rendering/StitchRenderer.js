@@ -94,6 +94,23 @@ export class StitchRenderer {
             }
         });
 
+        this.eventSubs.on(Events.STITCH_COLOR_CHANGED, ({ node, nodes }) => {
+            try {
+                const updateNode = (target) => {
+                    if (target) {
+                        this.updateSelectionVisual(target);
+                    }
+                };
+                if (Array.isArray(nodes)) {
+                    nodes.forEach(updateNode);
+                } else {
+                    updateNode(node);
+                }
+            } catch (err) {
+                console.error('Error updating mesh for color change:', err);
+            }
+        });
+
         this.eventSubs.on(Events.ROW_HIGHLIGHT_CHANGED, ({ row }) => {
             try {
                 this.setHighlightedRow(row);

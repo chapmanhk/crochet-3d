@@ -130,6 +130,28 @@ describe('Pattern', () => {
         });
     });
 
+    describe('startWithFoundationDC', () => {
+        it('should create foundation double crochet stitches in row 0', () => {
+            const stitches = pattern.startWithFoundationDC(3);
+
+            expect(stitches).toHaveLength(3);
+            expect(pattern.graph.size).toBe(3);
+            stitches.forEach((stitch, index) => {
+                expect(stitch.type).toBe(StitchType.FOUNDATION_DOUBLE_CROCHET);
+                expect(stitch.row).toBe(0);
+                expect(stitch.column).toBe(index);
+            });
+        });
+
+        it('should connect foundation double crochet stitches horizontally', () => {
+            const stitches = pattern.startWithFoundationDC(3);
+
+            expect(stitches[0].connections.right).toBe(stitches[1]);
+            expect(stitches[1].connections.left).toBe(stitches[0]);
+            expect(stitches[1].connections.right).toBe(stitches[2]);
+        });
+    });
+
     describe('startWithMagicRing', () => {
         it('should create magic ring with default 6 stitches', () => {
             const stitches = pattern.startWithMagicRing();

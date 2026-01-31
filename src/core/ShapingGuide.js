@@ -7,6 +7,8 @@
  * - Pattern validation against expected shaping
  */
 
+import { StitchType } from './StitchTypes.js';
+
 /**
  * Shape types for shaping calculations
  */
@@ -111,6 +113,69 @@ export function calculateDecreases(currentStitches, targetStitches) {
         spacing,
         targetStitches,
         instruction
+    };
+}
+
+/**
+ * Create a crown shaping guide for closing circular patterns.
+ * @param {number} currentStitches - Current stitch count
+ * @param {Object} options - Guide options
+ * @param {number} options.decreasesPerRound - Decreases per round (default: 6)
+ * @param {number} options.targetStitches - Target stitches to close (default: 6)
+ * @param {string} options.stitchAbbr - Stitch abbreviation (default: 'sc')
+ * @returns {Object} Crown shaping guide details
+ */
+export function getCrownShapingGuide(currentStitches, options = {}) {
+    const {
+        decreasesPerRound = 6,
+        targetStitches = 6,
+        stitchAbbr = 'sc'
+    } = options;
+
+    const safeCurrent = Math.max(0, Math.floor(currentStitches || 0));
+    const safeTarget = Math.max(1, Math.floor(targetStitches || 6));
+    const safeDecreases = Math.max(1, Math.floor(decreasesPerRound || 6));
+
+    const rounds = [];
+    let remaining = safeCurrent;
+    let roundNumber = 1;
+
+    while (remaining > safeTarget && roundNumber <= 50) {
+        const decreaseCount = Math.min(safeDecreases, remaining - safeTarget);
+        const endStitches = remaining - decreaseCount;
+        const { spacing } = calculateDecreases(remaining, endStitches);
+        const stitchesBetween = Math.max(0, spacing - 2);
+
+        let instruction;
+        if (stitchesBetween === 0) {
+            instruction = `*dec* repeat around (${endStitches} sts)`;
+        } else {
+            instruction = `*${stitchAbbr} ${stitchesBetween}, dec* repeat around (${endStitches} sts)`;
+        }
+
+        rounds.push({
+            round: roundNumber,
+            startStitches: remaining,
+            endStitches,
+            decreases: decreaseCount,
+            instruction
+        });
+
+        remaining = endStitches;
+        roundNumber += 1;
+    }
+
+    const finish = remaining <= safeTarget
+        ? `Fasten off leaving a tail, weave through remaining ${remaining} stitches, and pull tight to close with a drawstring.`
+        : 'Continue decreasing evenly and close with a drawstring.';
+
+    return {
+        startStitches: safeCurrent,
+        targetStitches: safeTarget,
+        decreasesPerRound: safeDecreases,
+        stitchAbbr,
+        rounds,
+        finish
     };
 }
 
@@ -354,6 +419,18 @@ export class ShapingGuide {
         }
 
         return suggestShaping(this.pattern, this.targetShape);
+    }
+
+    /**
+     * Get crown shaping guide based on current row stitch count.
+     * @param {Object} options - Guide options
+     * @returns {Object} Crown shaping guide
+     */
+    getCrownShapingGuide(options = {}) {
+        const currentRow = this.pattern.currentRow;
+        const rowStitches = this.pattern.graph.getRow(currentRow) || [];
+        const workingStitches = rowStitches.filter(stitch => stitch.type !== StitchType.MAGIC_RING);
+        return getCrownShapingGuide(workingStitches.length, options);
     }
 
     /**

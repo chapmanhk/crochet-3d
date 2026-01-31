@@ -155,4 +155,37 @@ describe('RaycastManager', () => {
         expect(payload.nodes).toHaveLength(2);
         expect(payload.nodes).toEqual(expect.arrayContaining([nodeA, nodeB]));
     });
+
+    it('clears selection when pattern is loaded', () => {
+        const node = createNode('node-1');
+        manager.selectedNodes.add(node);
+
+        EventBus.emit(Events.PATTERN_LOADED, { pattern: {} });
+
+        expect(manager.getSelection()).toHaveLength(0);
+        expect(node.setSelected).toHaveBeenCalledWith(false);
+        expect(stitchRenderer.updateSelectionVisual).toHaveBeenCalledWith(node);
+    });
+
+    it('clears selection when pattern is cleared', () => {
+        const node = createNode('node-1');
+        manager.selectedNodes.add(node);
+
+        EventBus.emit(Events.PATTERN_CLEARED, { pattern: {} });
+
+        expect(manager.getSelection()).toHaveLength(0);
+        expect(node.setSelected).toHaveBeenCalledWith(false);
+        expect(stitchRenderer.updateSelectionVisual).toHaveBeenCalledWith(node);
+    });
+
+    it('prunes selection when a selected stitch is removed', () => {
+        const node = createNode('node-1');
+        manager.selectedNodes.add(node);
+
+        EventBus.emit(Events.STITCH_REMOVED, { node });
+
+        expect(manager.getSelection()).toHaveLength(0);
+        expect(node.setSelected).toHaveBeenCalledWith(false);
+        expect(stitchRenderer.updateSelectionVisual).toHaveBeenCalledWith(node);
+    });
 });
