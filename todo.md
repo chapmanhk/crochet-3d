@@ -1,6 +1,6 @@
 # Crochet Pattern UI - Bug List & Proposed Fixes
 
-This list captures UI/logic issues observed while creating a simple scarf
+This list captures UI/logic issues observed while creating patterns (scarf, beanie)
 via click-based interactions, plus recommended fixes.
 
 ## Foundations & Row Basics
@@ -196,4 +196,104 @@ via click-based interactions, plus recommended fixes.
     input `min="1"` blocks it in some browsers.
   - **Fix:** Set the input `min` dynamically (0 if foundation exists, else 1)
     and update on PATTERN_LOADED/ROW_ADDED.
+---
+
+## Beanie Pattern Testing Findings
+
+The following issues were discovered while simulating a first-time crocheter
+making a beanie pattern (foundation chain → rows of SC → crown decreases).
+
+### Critical Bugs
+
+- [ ] **Bug: Skip input ID mismatch breaks visual feedback**
+  - **Location:** `UIManager.js:1187`
+  - **Symptoms:** `updateSkipInput()` looks for `#input-skip` but the actual
+    element ID is `#input-skip-count`. Skip count changes aren't reflected in UI.
+  - **Fix:** Change selector from `#input-skip` to `#input-skip-count` in
+    `updateSkipInput()` method.
+
+- [ ] **Bug: Foundation chains called "stitches" in instructions**
+  - **Location:** `Pattern.js:1139`
+  - **Symptoms:** Generated instructions say "Foundation: ch 60 (60 sts)" but
+    chains aren't traditionally counted as "stitches" in crochet terminology.
+  - **Fix:** Change output from `(${count} sts)` to `(${count} ch)` for
+    foundation chain rows, or simply remove the count since "ch 60" is clear.
+
+- [ ] **Bug: Decrease validation may block valid edge-of-row placements**
+  - **Location:** `StitchValidator.js:77-113`
+  - **Symptoms:** When decreasing near the end of a row, the validator checks
+    `attachIndex + (decreaseCount * direction)` but the direction logic may
+    incorrectly block valid placements at row boundaries.
+  - **Fix:** Adjust boundary checking to account for both working directions
+    and available stitches in either direction from attachment point.
+
+### Moderate Issues
+
+- [ ] **Bug: Row display shows "Row 0 of 0" for foundation-only patterns**
+  - **Location:** `UIManager.js:1126-1155`
+  - **Symptoms:** When only a foundation chain exists, the UI displays
+    "Row 0 of 0" which is confusing. Crocheters expect to see "Foundation"
+    or at minimum "Row 0 of 1" (counting foundation as a row).
+  - **Fix:** Special-case foundation-only display to show "Foundation Row"
+    instead of "Row 0 of 0", or adjust counting logic.
+
+- [ ] **Bug: Suggested attachment point may skip stitches unexpectedly**
+  - **Location:** `Pattern.js:871-876`
+  - **Symptoms:** The `expectedNextCol` calculation assumes sequential
+    placement. If user adds stitches out of order (e.g., skips one, comes back),
+    the "suggested" ghost may highlight the wrong stitch.
+  - **Fix:** Track which stitches have been worked into and suggest the
+    next unworked stitch in working direction order, not just expectedNextCol.
+
+- [ ] **Bug: Skip count and decrease modifier don't coordinate**
+  - **Location:** `Pattern.js:487-576`
+  - **Symptoms:** Using skip count AND decrease modifier together produces
+    unexpected behavior - the skip is applied first, then decrease connects
+    to adjacent stitches from the skipped-to position.
+  - **Fix:** Either (a) reset skip count when decrease is active, (b) apply
+    skip after calculating decrease connections, or (c) document the interaction
+    and warn users in UI.
+
+### Minor/Cosmetic Issues
+
+- [ ] **Issue: Working direction label "start at chain end" is ambiguous**
+  - **Location:** UIManager working direction display
+  - **Symptoms:** The label "← left (start at chain end)" could confuse
+    beginners who think "chain end" means the slip knot end (start of chain).
+  - **Fix:** Rephrase to "← left (start at last chain made)" or add a tooltip
+    explaining that you work back toward the beginning.
+
+- [ ] **Issue: Turning chains have negative column numbers**
+  - **Location:** `Pattern.js:320-335`
+  - **Symptoms:** Turning chains are assigned negative column numbers to avoid
+    conflicts with working stitches. While this works internally, it looks odd
+    in pattern data exports.
+  - **Fix:** Consider using a separate namespace/flag for turning chains
+    rather than negative columns, or document this behavior in exports.
+
+- [ ] **Issue: Skip instructions use abbreviated format**
+  - **Location:** `Pattern.js:1167-1170`
+  - **Symptoms:** Instructions output "sk 1, sc" instead of "skip 1 st, sc"
+    which may be unclear to beginners.
+  - **Fix:** Use full words "skip N st(s)" in generated instructions, or
+    make abbreviation level configurable.
+
+### Proposed Enhancements
+
+- [ ] **Enhancement: Add Magic Ring option to new pattern dialog**
+  - Many beanie patterns start with a magic ring for working in the round.
+  - The "New Pattern" prompt should offer: Foundation Chain, Foundation SC,
+    Foundation DC, and Magic Ring options.
+
+- [ ] **Enhancement: Add "Crown Shaping Guide" for beanies**
+  - Similar to the existing ShapingGuide, add specific guidance for closing
+    circular patterns (decrease evenly, close with drawstring, etc.).
+
+- [ ] **Enhancement: Show stitch count per row in real-time**
+  - While working a row, display running stitch count vs. previous row count
+    to help crocheters track increases/decreases.
+
+- [ ] **Enhancement: Warn when row stitch count differs from previous row**
+  - If a row ends with more/fewer stitches than previous (unintentional shaping),
+    show a warning before starting the next row.
 
