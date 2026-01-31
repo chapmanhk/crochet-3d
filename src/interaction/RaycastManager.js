@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { EventBus, Events, createEventSubscriptions } from '../utils/EventBus.js';
+import { throttle } from '../utils/throttle.js';
 
 /**
  * RaycastManager - Handles mouse interaction with 3D objects
@@ -11,9 +12,10 @@ import { EventBus, Events, createEventSubscriptions } from '../utils/EventBus.js
  */
 
 export class RaycastManager {
-    constructor(sceneManager, stitchRenderer) {
+    constructor(sceneManager, stitchRenderer, options = {}) {
         this.sceneManager = sceneManager;
         this.stitchRenderer = stitchRenderer;
+        this.throttleMs = options.throttleMs ?? 50;
 
         // Raycaster for hit detection
         this.raycaster = new THREE.Raycaster();
@@ -29,6 +31,9 @@ export class RaycastManager {
         this.onClick = this.onClick.bind(this);
         this.onKeyDown = this.onKeyDown.bind(this);
 
+        // Create throttled wrapper for mousemove
+        this._throttledMouseMove = throttle(this.onMouseMove, this.throttleMs);
+
         // Setup listeners
         this.setupEventListeners();
         this.setupSelectionListeners();
@@ -40,7 +45,7 @@ export class RaycastManager {
     setupEventListeners() {
         const canvas = this.sceneManager.domElement;
 
-        canvas.addEventListener('mousemove', this.onMouseMove);
+        canvas.addEventListener('mousemove', this._throttledMouseMove);
         canvas.addEventListener('click', this.onClick);
         window.addEventListener('keydown', this.onKeyDown);
     }
@@ -328,14 +333,17 @@ export class RaycastManager {
      * Dispose of resources
      */
     dispose() {
-        const canvas = this.sceneManager.domElement;
+        const canvas = this.sceneManager?.domElement;
+        if (!canvas) return;
 
-        canvas.removeEventListener('mousemove', this.onMouseMove);
+        canvas.removeEventListener('mousemove', this._throttledMouseMove);
         canvas.removeEventListener('click', this.onClick);
         window.removeEventListener('keydown', this.onKeyDown);
 
         // Clear stale references to prevent memory leaks
-        this.eventSubs.dispose();
+        if (this.eventSubs) {
+            this.eventSubs.dispose();
+        }
         this.hoveredNode = null;
         this.selectedNodes.clear();
     }
