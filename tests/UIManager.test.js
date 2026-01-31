@@ -10,13 +10,14 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EventBus, Events } from '../src/utils/EventBus.js';
-import { showConfirm, showPrompt, showAlert, showInstructions } from '../src/ui/Modal.js';
+import { showConfirm, showPrompt, showAlert, showInstructions, showModal } from '../src/ui/Modal.js';
 
 vi.mock('../src/ui/Modal.js', () => ({
     showConfirm: vi.fn(() => Promise.resolve(true)),
     showPrompt: vi.fn(() => Promise.resolve('10')),
     showAlert: vi.fn(() => Promise.resolve()),
-    showInstructions: vi.fn(() => Promise.resolve())
+    showInstructions: vi.fn(() => Promise.resolve()),
+    showModal: vi.fn(() => Promise.resolve('Cancel'))
 }));
 
 // Mock Pattern class for UIManager
@@ -24,12 +25,15 @@ class MockPattern {
     constructor() {
         this.currentRow = 0;
         this.workingDirection = 'right';
+        this.mode = 'flat';
         this.selectedStitchType = 'SINGLE_CROCHET';
         this.currentColor = 0x8B4513;
         this.currentLoopSelection = 'both';
         this.currentModifiers = [];
         this.currentSkipCount = 0;
         this.currentWorkIntoSpace = false;
+        this.autoTurningChain = true;
+        this.turningChainOverrides = {};
         this.graph = {
             size: 0,
             getStats: () => ({
@@ -38,7 +42,8 @@ class MockPattern {
             }),
             getRowSorted: vi.fn(() => []),
             getRow: vi.fn(() => []),
-            clear: vi.fn()
+            clear: vi.fn(),
+            toJSON: vi.fn(() => ({}))
         };
         this.history = [];
         this.historyIndex = -1;
@@ -48,6 +53,12 @@ class MockPattern {
         this.startWithChain = vi.fn((length) => {
             this.graph.size = length;
         });
+        this.startWithFoundationSC = vi.fn();
+        this.startWithFoundationDC = vi.fn();
+        this.startWithMagicRing = vi.fn();
+        this.hasFoundationChain = vi.fn(() => false);
+        this.loadState = vi.fn();
+        this.metadata = { name: 'Mock' };
     }
     canUndo() { return false; }
     canRedo() { return false; }
@@ -796,6 +807,21 @@ describe('UIManager - Stitch options and actions', () => {
         expect(colorPicker.value).toBe('#ff0000');
     });
 
+    it('applies current color to selected stitches', () => {
+        const node = { name: 'Single Crochet', row: 0, column: 0, type: 'sc', isTurningChain: false };
+        const callback = vi.fn();
+        EventBus.on(Events.STITCH_COLOR_CHANGED, callback);
+
+        EventBus.emit(Events.STITCH_SELECTED, { node });
+        uiManager.selectColor(0x123456);
+
+        const button = document.querySelector('#btn-apply-selection-color');
+        button.click();
+
+        expect(node.color).toBe(0x123456);
+        expect(callback).toHaveBeenCalledWith({ nodes: [node], color: 0x123456 });
+    });
+
     it('adds a stitch at next available attachment point', async () => {
         const stitch = { id: 'attach', row: 0, column: 0, connections: { above: [] } };
         const nextStitch = { id: 'next', row: 0, column: 1 };
@@ -837,12 +863,107 @@ describe('UIManager - Stitch options and actions', () => {
         expect(showInstructions).toHaveBeenCalled();
     });
 
-    it('uses alert when chain length is adjusted', async () => {
+    it('opens start pattern modal when no pattern exists', async () => {
         mockPattern.graph.size = 0;
-        showPrompt.mockResolvedValueOnce('999');
+        showModal.mockResolvedValueOnce('Foundation Chain');
+        showPrompt.mockResolvedValueOnce('5');
 
         await uiManager.addStitchAtNextPosition();
 
-        expect(showAlert).toHaveBeenCalled();
+        expect(showModal).toHaveBeenCalled();
+        expect(mockPattern.startWithChain).toHaveBeenCalledWith(5);
+    });
+});
+
+describe('UIManager - Start Pattern and Templates', () => {
+    let UIManager;
+    let uiManager;
+    let mockPattern;
+    let mockSceneManager;
+
+    beforeEach(async () => {
+        EventBus.clear();
+        document.body.innerHTML = '';
+
+        mockPattern = new MockPattern();
+        mockSceneManager = new MockSceneManager();
+
+        const module = await import('../src/ui/UIManager.js');
+        UIManager = module.UIManager;
+        uiManager = new UIManager(mockPattern, mockSceneManager);
+    });
+
+    afterEach(() => {
+        if (uiManager && uiManager.dispose) {
+            uiManager.dispose();
+        }
+        document.body.innerHTML = '';
+    });
+
+    it('renders start pattern button', () => {
+        const button = document.querySelector('#btn-start-pattern');
+        expect(button).not.toBeNull();
+    });
+
+    it('renders templates panel with buttons', () => {
+        const panel = document.querySelector('.templates-panel');
+        expect(panel).not.toBeNull();
+
+        const buttons = panel.querySelectorAll('.template-btn');
+        expect(buttons.length).toBeGreaterThan(0);
+    });
+
+    it('starts foundation double crochet from start modal', async () => {
+        showModal.mockResolvedValueOnce('Foundation DC');
+        showPrompt.mockResolvedValueOnce('8');
+
+        await uiManager.showStartPatternModal();
+
+        expect(mockPattern.startWithFoundationDC).toHaveBeenCalledWith(8);
+    });
+});
+
+describe('UIManager - Row Count Warnings', () => {
+    let UIManager;
+    let uiManager;
+    let mockPattern;
+    let mockSceneManager;
+
+    beforeEach(async () => {
+        EventBus.clear();
+        document.body.innerHTML = '';
+
+        mockPattern = new MockPattern();
+        mockSceneManager = new MockSceneManager();
+
+        const module = await import('../src/ui/UIManager.js');
+        UIManager = module.UIManager;
+        uiManager = new UIManager(mockPattern, mockSceneManager);
+    });
+
+    afterEach(() => {
+        if (uiManager && uiManager.dispose) {
+            uiManager.dispose();
+        }
+        document.body.innerHTML = '';
+    });
+
+    it('warns when row stitch count differs before starting new row', async () => {
+        mockPattern.currentRow = 1;
+        mockPattern.hasFoundationChain = vi.fn(() => false);
+        mockPattern.graph.getRow.mockImplementation((row) => {
+            if (row === 1) {
+                return [{ type: 'sc' }, { type: 'sc' }];
+            }
+            return [{ type: 'sc' }, { type: 'sc' }, { type: 'sc' }];
+        });
+
+        const startSpy = vi.spyOn(mockPattern, 'startNewRow');
+        showConfirm.mockResolvedValueOnce(false);
+
+        await uiManager.handleStartNewRow();
+
+        expect(showConfirm).toHaveBeenCalled();
+        expect(startSpy).not.toHaveBeenCalled();
     });
 });

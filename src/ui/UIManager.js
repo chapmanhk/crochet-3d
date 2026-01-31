@@ -2,8 +2,10 @@ import { StitchType, StitchDefinitions, getStitchByKeyboard, StitchModifier } fr
 import { EventBus, Events, EventSubscriptions } from '../utils/EventBus.js';
 import { YarnMaterial } from '../rendering/YarnMaterial.js';
 import { PatternConstants, AttachmentConstants } from '../utils/Constants.js';
-import { showInstructions, showConfirm, showPrompt, showAlert } from './Modal.js';
+import { showInstructions, showConfirm, showPrompt, showAlert, showModal } from './Modal.js';
 import { StitchValidator } from '../core/StitchValidator.js';
+import { createBasicCircle, createBasicSquare, createGrannySquare, createTriangle } from '../core/PatternTemplates.js';
+import { getCrownShapingGuide } from '../core/ShapingGuide.js';
 
 /**
  * UIManager - Manages all HTML/CSS UI elements
@@ -29,6 +31,7 @@ export class UIManager {
         this.toolbar = null;
         this.viewModeSelector = null;
         this.rowNavigation = null;
+        this.templatesPanel = null;
 
         // Current selected stitch type
         this.selectedStitchType = StitchType.SINGLE_CROCHET;
@@ -40,6 +43,9 @@ export class UIManager {
 
         // Row navigation state
         this.highlightedRow = 0;
+
+        // Selection tracking
+        this.selectedNodes = new Set();
 
         // Event subscriptions for cleanup
         this.eventSubs = new EventSubscriptions();
@@ -57,6 +63,7 @@ export class UIManager {
         this.createStyles();
         this.createContainer();
         this.createStitchPalette();
+        this.createTemplatesPanel();
         this.createToolbar();
         this.createInfoPanel();
         this.createViewModeSelector();
@@ -392,6 +399,55 @@ export class UIManager {
                 color: rgba(255, 255, 255, 0.7);
             }
 
+            /* Templates Panel */
+            .templates-panel {
+                left: 16px;
+                bottom: 140px;
+                width: 180px;
+                max-height: calc(100vh - 220px);
+                overflow-y: auto;
+            }
+
+            .template-btn {
+                width: 100%;
+                padding: 6px 10px;
+                margin-bottom: 6px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background: #fff;
+                cursor: pointer;
+                font-size: 12px;
+                text-align: left;
+                transition: all 0.15s ease;
+            }
+
+            .template-btn:hover {
+                background: #f0f0f0;
+            }
+
+            /* Selection actions */
+            .selection-actions {
+                margin-top: 8px;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+
+            .info-action-btn {
+                width: 100%;
+                padding: 6px 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background: #fff;
+                cursor: pointer;
+                font-size: 12px;
+                transition: all 0.15s ease;
+            }
+
+            .info-action-btn:hover {
+                background: #f0f0f0;
+            }
+
             /* Row Navigation */
             .row-navigation {
                 right: 16px;
@@ -524,6 +580,30 @@ export class UIManager {
     }
 
     /**
+     * Create templates panel
+     */
+    createTemplatesPanel() {
+        this.templatesPanel = document.createElement('div');
+        this.templatesPanel.className = 'crochet-panel templates-panel';
+        this.templatesPanel.innerHTML = `
+            <h3>Templates</h3>
+            <button class="template-btn" data-template="granny">Granny Square</button>
+            <button class="template-btn" data-template="circle">Basic Circle</button>
+            <button class="template-btn" data-template="square">Basic Square</button>
+            <button class="template-btn" data-template="triangle">Triangle</button>
+        `;
+
+        this.templatesPanel.querySelectorAll('.template-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const template = btn.dataset.template;
+                this.handleTemplateSelection(template);
+            });
+        });
+
+        this.container.appendChild(this.templatesPanel);
+    }
+
+    /**
      * Create toolbar
      */
     createToolbar() {
@@ -532,8 +612,9 @@ export class UIManager {
         this.toolbar.innerHTML = `
             <button class="toolbar-btn" id="btn-undo" title="Undo (Ctrl+Z)">Undo</button>
             <button class="toolbar-btn" id="btn-redo" title="Redo (Ctrl+Y)">Redo</button>
+            <button class="toolbar-btn primary" id="btn-start-pattern" title="Start a new pattern">Start Pattern</button>
             <button class="toolbar-btn" id="btn-new-row" title="Start new row">New Row</button>
-            <button class="toolbar-btn primary" id="btn-add-stitch" title="Add stitch to pattern">Add Stitch</button>
+            <button class="toolbar-btn" id="btn-add-stitch" title="Add stitch to pattern">Add Stitch</button>
             <button class="toolbar-btn" id="btn-clear" title="Clear pattern">Clear</button>
         `;
 
@@ -544,6 +625,10 @@ export class UIManager {
 
         this.toolbar.querySelector('#btn-redo').addEventListener('click', () => {
             this.pattern.redo();
+        });
+
+        this.toolbar.querySelector('#btn-start-pattern').addEventListener('click', () => {
+            this.handleStartPattern();
         });
 
         this.toolbar.querySelector('#btn-new-row').addEventListener('click', () => {
@@ -595,6 +680,10 @@ export class UIManager {
                 <span class="info-value" id="info-current-row">1</span>
             </div>
             <div class="info-row">
+                <span class="info-label">Row Stitches:</span>
+                <span class="info-value" id="info-row-stitches">0</span>
+            </div>
+            <div class="info-row">
                 <span class="info-label">Working:</span>
                 <span class="info-value" id="info-working-direction">-</span>
             </div>
@@ -606,6 +695,9 @@ export class UIManager {
                 <div class="info-row">
                     <span class="info-label">Position:</span>
                     <span class="info-value" id="info-selected-pos">-</span>
+                </div>
+                <div class="selection-actions">
+                    <button class="info-action-btn" id="btn-apply-selection-color">Apply color to selection</button>
                 </div>
             </div>
             <div class="stitch-options">
@@ -652,6 +744,9 @@ export class UIManager {
             <button class="toolbar-btn instructions-btn" id="btn-instructions">
                 View Instructions
             </button>
+            <button class="toolbar-btn instructions-btn" id="btn-crown-guide">
+                Crown Shaping Guide
+            </button>
         `;
 
         // Color picker
@@ -659,6 +754,13 @@ export class UIManager {
             const color = parseInt(e.target.value.replace('#', ''), 16);
             this.selectColor(color);
         });
+
+        const applySelectionColorBtn = this.infoPanel.querySelector('#btn-apply-selection-color');
+        if (applySelectionColorBtn) {
+            applySelectionColorBtn.addEventListener('click', () => {
+                this.applyColorToSelection();
+            });
+        }
 
         // Stitch options
         const loopSelect = this.infoPanel.querySelector('#select-loop');
@@ -732,6 +834,13 @@ export class UIManager {
             const instructions = this.pattern.generateInstructions();
             showInstructions(instructions);
         });
+
+        const crownGuideBtn = this.infoPanel.querySelector('#btn-crown-guide');
+        if (crownGuideBtn) {
+            crownGuideBtn.addEventListener('click', () => {
+                this.showCrownShapingGuide();
+            });
+        }
 
         this.container.appendChild(this.infoPanel);
     }
@@ -867,10 +976,14 @@ export class UIManager {
         this.eventSubs.on(Events.PATTERN_LOADED, () => {
             this.updateInfoPanel();
             this.updateRowNavigation();
+            this.selectedNodes.clear();
+            this.updateSelectionInfo();
         });
         this.eventSubs.on(Events.PATTERN_CLEARED, () => {
             this.updateInfoPanel();
             this.updateRowNavigation();
+            this.selectedNodes.clear();
+            this.updateSelectionInfo();
         });
         this.eventSubs.on(Events.ROW_ADDED, () => {
             this.updateInfoPanel();
@@ -881,9 +994,20 @@ export class UIManager {
         });
 
         this.eventSubs.on(Events.HISTORY_CHANGED, () => this.updateUndoRedoButtons());
-
-        this.eventSubs.on(Events.STITCH_SELECTED, ({ node }) => this.showSelectionInfo(node));
-        this.eventSubs.on(Events.STITCH_DESELECTED, () => this.hideSelectionInfo());
+        this.eventSubs.on(Events.STITCH_SELECTED, ({ node }) => {
+            if (node) {
+                this.selectedNodes.add(node);
+            }
+            this.updateSelectionInfo();
+        });
+        this.eventSubs.on(Events.STITCH_DESELECTED, ({ node }) => {
+            if (node) {
+                this.selectedNodes.delete(node);
+            } else {
+                this.selectedNodes.clear();
+            }
+            this.updateSelectionInfo();
+        });
     }
 
     /**
@@ -1009,6 +1133,396 @@ export class UIManager {
     }
 
     /**
+     * Apply current color to selected stitches
+     */
+    applyColorToSelection() {
+        if (this.selectedNodes.size === 0) {
+            return;
+        }
+
+        const color = this.pattern.currentColor;
+        const nodes = Array.from(this.selectedNodes);
+        nodes.forEach(node => {
+            node.color = color;
+        });
+        EventBus.emit(Events.STITCH_COLOR_CHANGED, { nodes, color });
+    }
+
+    /**
+     * Reset stitch option controls after starting a new pattern
+     */
+    resetStitchOptions({ skipCount = 0 } = {}) {
+        this.pattern.currentSkipCount = skipCount;
+        this.pattern.currentModifiers = [];
+        this.pattern.currentWorkIntoSpace = false;
+        this.pattern.currentLoopSelection = 'both';
+
+        const loopSelect = this.infoPanel?.querySelector('#select-loop');
+        if (loopSelect) {
+            loopSelect.value = 'both';
+        }
+        const modifierSelect = this.infoPanel?.querySelector('#select-modifier');
+        if (modifierSelect) {
+            modifierSelect.value = 'none';
+        }
+        const skipInput = this.infoPanel?.querySelector('#input-skip-count');
+        if (skipInput) {
+            skipInput.value = String(skipCount);
+        }
+        const workSpaceToggle = this.infoPanel?.querySelector('#toggle-work-space');
+        if (workSpaceToggle) {
+            workSpaceToggle.checked = false;
+        }
+    }
+
+    /**
+     * Prompt for a numeric input with bounds
+     */
+    async promptForNumber({ title, message, defaultValue, min, max }) {
+        const result = await showPrompt(message, String(defaultValue), title);
+        if (result === null) {
+            return null;
+        }
+
+        const parsed = parseInt(result, 10);
+        if (!Number.isFinite(parsed)) {
+            await showAlert('Please enter a valid number.', title);
+            return null;
+        }
+
+        const clamped = Math.max(min, Math.min(max, parsed));
+        if (clamped !== parsed) {
+            await showAlert(`Value adjusted to ${clamped} (allowed ${min}-${max}).`, `${title} Adjusted`);
+        }
+
+        return clamped;
+    }
+
+    /**
+     * Confirm clearing an existing pattern
+     */
+    async confirmClearPattern(title) {
+        if (!this.pattern.graph || this.pattern.graph.size === 0) {
+            return true;
+        }
+        return showConfirm(
+            'Starting a new pattern will clear the current one. Continue?',
+            title || 'Start New Pattern'
+        );
+    }
+
+    /**
+     * Start a new pattern with the chosen method
+     */
+    async handleStartPattern() {
+        const confirmed = await this.confirmClearPattern('Start Pattern');
+        if (!confirmed) {
+            return;
+        }
+
+        await this.showStartPatternModal();
+    }
+
+    /**
+     * Show start pattern modal and handle choice
+     */
+    async showStartPatternModal() {
+        const choice = await showModal({
+            title: 'Start Pattern',
+            content: 'Choose a starting method:',
+            buttons: [
+                { text: 'Foundation Chain', primary: true },
+                { text: 'Foundation SC' },
+                { text: 'Foundation DC' },
+                { text: 'Magic Ring' },
+                { text: 'Cancel' }
+            ]
+        });
+
+        if (!choice || choice === 'Cancel') {
+            return;
+        }
+
+        if (choice === 'Foundation Chain') {
+            const length = await this.promptForNumber({
+                title: 'Foundation Chain',
+                message: `Enter foundation chain length (${PatternConstants.MIN_CHAIN_LENGTH}-${PatternConstants.MAX_CHAIN_LENGTH}):`,
+                defaultValue: PatternConstants.DEFAULT_CHAIN_LENGTH,
+                min: PatternConstants.MIN_CHAIN_LENGTH,
+                max: PatternConstants.MAX_CHAIN_LENGTH
+            });
+            if (!length) return;
+
+            this.pattern.startWithChain(length);
+            // Auto-set skip to 1 for first stitch (typical crochet: 2nd chain from hook)
+            this.resetStitchOptions({ skipCount: 1 });
+            return;
+        }
+
+        if (choice === 'Foundation SC') {
+            const length = await this.promptForNumber({
+                title: 'Foundation Single Crochet',
+                message: `Enter number of foundation stitches (${PatternConstants.MIN_CHAIN_LENGTH}-${PatternConstants.MAX_CHAIN_LENGTH}):`,
+                defaultValue: PatternConstants.DEFAULT_CHAIN_LENGTH,
+                min: PatternConstants.MIN_CHAIN_LENGTH,
+                max: PatternConstants.MAX_CHAIN_LENGTH
+            });
+            if (!length) return;
+
+            this.pattern.startWithFoundationSC(length);
+            this.resetStitchOptions();
+            return;
+        }
+
+        if (choice === 'Foundation DC') {
+            const length = await this.promptForNumber({
+                title: 'Foundation Double Crochet',
+                message: `Enter number of foundation stitches (${PatternConstants.MIN_CHAIN_LENGTH}-${PatternConstants.MAX_CHAIN_LENGTH}):`,
+                defaultValue: PatternConstants.DEFAULT_CHAIN_LENGTH,
+                min: PatternConstants.MIN_CHAIN_LENGTH,
+                max: PatternConstants.MAX_CHAIN_LENGTH
+            });
+            if (!length) return;
+
+            this.pattern.startWithFoundationDC(length);
+            this.resetStitchOptions();
+            return;
+        }
+
+        if (choice === 'Magic Ring') {
+            const stitches = await this.promptForNumber({
+                title: 'Magic Ring',
+                message: 'Enter number of stitches in the ring (1-50):',
+                defaultValue: PatternConstants.MAGIC_RING_INITIAL_STITCHES,
+                min: 1,
+                max: 50
+            });
+            if (!stitches) return;
+
+            const modeChoice = await showModal({
+                title: 'Magic Ring Mode',
+                content: 'Choose how rounds are joined:',
+                buttons: [
+                    { text: 'Joined Rounds', primary: true },
+                    { text: 'Spiral Rounds' },
+                    { text: 'Cancel' }
+                ]
+            });
+            if (!modeChoice || modeChoice === 'Cancel') {
+                return;
+            }
+            const roundMode = modeChoice === 'Spiral Rounds' ? 'spiral' : 'joined';
+
+            this.pattern.startWithMagicRing(stitches, StitchType.SINGLE_CROCHET, roundMode);
+            this.resetStitchOptions();
+        }
+    }
+
+    /**
+     * Handle template selection from the templates panel
+     */
+    async handleTemplateSelection(templateId) {
+        if (!templateId) return;
+
+        const confirmed = await this.confirmClearPattern('Load Template');
+        if (!confirmed) {
+            return;
+        }
+
+        let templatePattern = null;
+        const color = this.pattern.currentColor;
+
+        if (templateId === 'granny') {
+            const rounds = await this.promptForNumber({
+                title: 'Granny Square',
+                message: 'Enter number of rounds (1-50):',
+                defaultValue: 4,
+                min: 1,
+                max: 50
+            });
+            if (!rounds) return;
+            templatePattern = createGrannySquare({ rounds, color });
+        } else if (templateId === 'circle') {
+            const rounds = await this.promptForNumber({
+                title: 'Basic Circle',
+                message: 'Enter number of rounds (1-100):',
+                defaultValue: 5,
+                min: 1,
+                max: 100
+            });
+            if (!rounds) return;
+            templatePattern = createBasicCircle({ rounds, color });
+        } else if (templateId === 'square') {
+            const size = await this.promptForNumber({
+                title: 'Basic Square',
+                message: 'Enter square width in stitches (2-200):',
+                defaultValue: 10,
+                min: 2,
+                max: 200
+            });
+            if (!size) return;
+            templatePattern = createBasicSquare({ size, color });
+        } else if (templateId === 'triangle') {
+            const baseWidth = await this.promptForNumber({
+                title: 'Triangle',
+                message: 'Enter base width in stitches (3-200):',
+                defaultValue: 10,
+                min: 3,
+                max: 200
+            });
+            if (!baseWidth) return;
+
+            const directionChoice = await showModal({
+                title: 'Triangle Direction',
+                content: 'Choose triangle direction:',
+                buttons: [
+                    { text: 'Top-Down', primary: true },
+                    { text: 'Bottom-Up' },
+                    { text: 'Cancel' }
+                ]
+            });
+            if (!directionChoice || directionChoice === 'Cancel') return;
+            const direction = directionChoice === 'Bottom-Up' ? 'bottom-up' : 'top-down';
+
+            templatePattern = createTriangle({ baseWidth, direction, color });
+        }
+
+        if (templatePattern) {
+            this.applyTemplatePattern(templatePattern);
+        }
+    }
+
+    /**
+     * Apply a template pattern to the current pattern instance
+     */
+    applyTemplatePattern(templatePattern) {
+        if (!templatePattern) return;
+
+        this.pattern.mode = templatePattern.mode;
+        this.pattern.workingDirection = templatePattern.workingDirection;
+        this.pattern.autoTurningChain = templatePattern.autoTurningChain;
+        this.pattern.turningChainOverrides = { ...templatePattern.turningChainOverrides };
+        this.pattern.currentColor = templatePattern.currentColor;
+        this.pattern.metadata = JSON.parse(JSON.stringify(templatePattern.metadata));
+
+        this.pattern.loadState(templatePattern.graph.toJSON());
+        this.pattern.history = [];
+        this.pattern.historyIndex = -1;
+        this.pattern.saveHistoryState(`Apply ${templatePattern.metadata?.name || 'template'}`);
+
+        this.resetStitchOptions();
+    }
+
+    /**
+     * Count working stitches in a row (excluding turning chains and magic ring)
+     */
+    getRowStitchCount(rowIndex) {
+        if (!this.pattern.graph || rowIndex < 0) {
+            return 0;
+        }
+        const row = this.pattern.graph.getRow(rowIndex) || [];
+        return row.filter(stitch => {
+            if (stitch.type === StitchType.MAGIC_RING) {
+                return false;
+            }
+            if (stitch.isTurningChain && !stitch.turningChainCountsAsStitch) {
+                return false;
+            }
+            return true;
+        }).length;
+    }
+
+    /**
+     * Get current/previous row stitch counts
+     */
+    getRowStitchCounts() {
+        const currentRow = this.pattern.currentRow;
+        const currentCount = this.getRowStitchCount(currentRow);
+        const hasPrevious = currentRow > 0;
+        const previousCount = hasPrevious ? this.getRowStitchCount(currentRow - 1) : 0;
+
+        return {
+            currentCount,
+            previousCount,
+            hasPrevious
+        };
+    }
+
+    /**
+     * Get display label for a row index
+     */
+    getDisplayRowLabel(rowIndex, hasFoundation) {
+        if (hasFoundation && rowIndex === 0) {
+            return 'Foundation Row';
+        }
+        return hasFoundation ? rowIndex : rowIndex + 1;
+    }
+
+    /**
+     * Warn if row stitch count differs from previous row
+     */
+    async confirmRowCountMismatch() {
+        const currentRow = this.pattern.currentRow;
+        if (currentRow <= 0) {
+            return true;
+        }
+
+        const hasFoundation = typeof this.pattern.hasFoundationChain === 'function'
+            ? this.pattern.hasFoundationChain()
+            : false;
+        if (hasFoundation && currentRow === 1) {
+            return true;
+        }
+
+        const currentCount = this.getRowStitchCount(currentRow);
+        const previousCount = this.getRowStitchCount(currentRow - 1);
+
+        if (currentCount === 0 || previousCount === 0 || currentCount === previousCount) {
+            return true;
+        }
+
+        const currentLabel = this.getDisplayRowLabel(currentRow, hasFoundation);
+        const prevLabel = this.getDisplayRowLabel(currentRow - 1, hasFoundation);
+        const message = `${currentLabel} has ${currentCount} stitches, but ${prevLabel} has ${previousCount}. ` +
+            'This may indicate an unintended increase/decrease. Start a new row anyway?';
+
+        return showConfirm(message, 'Row Count Warning');
+    }
+
+    /**
+     * Show crown shaping guide based on current row stitch count
+     */
+    async showCrownShapingGuide() {
+        const currentCount = this.getRowStitchCount(this.pattern.currentRow);
+        if (currentCount === 0) {
+            await showAlert('Add some stitches before using the crown shaping guide.', 'Crown Shaping Guide');
+            return;
+        }
+
+        const stitchAbbr = StitchDefinitions[this.selectedStitchType]?.abbreviation || 'sc';
+        const guide = getCrownShapingGuide(currentCount, { stitchAbbr });
+        if (!guide.rounds || guide.rounds.length === 0) {
+            await showAlert('Crown shaping is already complete for this stitch count.', 'Crown Shaping Guide');
+            return;
+        }
+
+        const lines = guide.rounds.map(round =>
+            `Round ${round.round}: ${round.instruction}`
+        );
+        const content = `Crown shaping (decrease ${guide.decreasesPerRound} each round)\n` +
+            `Start with ${guide.startStitches} sts\n\n` +
+            `${lines.join('\n')}\n\n` +
+            `Finish: ${guide.finish}`;
+
+        await showModal({
+            title: 'Crown Shaping Guide',
+            content,
+            monospace: true,
+            buttons: [{ text: 'Close', primary: true }]
+        });
+    }
+
+    /**
      * Add stitch at next available position
      * With error handling for robustness
      */
@@ -1033,33 +1547,10 @@ export class UIManager {
             if (!availablePoints || availablePoints.length === 0) {
                 // No pattern started - create foundation chain
                 if (!this.pattern.graph || this.pattern.graph.size === 0) {
-                    const chainLength = await showPrompt(
-                        `Enter foundation chain length (${PatternConstants.MIN_CHAIN_LENGTH}-${PatternConstants.MAX_CHAIN_LENGTH}):`,
-                        String(PatternConstants.DEFAULT_CHAIN_LENGTH),
-                        'Foundation Chain'
-                    );
-                    if (chainLength && !isNaN(chainLength)) {
-                        // Validate bounds to prevent performance issues
-                        const parsedLength = parseInt(chainLength, 10);
-                        if (Number.isFinite(parsedLength)) {
-                            const minLength = PatternConstants.MIN_CHAIN_LENGTH;
-                            const maxLength = PatternConstants.MAX_CHAIN_LENGTH;
-                            const length = Math.max(minLength, Math.min(maxLength, parsedLength));
-                            if (length !== parsedLength) {
-                                await showAlert(
-                                    `Chain length adjusted to ${length} (allowed ${minLength}-${maxLength}).`,
-                                    'Chain Length Adjusted'
-                                );
-                            }
-                            this.pattern.startWithChain(length);
-                            // Auto-set skip to 1 for first stitch (typical crochet: 2nd chain from hook)
-                            this.pattern.currentSkipCount = 1;
-                            this.updateSkipInput(1);
-                        }
-                    }
+                    await this.showStartPatternModal();
                 } else {
                     // Start new row (consistent with clicking the new row ghost)
-                    this.pattern.startNewRow({ stitchType: this.selectedStitchType });
+                    await this.handleStartNewRow();
                 }
                 return;
             }
@@ -1127,6 +1618,11 @@ export class UIManager {
             }
         }
 
+        const proceed = await this.confirmRowCountMismatch();
+        if (!proceed) {
+            return;
+        }
+
         this.pattern.startNewRow({ stitchType: this.selectedStitchType });
         this.updateInfoPanel();
     }
@@ -1179,6 +1675,18 @@ export class UIManager {
         this.infoPanel.querySelector('#info-rows').textContent = rowInfo.displayRowCount;
         this.infoPanel.querySelector('#info-current-row').textContent = rowInfo.currentRowLabel;
 
+        const rowStitchesEl = this.infoPanel.querySelector('#info-row-stitches');
+        if (rowStitchesEl) {
+            if (!hasPattern) {
+                rowStitchesEl.textContent = '-';
+            } else {
+                const counts = this.getRowStitchCounts();
+                rowStitchesEl.textContent = counts.hasPrevious
+                    ? `${counts.currentCount} (prev ${counts.previousCount})`
+                    : String(counts.currentCount);
+            }
+        }
+
         const workingEl = this.infoPanel.querySelector('#info-working-direction');
         if (workingEl) {
             if (!hasPattern) {
@@ -1218,20 +1726,47 @@ export class UIManager {
      * Show selection info
      */
     showSelectionInfo(node) {
-        const selectionInfo = this.infoPanel.querySelector('#selection-info');
-        selectionInfo.classList.remove('hidden');
-
-        this.infoPanel.querySelector('#info-selected-type').textContent = node.name;
-        this.infoPanel.querySelector('#info-selected-pos').textContent =
-            `Row ${node.row + 1}, Col ${node.column + 1}`;
+        this.selectedNodes.clear();
+        if (node) {
+            this.selectedNodes.add(node);
+        }
+        this.updateSelectionInfo();
     }
 
     /**
      * Hide selection info
      */
     hideSelectionInfo() {
+        this.selectedNodes.clear();
+        this.updateSelectionInfo();
+    }
+
+    /**
+     * Update selection info display for current selection set
+     */
+    updateSelectionInfo() {
         const selectionInfo = this.infoPanel.querySelector('#selection-info');
-        selectionInfo.classList.add('hidden');
+        if (!selectionInfo) return;
+
+        if (this.selectedNodes.size === 0) {
+            selectionInfo.classList.add('hidden');
+            return;
+        }
+
+        selectionInfo.classList.remove('hidden');
+        const selectedTypeEl = this.infoPanel.querySelector('#info-selected-type');
+        const selectedPosEl = this.infoPanel.querySelector('#info-selected-pos');
+
+        if (this.selectedNodes.size === 1) {
+            const node = Array.from(this.selectedNodes)[0];
+            if (selectedTypeEl) selectedTypeEl.textContent = node.name;
+            if (selectedPosEl) {
+                selectedPosEl.textContent = `Row ${node.row + 1}, Col ${node.column + 1}`;
+            }
+        } else {
+            if (selectedTypeEl) selectedTypeEl.textContent = `Multiple (${this.selectedNodes.size})`;
+            if (selectedPosEl) selectedPosEl.textContent = '-';
+        }
     }
 
     /**

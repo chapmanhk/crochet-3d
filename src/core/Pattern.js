@@ -210,6 +210,46 @@ export class Pattern {
     }
 
     /**
+     * Start a new pattern with foundation double crochet (chainless)
+     * @param {number} length - Number of foundation stitches (must be positive integer)
+     * @returns {Array} Array of stitch nodes, or empty array if invalid input
+     */
+    startWithFoundationDC(length) {
+        // Validate input
+        if (!Number.isFinite(length) || length < 1) {
+            console.error(`Invalid foundation length: ${length}. Must be a positive integer.`);
+            return [];
+        }
+
+        // Clamp to reasonable bounds
+        const safeLength = Math.min(Math.max(1, Math.floor(length)), PatternConstants.MAX_CHAIN_LENGTH || 1000);
+
+        this.resetPatternState({ workingDirection: 'right', resetHistory: true });
+
+        const stitches = [];
+        let prevNode = null;
+
+        for (let i = 0; i < safeLength; i++) {
+            const node = this.graph.createNode(StitchType.FOUNDATION_DOUBLE_CROCHET, {
+                row: 0,
+                column: i,
+                position: { x: i * 0.7, y: 0, z: 0 }
+            });
+
+            if (prevNode) {
+                this.graph.connectHorizontal(prevNode, node);
+            }
+
+            stitches.push(node);
+            prevNode = node;
+        }
+
+        this.saveHistoryState('Create foundation double crochet');
+        EventBus.emit(Events.PATTERN_LOADED, { pattern: this });
+        return stitches;
+    }
+
+    /**
      * Start a new pattern with a magic ring
      * @param {number} initialStitches - Number of stitches in the ring (must be positive integer, min 1, max 50)
      * @param {string} stitchType - Type of stitch to use (default: single crochet)
