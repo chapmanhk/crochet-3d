@@ -79,24 +79,26 @@ export class StitchValidator {
                                  stitchType === StitchType.CLUSTER ? 3 : 2;
             const row = attachStitch.row;
             const rowStitches = pattern.graph.getRowSorted(row);
-            const attachIndex = rowStitches.indexOf(attachStitch);
+            const workingRowStitches = rowStitches.filter(stitch =>
+                !stitch.isTurningChain || stitch.turningChainCountsAsStitch
+            );
+            const orderedRowStitches = pattern.workingDirection === 'left'
+                ? [...workingRowStitches].reverse()
+                : workingRowStitches;
+            const attachIndex = orderedRowStitches.indexOf(attachStitch);
+            const targetStitches = attachIndex === -1
+                ? []
+                : orderedRowStitches.slice(attachIndex, attachIndex + decreaseCount);
 
-            // Check bounds based on working direction
-            const direction = pattern.workingDirection === 'left' ? -1 : 1;
-            const hasEnoughStitches = direction === 1
-                ? attachIndex !== -1 && attachIndex <= rowStitches.length - decreaseCount
-                : attachIndex !== -1 && attachIndex >= decreaseCount - 1;
-
-            if (!hasEnoughStitches) {
+            if (attachIndex === -1 || targetStitches.length < decreaseCount) {
                 result.errors.push(`Decrease requires ${decreaseCount} adjacent stitches`);
                 result.valid = false;
                 return result;
             }
 
             // Check that all stitches needed for decrease are available
-            for (let i = 1; i < decreaseCount; i++) {
-                const nextIndex = attachIndex + (i * direction);
-                const nextStitch = rowStitches[nextIndex];
+            for (let i = 1; i < targetStitches.length; i++) {
+                const nextStitch = targetStitches[i];
                 if (!nextStitch) {
                     result.errors.push(`Not enough stitches for ${decreaseCount}-stitch decrease`);
                     result.valid = false;
