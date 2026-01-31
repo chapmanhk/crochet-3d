@@ -1,4 +1,4 @@
-import { StitchType, StitchDefinitions, getStitchByKeyboard } from '../core/StitchTypes.js';
+import { StitchType, StitchDefinitions, getStitchByKeyboard, StitchModifier } from '../core/StitchTypes.js';
 import { EventBus, Events, EventSubscriptions } from '../utils/EventBus.js';
 import { YarnMaterial } from '../rendering/YarnMaterial.js';
 import { PatternConstants, AttachmentConstants } from '../utils/Constants.js';
@@ -223,6 +223,50 @@ export class UIManager {
 
             .selection-info.hidden {
                 display: none;
+            }
+
+            /* Stitch options */
+            .stitch-options {
+                margin-top: 12px;
+                padding-top: 10px;
+                border-top: 1px dashed #eee;
+                font-size: 12px;
+                color: #555;
+            }
+
+            .stitch-options-title {
+                font-weight: 600;
+                margin-bottom: 6px;
+                color: #333;
+            }
+
+            .stitch-options-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                margin: 4px 0;
+            }
+
+            .stitch-options-row label {
+                white-space: nowrap;
+            }
+
+            .stitch-options-row select,
+            .stitch-options-row input[type="number"] {
+                flex: 1;
+                padding: 4px 6px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                font-size: 12px;
+            }
+
+            .stitch-options-toggle {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                margin-top: 6px;
+                cursor: pointer;
             }
 
             /* Working direction + marker legend */
@@ -502,8 +546,7 @@ export class UIManager {
         });
 
         this.toolbar.querySelector('#btn-new-row').addEventListener('click', () => {
-            this.pattern.startNewRow();
-            this.updateInfoPanel();
+            this.handleStartNewRow();
         });
 
         this.toolbar.querySelector('#btn-add-stitch').addEventListener('click', () => {
@@ -564,6 +607,35 @@ export class UIManager {
                     <span class="info-value" id="info-selected-pos">-</span>
                 </div>
             </div>
+            <div class="stitch-options">
+                <div class="stitch-options-title">Stitch Options</div>
+                <div class="stitch-options-row">
+                    <label for="select-loop">Loops:</label>
+                    <select id="select-loop">
+                        <option value="both">Both</option>
+                        <option value="front">Front</option>
+                        <option value="back">Back</option>
+                    </select>
+                </div>
+                <div class="stitch-options-row">
+                    <label for="select-modifier">Modifier:</label>
+                    <select id="select-modifier">
+                        <option value="none">None</option>
+                        <option value="inc">Increase (2 in 1)</option>
+                        <option value="inc3">Increase (3 in 1)</option>
+                        <option value="dec">Decrease (2 tog)</option>
+                        <option value="dec3">Decrease (3 tog)</option>
+                    </select>
+                </div>
+                <div class="stitch-options-row">
+                    <label for="input-skip-count">Skip:</label>
+                    <input type="number" id="input-skip-count" min="0" value="0">
+                </div>
+                <label class="stitch-options-toggle">
+                    <input type="checkbox" id="toggle-work-space">
+                    Work into space
+                </label>
+            </div>
             <div class="color-picker-row">
                 <label>Yarn color:</label>
                 <input type="color" id="color-picker" value="#8B4513">
@@ -586,6 +658,54 @@ export class UIManager {
             const color = parseInt(e.target.value.replace('#', ''), 16);
             this.selectColor(color);
         });
+
+        // Stitch options
+        const loopSelect = this.infoPanel.querySelector('#select-loop');
+        const modifierSelect = this.infoPanel.querySelector('#select-modifier');
+        const skipInput = this.infoPanel.querySelector('#input-skip-count');
+        const workSpaceToggle = this.infoPanel.querySelector('#toggle-work-space');
+
+        if (loopSelect) {
+            loopSelect.value = this.pattern.currentLoopSelection || 'both';
+            loopSelect.addEventListener('change', () => {
+                this.pattern.currentLoopSelection = loopSelect.value;
+                EventBus.emit(Events.ATTACHMENT_OPTIONS_CHANGED, { type: 'loop', value: loopSelect.value });
+            });
+        }
+
+        if (modifierSelect) {
+            modifierSelect.value = 'none';
+            modifierSelect.addEventListener('change', () => {
+                const modifierMap = {
+                    none: [],
+                    inc: [StitchModifier.INCREASE],
+                    inc3: [StitchModifier.INCREASE_3],
+                    dec: [StitchModifier.DECREASE],
+                    dec3: [StitchModifier.DECREASE_3]
+                };
+                this.pattern.currentModifiers = modifierMap[modifierSelect.value] || [];
+                EventBus.emit(Events.ATTACHMENT_OPTIONS_CHANGED, { type: 'modifier', value: modifierSelect.value });
+            });
+        }
+
+        if (skipInput) {
+            skipInput.value = String(this.pattern.currentSkipCount || 0);
+            skipInput.addEventListener('change', () => {
+                const parsed = parseInt(skipInput.value, 10);
+                const safeValue = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+                skipInput.value = String(safeValue);
+                this.pattern.currentSkipCount = safeValue;
+                EventBus.emit(Events.ATTACHMENT_OPTIONS_CHANGED, { type: 'skip', value: safeValue });
+            });
+        }
+
+        if (workSpaceToggle) {
+            workSpaceToggle.checked = Boolean(this.pattern.currentWorkIntoSpace);
+            workSpaceToggle.addEventListener('change', () => {
+                this.pattern.currentWorkIntoSpace = workSpaceToggle.checked;
+                EventBus.emit(Events.ATTACHMENT_OPTIONS_CHANGED, { type: 'space', value: workSpaceToggle.checked });
+            });
+        }
 
         // Create color palette swatches
         const palette = this.infoPanel.querySelector('#color-palette');
@@ -826,8 +946,7 @@ export class UIManager {
 
         // N for new row
         if (event.key === 'n' || event.key === 'N') {
-            this.pattern.startNewRow();
-            this.updateInfoPanel();
+            this.handleStartNewRow();
         }
     }
 
@@ -872,9 +991,13 @@ export class UIManager {
      */
     async addStitchAtNextPosition() {
         try {
-            const attachPoints = this.pattern.getAttachmentPoints();
+            const useChainSpaces = Boolean(this.pattern.currentWorkIntoSpace);
+            const attachPoints = useChainSpaces
+                ? this.pattern.getChainSpaces()
+                : this.pattern.getAttachmentPoints();
+            const availablePoints = attachPoints.filter(p => p.available !== false);
 
-            if (!attachPoints || attachPoints.length === 0) {
+            if (!availablePoints || availablePoints.length === 0) {
                 // No pattern started - create foundation chain
                 if (!this.pattern.graph || this.pattern.graph.size === 0) {
                     const chainLength = await showPrompt(
@@ -895,21 +1018,49 @@ export class UIManager {
                     }
                 } else {
                     // Start new row
-                    this.pattern.startNewRow();
+                    this.pattern.startNewRow({ stitchType: this.selectedStitchType });
                     this.addStitchAtNextPosition();
                 }
                 return;
             }
 
             // Find suggested attachment point or use first available
-            const attachPoint = attachPoints.find(p => p.suggested) || attachPoints[0];
+            const attachPoint = availablePoints.find(p => p.suggested) || availablePoints[0];
 
             if (attachPoint && attachPoint.stitch) {
-                this.pattern.addStitch(this.selectedStitchType, attachPoint.stitch);
+                const useSpace = attachPoint.type === 'chain-space' || this.pattern.currentWorkIntoSpace;
+                const skipCount = useSpace ? 0 : (this.pattern.currentSkipCount || 0);
+                this.pattern.addStitch(this.selectedStitchType, attachPoint.stitch, {
+                    modifiers: this.pattern.currentModifiers,
+                    skipCount,
+                    loopSelection: this.pattern.currentLoopSelection,
+                    workIntoSpace: useSpace
+                });
             }
         } catch (err) {
             console.error('Error adding stitch:', err);
         }
+    }
+
+    /**
+     * Start a new row, warning if the current row is incomplete
+     */
+    async handleStartNewRow() {
+        const attachPoints = this.pattern.getAttachmentPoints();
+        const hasOpenAttachments = attachPoints?.some(p => p.available);
+
+        if (hasOpenAttachments) {
+            const confirmed = await showConfirm(
+                'This row still has unworked stitches. Start a new row anyway?',
+                'Row Incomplete'
+            );
+            if (!confirmed) {
+                return;
+            }
+        }
+
+        this.pattern.startNewRow({ stitchType: this.selectedStitchType });
+        this.updateInfoPanel();
     }
 
     /**

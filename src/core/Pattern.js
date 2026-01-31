@@ -46,6 +46,9 @@ export class Pattern {
 
         // Current modifiers to apply
         this.currentModifiers = [];
+        this.currentLoopSelection = 'both';
+        this.currentSkipCount = 0;
+        this.currentWorkIntoSpace = false;
 
         // Current yarn color
         this.currentColor = 0x8B4513;
@@ -442,13 +445,18 @@ export class Pattern {
         const modifiers = Array.isArray(options.modifiers)
             ? options.modifiers
             : (this.currentModifiers || []);
-        const skipCount = Number.isFinite(options.skipCount) && options.skipCount >= 0
-            ? Math.floor(options.skipCount)
-            : 0;
-        const workIntoSpace = Boolean(options.workIntoSpace);
+        const skipSource = Number.isFinite(options.skipCount)
+            ? options.skipCount
+            : (Number.isFinite(this.currentSkipCount) ? this.currentSkipCount : 0);
+        const skipCount = skipSource >= 0 ? Math.floor(skipSource) : 0;
+        const workIntoSpace = options.workIntoSpace !== undefined
+            ? Boolean(options.workIntoSpace)
+            : Boolean(this.currentWorkIntoSpace);
         const loopSelection = ['both', 'front', 'back'].includes(options.loopSelection)
             ? options.loopSelection
-            : 'both';
+            : (['both', 'front', 'back'].includes(this.currentLoopSelection)
+                ? this.currentLoopSelection
+                : 'both');
         const row = options.row ?? (attachToNode ? attachToNode.row + 1 : this.currentRow);
         const column = options.column ?? this.calculateNextColumn(row);
         const color = options.color ?? this.currentColor;
@@ -1004,6 +1012,34 @@ export class Pattern {
         if (['flat', 'round-joined', 'round-spiral'].includes(mode)) {
             this.mode = mode;
         }
+    }
+
+    /**
+     * Navigate to a specific row and update working direction for flat mode
+     * @param {number} rowIndex - 0-indexed row
+     * @returns {boolean}
+     */
+    goToRow(rowIndex) {
+        if (!Number.isFinite(rowIndex) || rowIndex < 0) {
+            return false;
+        }
+
+        const stats = this.graph.getStats();
+        const maxRow = Math.max(0, stats.rowCount - 1);
+        if (rowIndex > maxRow) {
+            return false;
+        }
+
+        const previousRow = this.currentRow;
+        if (rowIndex !== previousRow && this.mode === 'flat') {
+            const rowDelta = Math.abs(rowIndex - previousRow);
+            if (rowDelta % 2 === 1) {
+                this.workingDirection = this.workingDirection === 'right' ? 'left' : 'right';
+            }
+        }
+
+        this.currentRow = rowIndex;
+        return true;
     }
 
     /**

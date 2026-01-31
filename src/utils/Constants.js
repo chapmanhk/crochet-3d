@@ -159,6 +159,11 @@ export const AttachmentConstants = {
     HOVER_EMISSIVE_INTENSITY: 0.4,
     HOVER_SCALE: 1.0,
 
+    // Chain space indicators
+    CHAIN_SPACE_COLOR: 0x9C27B0,
+    CHAIN_SPACE_OPACITY: 0.45,
+    CHAIN_SPACE_HOVER_COLOR: 0xBA68C8,
+
     // New row indicator appearance (purple/orange to distinguish from regular ghosts)
     NEW_ROW_COLOR: 0xFF9800,
     NEW_ROW_OPACITY: 0.5,

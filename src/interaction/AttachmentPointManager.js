@@ -56,6 +56,23 @@ export class AttachmentPointManager {
             emissiveIntensity: AttachmentConstants.HOVER_EMISSIVE_INTENSITY
         });
 
+        // Chain space indicator materials
+        this.chainSpaceMaterial = new THREE.MeshStandardMaterial({
+            color: AttachmentConstants.CHAIN_SPACE_COLOR,
+            transparent: true,
+            opacity: AttachmentConstants.CHAIN_SPACE_OPACITY,
+            emissive: AttachmentConstants.CHAIN_SPACE_COLOR,
+            emissiveIntensity: AttachmentConstants.GHOST_EMISSIVE_INTENSITY
+        });
+
+        this.chainSpaceHoverMaterial = new THREE.MeshStandardMaterial({
+            color: AttachmentConstants.CHAIN_SPACE_HOVER_COLOR,
+            transparent: true,
+            opacity: AttachmentConstants.HOVER_OPACITY,
+            emissive: AttachmentConstants.CHAIN_SPACE_HOVER_COLOR,
+            emissiveIntensity: AttachmentConstants.HOVER_EMISSIVE_INTENSITY
+        });
+
         // Chain marker materials
         this.chainStartMaterial = new THREE.MeshStandardMaterial({
             color: AttachmentConstants.CHAIN_START_COLOR,
@@ -128,6 +145,9 @@ export class AttachmentPointManager {
             this.previewStitchType = type;
             this.updateAttachmentPoints();
         });
+        this.eventSubs.on(Events.ATTACHMENT_OPTIONS_CHANGED, () => {
+            this.updateAttachmentPoints();
+        });
     }
 
     /**
@@ -137,11 +157,18 @@ export class AttachmentPointManager {
         this.clearPoints();
         this.clearMarkers();
 
-        const attachPoints = this.pattern.getAttachmentPoints();
+        const useChainSpaces = Boolean(this.pattern.currentWorkIntoSpace);
+        const attachPoints = useChainSpaces
+            ? this.pattern.getChainSpaces()
+            : this.pattern.getAttachmentPoints();
 
         // Only show ghosts for available attachment points
         // (not ones that already have stitches worked into them)
-        const availablePoints = attachPoints.filter(p => p.available);
+        const availablePoints = attachPoints.filter(p => p.available !== false);
+
+        if (useChainSpaces && availablePoints.length > 0 && !availablePoints.some(p => p.suggested)) {
+            availablePoints[0].suggested = true;
+        }
 
         availablePoints.forEach((point, index) => {
             const mesh = this.createPointMesh(point, index);
@@ -313,8 +340,9 @@ export class AttachmentPointManager {
      */
     createPointMesh(point, index) {
         const geometry = this.getGeometry(this.previewStitchType);
+        const baseMaterial = point.type === 'chain-space' ? this.chainSpaceMaterial : this.ghostMaterial;
         // Use shared material instead of cloning - disposed in dispose() not clearPoints()
-        const mesh = new THREE.Mesh(geometry, this.ghostMaterial);
+        const mesh = new THREE.Mesh(geometry, baseMaterial);
 
         // Calculate position above the attachment stitch
         const def = getStitchDefinition(this.previewStitchType);
@@ -331,6 +359,7 @@ export class AttachmentPointManager {
         mesh.userData.attachmentPoint = point;
         mesh.userData.index = index;
         mesh.userData.isAttachmentPoint = true;
+        mesh.userData.isChainSpace = point.type === 'chain-space';
 
         // Scale down slightly for ghost effect
         mesh.scale.setScalar(AttachmentConstants.GHOST_SCALE);
@@ -400,7 +429,7 @@ export class AttachmentPointManager {
             // Use appropriate base material based on whether it's a new row indicator
             const baseMaterial = this.hoveredPoint.userData.isNewRowIndicator
                 ? this.newRowMaterial
-                : this.ghostMaterial;
+                : (this.hoveredPoint.userData.isChainSpace ? this.chainSpaceMaterial : this.ghostMaterial);
             this.hoveredPoint.material = baseMaterial;
             this.hoveredPoint.scale.setScalar(AttachmentConstants.GHOST_SCALE);
             this.hoveredPoint = null;
@@ -411,7 +440,7 @@ export class AttachmentPointManager {
             // Use appropriate hover material based on whether it's a new row indicator
             const hoverMat = mesh.userData.isNewRowIndicator
                 ? this.newRowHoverMaterial
-                : this.hoverMaterial;
+                : (mesh.userData.isChainSpace ? this.chainSpaceHoverMaterial : this.hoverMaterial);
             mesh.material = hoverMat;
             mesh.scale.setScalar(AttachmentConstants.HOVER_SCALE);
             this.hoveredPoint = mesh;
@@ -440,7 +469,14 @@ export class AttachmentPointManager {
         if (!point) return;
 
         // Add stitch at this attachment point
-        this.pattern.addStitch(this.previewStitchType, point.stitch);
+        const useSpace = point.type === 'chain-space' || this.pattern.currentWorkIntoSpace;
+        const skipCount = useSpace ? 0 : (this.pattern.currentSkipCount || 0);
+        this.pattern.addStitch(this.previewStitchType, point.stitch, {
+            modifiers: this.pattern.currentModifiers,
+            skipCount,
+            loopSelection: this.pattern.currentLoopSelection,
+            workIntoSpace: useSpace
+        });
 
         // Update attachment points after adding
         this.updateAttachmentPoints();
@@ -489,6 +525,8 @@ export class AttachmentPointManager {
         this.hoverMaterial.dispose();
         this.newRowMaterial.dispose();
         this.newRowHoverMaterial.dispose();
+        this.chainSpaceMaterial.dispose();
+        this.chainSpaceHoverMaterial.dispose();
         this.chainStartMaterial.dispose();
         this.chainEndMaterial.dispose();
         this.workingPositionMaterial.dispose();
