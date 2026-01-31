@@ -19,12 +19,13 @@ via click-based interactions, plus recommended fixes.
     first placement. Also show a hint in the UI.
   - **Status:** Fixed - UIManager auto-sets skip to 1 after foundation chain and resets after first stitch.
 
-- [ ] **Bug: “Add Stitch” auto-starts a new row and places a stitch**
-  - **Symptoms:** Clicking “Add Stitch” when row is complete starts a new row
-    and immediately adds a stitch. Clicking the orange “new row” ghost only
+- [x] **Bug: "Add Stitch" auto-starts a new row and places a stitch**
+  - **Symptoms:** Clicking "Add Stitch" when row is complete starts a new row
+    and immediately adds a stitch. Clicking the orange "new row" ghost only
     starts the row.
   - **Fix:** Make both paths consistent. Either both should only start a row
     or both should start a row + place the first stitch (with a user setting).
+  - **Status:** Fixed - "Add Stitch" now only starts the row (consistent with ghost behavior).
 
 ## Row Navigation & View State
 

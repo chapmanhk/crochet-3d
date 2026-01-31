@@ -1047,9 +1047,8 @@ export class UIManager {
                         }
                     }
                 } else {
-                    // Start new row
+                    // Start new row (consistent with clicking the new row ghost)
                     this.pattern.startNewRow({ stitchType: this.selectedStitchType });
-                    this.addStitchAtNextPosition();
                 }
                 return;
             }
