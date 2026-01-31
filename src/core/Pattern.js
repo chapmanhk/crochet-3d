@@ -810,12 +810,19 @@ export class Pattern {
                 !s.isTurningChain || s.turningChainCountsAsStitch
             );
             const hasWorkingConnection = workingStitchesAbove.length > 0;
-            const hasAvailable = stitch.hasAvailableConnectionsAbove;
+            const maxConnections = stitch.effectiveConnections?.connectionsOut ?? 1;
+            const remainingConnections = Math.max(0, maxConnections - workingStitchesAbove.length);
+            const isAvailable = remainingConnections > 0;
 
-            if (hasAvailable) {
+            if (isAvailable) {
                 // Determine if this is the suggested next attachment point
                 let isSuggested = false;
-                if (!hasWorkingConnection) {
+                const lastWorkedIntoStitch = lastWorkingStitch?.connections?.below?.[0] ?? null;
+
+                if (lastWorkedIntoStitch && lastWorkedIntoStitch === stitch) {
+                    // For increases, keep suggesting the same stitch until it fills
+                    isSuggested = remainingConnections > 0;
+                } else if (!hasWorkingConnection) {
                     if (!lastWorkingStitch) {
                         // No working stitches yet - suggest first available
                         isSuggested = index === 0;
@@ -834,9 +841,10 @@ export class Pattern {
                 points.push({
                     stitch,
                     type: 'above',
-                    available: !hasWorkingConnection,
+                    available: isAvailable,
+                    remainingConnections,
                     suggested: isSuggested,
-                    canSkip: includeSkippable && !hasWorkingConnection
+                    canSkip: includeSkippable && isAvailable
                 });
             }
         });
