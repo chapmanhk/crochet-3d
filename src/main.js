@@ -122,7 +122,6 @@ class CrochetApp {
             console.log('  Enter - Add stitch');
             console.log('  Ctrl+Z - Undo');
             console.log('  Ctrl+Y - Redo');
-            console.log('  P - Toggle physics panel');
             console.log('');
             console.log('Physics: Use the panel in bottom-left to simulate fabric drape');
         } catch (err) {

@@ -212,6 +212,27 @@ describe('UIManager - View Modes', () => {
             // Should still be perspective since we're typing in input
             expect(mockSceneManager.currentViewMode).toBe('perspective');
         });
+
+        it('should not trigger view mode change when focus is on select', () => {
+            const select = document.querySelector('#select-loop');
+            const event = new KeyboardEvent('keydown', { key: '2' });
+            Object.defineProperty(event, 'target', { value: select });
+            window.dispatchEvent(event);
+
+            expect(mockSceneManager.currentViewMode).toBe('perspective');
+        });
+
+        it('should not trigger view mode change when modal is open', () => {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            document.body.appendChild(overlay);
+
+            const event = new KeyboardEvent('keydown', { key: '2' });
+            window.dispatchEvent(event);
+
+            expect(mockSceneManager.currentViewMode).toBe('perspective');
+            overlay.remove();
+        });
     });
 
     describe('Schematic View Mode', () => {
@@ -309,6 +330,41 @@ describe('UIManager - Row Navigation', () => {
             const totalRowsDisplay = document.querySelector('#total-rows-display');
             expect(totalRowsDisplay).not.toBeNull();
             expect(totalRowsDisplay.textContent).toContain('3');
+        });
+
+        it('shows foundation row label when on foundation row', () => {
+            mockPattern.hasFoundationChain = vi.fn(() => true);
+            mockPattern.graph.getStats = () => ({
+                totalStitches: 5,
+                rowCount: 1
+            });
+            mockPattern.currentRow = 0;
+
+            uiManager.updateRowNavigation();
+
+            const rowLabel = document.querySelector('#row-label');
+            const currentRowDisplay = document.querySelector('#current-row-display');
+            const totalRowsDisplay = document.querySelector('#total-rows-display');
+            const rowOfLabel = document.querySelector('#row-of-label');
+
+            expect(rowLabel.textContent).toBe('Foundation Row');
+            expect(currentRowDisplay.style.display).toBe('none');
+            expect(totalRowsDisplay.style.display).toBe('none');
+            expect(rowOfLabel.style.display).toBe('none');
+        });
+
+        it('sets go-to-row min to 0 when foundation exists', () => {
+            mockPattern.hasFoundationChain = vi.fn(() => true);
+            mockPattern.graph.getStats = () => ({
+                totalStitches: 5,
+                rowCount: 1
+            });
+            mockPattern.currentRow = 0;
+
+            uiManager.updateRowNavigation();
+
+            const input = document.querySelector('#input-go-to-row');
+            expect(input.min).toBe('0');
         });
 
         it('should have previous row button', () => {
@@ -706,6 +762,13 @@ describe('UIManager - Stitch options and actions', () => {
 
         expect(mockPattern.currentSkipCount).toBe(2);
         expect(callback).toHaveBeenCalledWith({ type: 'skip', value: 2 });
+    });
+
+    it('updates skip input value when set programmatically', () => {
+        uiManager.updateSkipInput(3);
+
+        const skipInput = document.querySelector('#input-skip-count');
+        expect(skipInput.value).toBe('3');
     });
 
     it('toggles work into space option', () => {

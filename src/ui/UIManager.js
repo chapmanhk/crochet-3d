@@ -779,8 +779,10 @@ export class UIManager {
 
         this.rowNavigation.innerHTML = `
             <div class="row-nav-display">
-                Row <span id="current-row-display">${this.pattern.currentRow + 1}</span>
-                of <span id="total-rows-display">${stats.rowCount || 1}</span>
+                <span id="row-label">Row</span>
+                <span id="current-row-display">${this.pattern.currentRow + 1}</span>
+                <span id="row-of-label">of</span>
+                <span id="total-rows-display">${stats.rowCount || 1}</span>
             </div>
             <div class="row-nav-buttons">
                 <button class="row-nav-btn" id="btn-prev-row" title="Previous row (PageUp)">← Prev</button>
@@ -888,8 +890,17 @@ export class UIManager {
      * Handle keyboard shortcuts
      */
     onKeyDown(event) {
-        // Ignore if typing in an input
-        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+        // Ignore if typing in an input or a modal is open
+        if (document.querySelector('.modal-overlay')) {
+            return;
+        }
+
+        const target = event.target;
+        const tagName = target?.tagName;
+        if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT') {
+            return;
+        }
+        if (target?.isContentEditable) {
             return;
         }
 
@@ -1130,23 +1141,25 @@ export class UIManager {
             : false;
         const hasPattern = stats.totalStitches > 0;
         const currentRow = this.pattern.currentRow;
-        const displayRowCount = hasFoundation
-            ? Math.max(0, stats.rowCount - 1)
-            : stats.rowCount;
         const totalRows = stats.rowCount || 1;
+        const displayRowCount = hasFoundation
+            ? Math.max(1, stats.rowCount - 1)
+            : stats.rowCount;
         const displayTotalRows = hasFoundation
-            ? Math.max(0, totalRows - 1)
+            ? Math.max(1, totalRows - 1)
             : totalRows;
         const displayCurrentRowNumber = hasFoundation ? currentRow : currentRow + 1;
+        const isFoundationRow = hasFoundation && currentRow === 0;
         const currentRowLabel = !hasPattern
             ? '-'
-            : (hasFoundation && currentRow === 0 ? 'Foundation' : displayCurrentRowNumber);
+            : (isFoundationRow ? 'Foundation Row' : displayCurrentRowNumber);
 
         return {
             stats,
             hasFoundation,
             hasPattern,
             currentRow,
+            isFoundationRow,
             displayRowCount,
             displayTotalRows,
             displayCurrentRowNumber,
@@ -1174,7 +1187,7 @@ export class UIManager {
                 const isLeft = this.pattern.workingDirection === 'left';
                 const directionLabel = isLeft ? '← left' : 'right →';
                 const isFoundation = this.pattern.currentRow === 0;
-                const hint = isFoundation ? ' (start at chain end)' : '';
+                const hint = isFoundation ? ' (start at last chain made)' : '';
                 workingEl.textContent = `${directionLabel}${hint}`;
             }
         }
@@ -1184,7 +1197,7 @@ export class UIManager {
      * Update skip input field in stitch options panel
      */
     updateSkipInput(value) {
-        const skipInput = this.stitchOptions?.querySelector('#input-skip');
+        const skipInput = this.infoPanel?.querySelector('#input-skip-count');
         if (skipInput) {
             skipInput.value = String(value);
         }
@@ -1320,14 +1333,30 @@ export class UIManager {
         const currentRow = rowInfo.currentRow;
 
         // Update displays
+        const rowLabel = this.rowNavigation.querySelector('#row-label');
         const currentDisplay = this.rowNavigation.querySelector('#current-row-display');
+        const rowOfLabel = this.rowNavigation.querySelector('#row-of-label');
         const totalDisplay = this.rowNavigation.querySelector('#total-rows-display');
+        const goToInput = this.rowNavigation.querySelector('#input-go-to-row');
+        const isFoundationRow = rowInfo.isFoundationRow;
 
+        if (rowLabel) {
+            rowLabel.textContent = isFoundationRow ? 'Foundation Row' : 'Row';
+        }
         if (currentDisplay) {
-            currentDisplay.textContent = rowInfo.displayCurrentRowNumber;
+            currentDisplay.textContent = isFoundationRow ? '' : rowInfo.displayCurrentRowNumber;
+            currentDisplay.style.display = isFoundationRow ? 'none' : '';
+        }
+        if (rowOfLabel) {
+            rowOfLabel.textContent = isFoundationRow ? '' : 'of';
+            rowOfLabel.style.display = isFoundationRow ? 'none' : '';
         }
         if (totalDisplay) {
-            totalDisplay.textContent = rowInfo.displayTotalRows;
+            totalDisplay.textContent = isFoundationRow ? '' : rowInfo.displayTotalRows;
+            totalDisplay.style.display = isFoundationRow ? 'none' : '';
+        }
+        if (goToInput) {
+            goToInput.min = rowInfo.hasFoundation ? '0' : '1';
         }
 
         // Update button states
