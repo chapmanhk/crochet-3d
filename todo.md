@@ -76,11 +76,12 @@ via click-based interactions, plus recommended fixes.
   - **Fix:** When “work into space” yields zero spaces, show normal attachments
     with a warning or auto-disable the toggle for that row.
 
-- [ ] **Bug: Advanced stitch validation unused**
+- [x] **Bug: Advanced stitch validation unused**
   - **Symptoms:** Post and spike stitches can be placed in invalid contexts
     without warnings. Validator exists but is not invoked.
   - **Fix:** Call `StitchValidator.canPlaceStitch` before placing stitches and
     show warnings/errors in the UI for invalid placements.
+  - **Status:** Fixed - UIManager now validates via StitchValidator before placing stitches.
 
 ## Templates & Starting Methods
 
