@@ -11,12 +11,13 @@ via click-based interactions, plus recommended fixes.
   - **Fix:** Add a primary “Start Pattern” button (or onboarding modal) that
     offers foundation chain, foundation SC, or magic ring options.
 
-- [ ] **Bug: Foundation chain off-by-one guidance missing**
+- [x] **Bug: Foundation chain off-by-one guidance missing**
   - **Symptoms:** Row 1 allows working into every chain, but typical crochet
     starts in 2nd chain from hook (e.g., sc foundation yields N-1 sts).
-  - **Fix:** When a foundation chain is created, auto-set “Skip” to 1 for the
+  - **Fix:** When a foundation chain is created, auto-set "Skip" to 1 for the
     first stitch (or show a prompt for start offset) and reset to 0 after the
     first placement. Also show a hint in the UI.
+  - **Status:** Fixed - UIManager auto-sets skip to 1 after foundation chain and resets after first stitch.
 
 - [ ] **Bug: “Add Stitch” auto-starts a new row and places a stitch**
   - **Symptoms:** Clicking “Add Stitch” when row is complete starts a new row

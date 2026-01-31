@@ -1041,6 +1041,9 @@ export class UIManager {
                                 );
                             }
                             this.pattern.startWithChain(length);
+                            // Auto-set skip to 1 for first stitch (typical crochet: 2nd chain from hook)
+                            this.pattern.currentSkipCount = 1;
+                            this.updateSkipInput(1);
                         }
                     }
                 } else {
@@ -1082,6 +1085,15 @@ export class UIManager {
                 }
 
                 this.pattern.addStitch(this.selectedStitchType, attachPoint.stitch, stitchOptions);
+
+                // Reset auto-skip after first stitch on row 1 (foundation chain guidance)
+                if (this.pattern.currentSkipCount > 0 && this.pattern.hasFoundationChain?.()) {
+                    const row1Stitches = this.pattern.graph.getRow(1)?.filter(s => !s.isTurningChain) || [];
+                    if (row1Stitches.length === 1) {
+                        this.pattern.currentSkipCount = 0;
+                        this.updateSkipInput(0);
+                    }
+                }
             }
         } catch (err) {
             console.error('Error adding stitch:', err);
@@ -1166,6 +1178,16 @@ export class UIManager {
                 const hint = isFoundation ? ' (start at chain end)' : '';
                 workingEl.textContent = `${directionLabel}${hint}`;
             }
+        }
+    }
+
+    /**
+     * Update skip input field in stitch options panel
+     */
+    updateSkipInput(value) {
+        const skipInput = this.stitchOptions?.querySelector('#input-skip');
+        if (skipInput) {
+            skipInput.value = String(value);
         }
     }
 
