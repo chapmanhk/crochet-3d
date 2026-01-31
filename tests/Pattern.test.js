@@ -734,7 +734,7 @@ describe('Pattern', () => {
             const instructions = pattern.generateInstructions();
 
             expect(instructions).toContain('Pattern:');
-            expect(instructions).toContain('Row 1:');
+            expect(instructions).toContain('Foundation:');
             expect(instructions).toContain('ch');
             expect(instructions).toContain('5 sts');
         });
@@ -768,7 +768,7 @@ describe('Pattern', () => {
 
             const instructions = pattern.generateInstructions();
 
-            expect(instructions).toContain('Row 2:');
+            expect(instructions).toContain('Row 1:');
             expect(instructions).toContain('sc');
             expect(instructions).toContain('dc');
         });

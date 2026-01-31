@@ -68,6 +68,20 @@ export class RaycastManager {
      */
     onMouseMove(event) {
         try {
+            if (this.sceneManager?.isHoveringAttachmentPoint) {
+                if (this.hoveredNode) {
+                    try {
+                        this.hoveredNode.setHighlighted(false);
+                        this.stitchRenderer.updateSelectionVisual(this.hoveredNode);
+                        EventBus.emit(Events.STITCH_UNHOVERED, { node: this.hoveredNode });
+                    } catch (err) {
+                        console.warn('Error unhighlighting node:', err);
+                    }
+                    this.hoveredNode = null;
+                }
+                return;
+            }
+
             this.updateMousePosition(event);
 
             const intersects = this.raycast();
@@ -127,6 +141,10 @@ export class RaycastManager {
      */
     onClick(event) {
         try {
+            if (this.sceneManager?.isHoveringAttachmentPoint) {
+                return;
+            }
+
             this.updateMousePosition(event);
 
             const intersects = this.raycast();

@@ -46,6 +46,9 @@ export class Pattern {
 
         // Current modifiers to apply
         this.currentModifiers = [];
+        this.currentLoopSelection = 'both';
+        this.currentSkipCount = 0;
+        this.currentWorkIntoSpace = false;
 
         // Current yarn color
         this.currentColor = 0x8B4513;
@@ -442,13 +445,18 @@ export class Pattern {
         const modifiers = Array.isArray(options.modifiers)
             ? options.modifiers
             : (this.currentModifiers || []);
-        const skipCount = Number.isFinite(options.skipCount) && options.skipCount >= 0
-            ? Math.floor(options.skipCount)
-            : 0;
-        const workIntoSpace = Boolean(options.workIntoSpace);
+        const skipSource = Number.isFinite(options.skipCount)
+            ? options.skipCount
+            : (Number.isFinite(this.currentSkipCount) ? this.currentSkipCount : 0);
+        const skipCount = skipSource >= 0 ? Math.floor(skipSource) : 0;
+        const workIntoSpace = options.workIntoSpace !== undefined
+            ? Boolean(options.workIntoSpace)
+            : Boolean(this.currentWorkIntoSpace);
         const loopSelection = ['both', 'front', 'back'].includes(options.loopSelection)
             ? options.loopSelection
-            : 'both';
+            : (['both', 'front', 'back'].includes(this.currentLoopSelection)
+                ? this.currentLoopSelection
+                : 'both');
         const row = options.row ?? (attachToNode ? attachToNode.row + 1 : this.currentRow);
         const column = options.column ?? this.calculateNextColumn(row);
         const color = options.color ?? this.currentColor;
@@ -575,6 +583,17 @@ export class Pattern {
      */
     addStitchInSpace(type, spaceStitch, options = {}) {
         return this.addStitch(type, spaceStitch, { ...options, workIntoSpace: true });
+    }
+
+    /**
+     * Clear the pattern (undoable)
+     */
+    clearPattern() {
+        this.graph.clear();
+        this.currentRow = 0;
+        this.workingDirection = 'right';
+        this.metadata.modifiedAt = Date.now();
+        this.saveHistoryState('Clear pattern');
     }
 
     /**
@@ -770,7 +789,19 @@ export class Pattern {
             turningChains
         });
 
+        this.saveHistoryState('Start new row');
         return this.currentRow;
+    }
+
+    /**
+     * Check if row 0 is a foundation chain (flat mode)
+     */
+    hasFoundationChain() {
+        const row0 = this.graph.getRowSorted(0);
+        if (!row0 || row0.length === 0) return false;
+        return row0.every(stitch =>
+            stitch.type === StitchType.CHAIN && !stitch.isTurningChain
+        );
     }
 
     /**
@@ -810,12 +841,19 @@ export class Pattern {
                 !s.isTurningChain || s.turningChainCountsAsStitch
             );
             const hasWorkingConnection = workingStitchesAbove.length > 0;
-            const hasAvailable = stitch.hasAvailableConnectionsAbove;
+            const maxConnections = stitch.effectiveConnections?.connectionsOut ?? 1;
+            const remainingConnections = Math.max(0, maxConnections - workingStitchesAbove.length);
+            const isAvailable = remainingConnections > 0;
 
-            if (hasAvailable) {
+            if (isAvailable) {
                 // Determine if this is the suggested next attachment point
                 let isSuggested = false;
-                if (!hasWorkingConnection) {
+                const lastWorkedIntoStitch = lastWorkingStitch?.connections?.below?.[0] ?? null;
+
+                if (lastWorkedIntoStitch && lastWorkedIntoStitch === stitch) {
+                    // For increases, keep suggesting the same stitch until it fills
+                    isSuggested = remainingConnections > 0;
+                } else if (!hasWorkingConnection) {
                     if (!lastWorkingStitch) {
                         // No working stitches yet - suggest first available
                         isSuggested = index === 0;
@@ -834,9 +872,10 @@ export class Pattern {
                 points.push({
                     stitch,
                     type: 'above',
-                    available: !hasWorkingConnection,
+                    available: isAvailable,
+                    remainingConnections,
                     suggested: isSuggested,
-                    canSkip: includeSkippable && !hasWorkingConnection
+                    canSkip: includeSkippable && isAvailable
                 });
             }
         });
@@ -976,6 +1015,34 @@ export class Pattern {
     }
 
     /**
+     * Navigate to a specific row and update working direction for flat mode
+     * @param {number} rowIndex - 0-indexed row
+     * @returns {boolean}
+     */
+    goToRow(rowIndex) {
+        if (!Number.isFinite(rowIndex) || rowIndex < 0) {
+            return false;
+        }
+
+        const stats = this.graph.getStats();
+        const maxRow = Math.max(0, stats.rowCount - 1);
+        if (rowIndex > maxRow) {
+            return false;
+        }
+
+        const previousRow = this.currentRow;
+        if (rowIndex !== previousRow && this.mode === 'flat') {
+            const rowDelta = Math.abs(rowIndex - previousRow);
+            if (rowDelta % 2 === 1) {
+                this.workingDirection = this.workingDirection === 'right' ? 'left' : 'right';
+            }
+        }
+
+        this.currentRow = rowIndex;
+        return true;
+    }
+
+    /**
      * Set whether turning chain counts as first stitch for a specific stitch type
      * @param {string} stitchType - The stitch type (e.g., StitchType.HALF_DOUBLE_CROCHET)
      * @param {boolean} countsAsStitch - Whether the turning chain counts as a stitch
@@ -1054,13 +1121,20 @@ export class Pattern {
     generateInstructions() {
         const lines = [];
         const rowCount = this.graph.getRowCount();
+        const hasFoundation = this.hasFoundationChain();
 
         lines.push(`Pattern: ${this.metadata.name}`);
         lines.push(`Mode: ${this.mode}`);
         lines.push(`Total Stitches: ${this.graph.size}`);
         lines.push('');
 
-        for (let row = 0; row < rowCount; row++) {
+        if (hasFoundation) {
+            const foundationRow = this.graph.getRowSorted(0);
+            lines.push(`Foundation: ch ${foundationRow.length} (${foundationRow.length} sts)`);
+        }
+
+        const startRow = hasFoundation ? 1 : 0;
+        for (let row = startRow; row < rowCount; row++) {
             const stitches = this.graph.getRowSorted(row);
 
             // Separate turning chains from working stitches
@@ -1100,7 +1174,8 @@ export class Pattern {
             const totalWorking = workingStitches.length +
                 (turningChains.some(tc => tc.turningChainCountsAsStitch) ? 1 : 0);
 
-            lines.push(`Row ${row + 1}: ${instruction} (${totalWorking} sts)`);
+            const rowNumber = hasFoundation ? row : row + 1;
+            lines.push(`Row ${rowNumber}: ${instruction} (${totalWorking} sts)`);
         }
 
         return lines.join('\n');

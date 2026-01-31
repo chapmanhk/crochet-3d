@@ -72,9 +72,9 @@ class MockPattern {
 Mode: ${this.mode}
 Total Stitches: 15
 
-Row 1: 5 ch (5 sts)
-Row 2: 5 sc (5 sts)
-Row 3: 5 dc (5 sts)`;
+Foundation: ch 5 (5 sts)
+Row 1: 5 sc (5 sts)
+Row 2: 5 dc (5 sts)`;
     }
 }
 
@@ -503,8 +503,8 @@ describe('ExportManager', () => {
             const testExportManager = new module.ExportManager(mockPattern, mockRenderer);
             const content = testExportManager.generatePDFContent();
 
+            expect(content.instructions).toContain('Foundation:');
             expect(content.instructions).toContain('Row 1:');
-            expect(content.instructions).toContain('Row 2:');
         });
 
         it('should generate PDF content with statistics', async () => {

@@ -267,6 +267,7 @@ export const Events = {
     TOOL_CHANGED: 'tool:changed',
     STITCH_TYPE_SELECTED: 'tool:stitchTypeSelected',
     COLOR_SELECTED: 'tool:colorSelected',
+    ATTACHMENT_OPTIONS_CHANGED: 'tool:attachmentOptionsChanged',
 
     // UI events
     UI_PANEL_OPENED: 'ui:panelOpened',

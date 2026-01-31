@@ -17,6 +17,7 @@ export class YarnMaterial {
         // Selection/highlight colors
         this.selectionColor = 0x00ff00;
         this.highlightColor = 0xffff00;
+        this.rowHighlightColor = 0x2196F3;
 
         // Create procedural yarn texture
         this.yarnTexture = this.createYarnTexture();
@@ -125,7 +126,8 @@ export class YarnMaterial {
     getMaterial(color, options = {}) {
         const selected = options.selected || false;
         const highlighted = options.highlighted || false;
-        const key = `${color}_${selected}_${highlighted}`;
+        const rowHighlighted = options.rowHighlighted || false;
+        const key = `${color}_${selected}_${highlighted}_${rowHighlighted}`;
 
         if (this.materialCache.has(key)) {
             return this.materialCache.get(key);
@@ -149,6 +151,9 @@ export class YarnMaterial {
         } else if (options.highlighted) {
             emissive = this.highlightColor;
             emissiveIntensity = 0.2;
+        } else if (options.rowHighlighted) {
+            emissive = this.rowHighlightColor;
+            emissiveIntensity = 0.15;
         }
 
         const material = new THREE.MeshStandardMaterial({
@@ -177,7 +182,8 @@ export class YarnMaterial {
      * Create a simple material without textures (for performance)
      */
     getSimpleMaterial(color, options = {}) {
-        const key = `simple_${color}_${options.selected}_${options.highlighted}`;
+        const rowHighlighted = options.rowHighlighted || false;
+        const key = `simple_${color}_${options.selected}_${options.highlighted}_${rowHighlighted}`;
 
         if (this.materialCache.has(key)) {
             return this.materialCache.get(key);
@@ -192,6 +198,9 @@ export class YarnMaterial {
         } else if (options.highlighted) {
             emissive = this.highlightColor;
             emissiveIntensity = 0.2;
+        } else if (options.rowHighlighted) {
+            emissive = this.rowHighlightColor;
+            emissiveIntensity = 0.15;
         }
 
         const material = new THREE.MeshStandardMaterial({

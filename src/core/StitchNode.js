@@ -232,8 +232,10 @@ export class StitchNode {
      */
     get hasAvailableConnectionsAbove() {
         const { connectionsOut } = this.effectiveConnections;
-        // Don't count turning chains - they don't consume the stitch's connection slots
-        const workingStitchesAbove = this.connections.above.filter(s => !s.isTurningChain);
+        // Don't count turning chains unless they count as a stitch
+        const workingStitchesAbove = this.connections.above.filter(s =>
+            !s.isTurningChain || s.turningChainCountsAsStitch
+        );
         return workingStitchesAbove.length < connectionsOut;
     }
 
@@ -243,8 +245,10 @@ export class StitchNode {
      */
     get availableConnectionsAbove() {
         const { connectionsOut } = this.effectiveConnections;
-        // Don't count turning chains - they don't consume the stitch's connection slots
-        const workingStitchesAbove = this.connections.above.filter(s => !s.isTurningChain);
+        // Don't count turning chains unless they count as a stitch
+        const workingStitchesAbove = this.connections.above.filter(s =>
+            !s.isTurningChain || s.turningChainCountsAsStitch
+        );
         return Math.max(0, connectionsOut - workingStitchesAbove.length);
     }
 
