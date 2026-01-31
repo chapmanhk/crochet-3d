@@ -615,7 +615,7 @@ describe('ExportManager', () => {
             vi.restoreAllMocks();
         });
 
-        it('should throw for invalid data URL format', () => {
+        it('should throw for invalid data URL format', async () => {
             const module = await import('../src/utils/ExportManager.js');
             const manager = new module.ExportManager(mockPattern, mockRenderer);
 

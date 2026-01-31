@@ -73,6 +73,7 @@ describe('SceneManager', () => {
         Object.defineProperty(window, 'innerWidth', { value: 0, configurable: true });
         Object.defineProperty(window, 'innerHeight', { value: 0, configurable: true });
 
+        setSizeSpy.mockClear();
         sceneManager.onWindowResize();
 
         expect(setSizeSpy).not.toHaveBeenCalled();

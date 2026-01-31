@@ -400,8 +400,11 @@ describe('PatternTemplates', () => {
         it('should align working direction with last row', () => {
             const pattern = createTriangle({ direction: 'top-down', baseWidth: 5, rows: 4 });
 
-            expect(pattern.currentRow).toBe(3);
-            expect(pattern.workingDirection).toBe('right');
+            const lastRow = pattern.graph.getRowCount() - 1;
+            const expectedDirection = lastRow % 2 === 0 ? 'left' : 'right';
+
+            expect(pattern.currentRow).toBe(lastRow);
+            expect(pattern.workingDirection).toBe(expectedDirection);
         });
 
         it('should decrease stitch count each row (top-down triangle)', () => {

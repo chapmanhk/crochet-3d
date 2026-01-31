@@ -58,7 +58,8 @@ export class StitchValidator {
         const connectionsOut = attachStitch.effectiveConnections?.connectionsOut
             || attachStitch.definition?.connectionsOut || 1;
 
-        const workingConnectionsAbove = attachStitch.connections.above.filter(stitch =>
+        const attachConnectionsAbove = attachStitch.connections?.above || [];
+        const workingConnectionsAbove = attachConnectionsAbove.filter(stitch =>
             !stitch.isTurningChain || stitch.turningChainCountsAsStitch
         );
 
@@ -109,7 +110,8 @@ export class StitchValidator {
                     result.valid = false;
                     return result;
                 }
-                const workingAbove = nextStitch.connections.above.filter(stitch =>
+                const nextConnectionsAbove = nextStitch.connections?.above || [];
+                const workingAbove = nextConnectionsAbove.filter(stitch =>
                     !stitch.isTurningChain || stitch.turningChainCountsAsStitch
                 );
                 if (workingAbove.length > 0) {

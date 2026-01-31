@@ -243,23 +243,23 @@ describe('Pattern', () => {
 
         it('should support skipping stitches when adding', () => {
             const chain = pattern.graph.getRowSorted(0);
-            const stitch = pattern.addStitch(StitchType.SINGLE_CROCHET, chain[0], {
+            const stitch = pattern.addStitch(StitchType.SINGLE_CROCHET, chain[4], {
                 skipCount: 1
             });
 
-            expect(stitch.connections.below).toContain(chain[1]);
-            expect(stitch.skippedStitches).toContain(chain[0]);
+            expect(stitch.connections.below).toContain(chain[3]);
+            expect(stitch.skippedStitches).toContain(chain[4]);
         });
 
         it('should ignore skip count for decreases', () => {
             const chain = pattern.graph.getRowSorted(0);
-            const stitch = pattern.addStitch(StitchType.SINGLE_CROCHET, chain[0], {
+            const stitch = pattern.addStitch(StitchType.SINGLE_CROCHET, chain[4], {
                 modifiers: [StitchModifier.DECREASE],
                 skipCount: 1
             });
 
-            expect(stitch.connections.below).toContain(chain[0]);
-            expect(stitch.connections.below).toContain(chain[1]);
+            expect(stitch.connections.below).toContain(chain[4]);
+            expect(stitch.connections.below).toContain(chain[3]);
             expect(stitch.connections.below).not.toContain(chain[2]);
             expect(stitch.skippedStitches).toHaveLength(0);
         });
