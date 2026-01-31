@@ -28,35 +28,40 @@ and attachment/interaction. Each task appears once.
 
 ### Row navigation, inputs & shortcuts
 
-- [ ] **Bug: Skip count input ID mismatch breaks visual feedback**
+- [x] **Bug: Skip count input ID mismatch breaks visual feedback**
   - **Location:** `UIManager.js:1187`
   - **Symptoms:** The app sets `currentSkipCount = 1` after a foundation chain,
     but the UI still shows 0. `updateSkipInput()` looks for `#input-skip`
     while the actual element ID is `#input-skip-count`.
   - **Fix:** Update `UIManager.updateSkipInput()` to target
     `#input-skip-count` and avoid referencing undefined `this.stitchOptions`.
-- [ ] **Bug: Row display shows "Row 0 of 0" for foundation-only patterns**
+  - **Status:** Fixed - updateSkipInput() already uses `#input-skip-count` correctly throughout codebase.
+- [x] **Bug: Row display shows "Row 0 of 0" for foundation-only patterns**
   - **Location:** `UIManager.js:1126-1155`
   - **Symptoms:** When only a foundation chain exists, the UI displays
     "Row 0 of 0" which is confusing. Crocheters expect to see "Foundation"
     or at minimum "Row 0 of 1" (counting foundation as a row).
   - **Fix:** Special-case foundation-only display to show "Foundation Row"
     instead of "Row 0 of 0", or adjust counting logic.
-- [ ] **Bug: Go-to-row input min conflicts with foundation row**
+  - **Status:** Fixed - updateRowNavigation() displays "Foundation Row" when on row 0 with foundation (UIManager.js:2167).
+- [x] **Bug: Go-to-row input min conflicts with foundation row**
   - **Symptoms:** With a foundation chain, row 0 should be valid but the
     input `min="1"` blocks it in some browsers.
   - **Fix:** Set the input `min` dynamically (0 if foundation exists, else 1)
     and update on PATTERN_LOADED/ROW_ADDED.
-- [ ] **Bug: Keyboard shortcut log is misleading for Physics panel**
+  - **Status:** Fixed - updateRowNavigation() sets goToInput.min dynamically based on hasFoundation (UIManager.js:2182).
+- [x] **Bug: Keyboard shortcut log is misleading for Physics panel**
   - **Symptoms:** Console says "P - Toggle physics panel" but "P" selects
     Puff stitch and does not toggle the panel.
   - **Fix:** Either implement a `P` key handler to toggle PhysicsPanel or
     change the shortcut hint to avoid conflicts.
-- [ ] **Bug: Keyboard shortcuts still fire inside selects/modals**
+  - **Status:** Fixed - No "P - Toggle physics panel" log exists in main.js. Puff stitch uses 'U' key.
+- [x] **Bug: Keyboard shortcuts still fire inside selects/modals**
   - **Symptoms:** Pressing stitch/view shortcuts while a `<select>` is focused
     or a modal is open still triggers app actions.
   - **Fix:** In `UIManager.onKeyDown`, ignore events from `SELECT` elements,
     contentEditable nodes, and when a modal overlay is active.
+  - **Status:** Fixed - onKeyDown checks for modal overlays (line 1202), SELECT/INPUT/TEXTAREA (line 1208), and contentEditable (line 1211).
 - [ ] **Issue: Working direction label "start at chain end" is ambiguous**
   - **Symptoms:** The label "← left (start at chain end)" could confuse
     beginners who think "chain end" means the slip knot end (start of chain).
@@ -109,11 +114,12 @@ and attachment/interaction. Each task appears once.
   - **Symptoms:** Tab key doesn't move focus through UI panels. Panels not in tab order.
   - **WCAG:** Level A violation
   - **Fix:** Add `tabindex="0"` to panels, implement logical tab order, add skip-to-content link for canvas.
-- [ ] **Bug: Modal doesn't trap focus**
+- [x] **Bug: Modal doesn't trap focus**
   - **Location:** Modal.js:181-232
   - **Symptoms:** Focus can escape modal dialog with Tab key. No auto-focus on first button. Focus not restored when modal closes.
   - **WCAG:** Level AA violation
   - **Fix:** Implement focus trap (prevent tab outside modal), auto-focus first button on open, restore previous focus on close. Add ESC key handler (already partially exists).
+  - **Status:** Fixed - Implemented focus trap with Tab/Shift+Tab handling, auto-focus on first button, and focus restoration in both showModal and showPrompt. Commit 7d520d2.
 - [x] **Bug: Buttons missing focus states**
   - **Location:** UIManager.js inline styles
   - **Symptoms:** `:focus` and `:focus-visible` styles not explicitly defined. Keyboard users can't see where focus is.
