@@ -495,14 +495,16 @@ export class Pattern {
             if (attachIndex === -1) {
                 console.warn('Attachment node not found in its row, using original attachment');
             } else {
+                // Traverse in the correct direction based on working direction
+                const direction = this.workingDirection === 'left' ? -1 : 1;
                 for (let i = 0; i < skipCount; i++) {
-                    const idx = attachIndex + i;
+                    const idx = attachIndex + (i * direction);
                     if (idx >= 0 && idx < prevRowStitches.length) {
                         skippedStitches.push(prevRowStitches[idx]);
                     }
                 }
 
-                const newAttachIndex = attachIndex + skipCount;
+                const newAttachIndex = attachIndex + (skipCount * direction);
                 if (newAttachIndex >= 0 && newAttachIndex < prevRowStitches.length) {
                     actualAttachNode = prevRowStitches[newAttachIndex];
                 }
@@ -549,8 +551,10 @@ export class Pattern {
                 const attachIndex = prevRowStitches.indexOf(attachToNode);
 
                 if (attachIndex !== -1) {
+                    // Traverse in the correct direction based on working direction
+                    const direction = this.workingDirection === 'left' ? -1 : 1;
                     for (let i = 1; i < decreaseCount; i++) {
-                        const nextIndex = attachIndex + i;
+                        const nextIndex = attachIndex + (i * direction);
                         if (nextIndex >= 0 && nextIndex < prevRowStitches.length) {
                             const nextStitch = prevRowStitches[nextIndex];
                             if (nextStitch) {

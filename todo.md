@@ -62,11 +62,12 @@ via click-based interactions, plus recommended fixes.
   - **Fix:** Either (a) model increases as multiple stitches, or (b) keep a
     single node but compute “working stitch count” separately for output.
 
-- [ ] **Bug: Decrease modifiers ignore working direction**
+- [x] **Bug: Decrease modifiers ignore working direction**
   - **Symptoms:** Decrease uses `attachIndex + i` in sorted order even if
     working right-to-left.
   - **Fix:** Adjust the traversal direction for decreases based on
     `workingDirection` to ensure correct neighbor selection.
+  - **Status:** Fixed - Pattern.js and StitchValidator now respect workingDirection for decreases and skips.
 
 ## Attachment Modes & UX Feedback
 
