@@ -65,6 +65,18 @@ class MockVector3 {
         const dz = this.z - v.z;
         return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
+    addVectors(a, b) {
+        this.x = a.x + b.x;
+        this.y = a.y + b.y;
+        this.z = a.z + b.z;
+        return this;
+    }
+    subVectors(a, b) {
+        this.x = a.x - b.x;
+        this.y = a.y - b.y;
+        this.z = a.z - b.z;
+        return this;
+    }
 }
 
 class MockVector2 {
@@ -89,11 +101,159 @@ class MockRaycaster {
     }
 }
 
+class MockGroup {
+    constructor() {
+        this.children = [];
+        this.name = '';
+        this.visible = true;
+    }
+    add(obj) {
+        this.children.push(obj);
+    }
+    remove(obj) {
+        this.children = this.children.filter(child => child !== obj);
+    }
+}
+
+class MockScene extends MockGroup {
+    constructor() {
+        super();
+        this.background = null;
+    }
+}
+
+class MockPerspectiveCamera {
+    constructor(fov, aspect, near, far) {
+        this.fov = fov;
+        this.aspect = aspect;
+        this.near = near;
+        this.far = far;
+        this.position = new MockVector3();
+        this.updateProjectionMatrix = vi.fn();
+        this.lookAt = vi.fn();
+    }
+}
+
+class MockWebGLRenderer {
+    constructor() {
+        this.domElement = document.createElement('canvas');
+        this.shadowMap = { enabled: false, type: null };
+        this.toneMapping = null;
+        this.toneMappingExposure = 1;
+        this.setSize = vi.fn();
+        this.setPixelRatio = vi.fn();
+        this.render = vi.fn();
+        this.dispose = vi.fn();
+    }
+}
+
+class MockDirectionalLight {
+    constructor(color, intensity) {
+        this.color = color;
+        this.intensity = intensity;
+        this.position = new MockVector3();
+        this.castShadow = false;
+        this.shadow = {
+            mapSize: { width: 0, height: 0 },
+            camera: {
+                near: 0,
+                far: 0,
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0
+            }
+        };
+    }
+}
+
+class MockAmbientLight {
+    constructor(color, intensity) {
+        this.color = color;
+        this.intensity = intensity;
+    }
+}
+
+class MockHemisphereLight {
+    constructor(color, groundColor, intensity) {
+        this.color = color;
+        this.groundColor = groundColor;
+        this.intensity = intensity;
+        this.position = new MockVector3();
+    }
+}
+
+class MockGridHelper {
+    constructor() {
+        this.position = new MockVector3();
+    }
+}
+
+class MockAxesHelper {
+    constructor() {
+        this.position = new MockVector3();
+    }
+}
+
+class MockTorusGeometry {
+    constructor() {}
+    rotateX() { return this; }
+    dispose() {}
+}
+
+class MockExtrudeGeometry {
+    constructor() {}
+    rotateY() { return this; }
+    center() { return this; }
+    dispose() {}
+}
+
+class MockShape {
+    moveTo() {}
+    quadraticCurveTo() {}
+    lineTo() {}
+}
+
+class MockOrbitControls {
+    constructor(camera, domElement) {
+        this.camera = camera;
+        this.domElement = domElement;
+        this.target = new MockVector3();
+        this.enableDamping = false;
+        this.dampingFactor = 0;
+        this.screenSpacePanning = false;
+        this.minDistance = 0;
+        this.maxDistance = 0;
+        this.maxPolarAngle = 0;
+        this.update = vi.fn();
+        this._listeners = {};
+    }
+    addEventListener(type, callback) {
+        if (!this._listeners[type]) {
+            this._listeners[type] = [];
+        }
+        this._listeners[type].push(callback);
+    }
+    dispose() {}
+}
+
 // Mock the 'three' module
 vi.mock('three', () => ({
     Vector3: MockVector3,
     Vector2: MockVector2,
     Raycaster: MockRaycaster,
+    Scene: MockScene,
+    Group: MockGroup,
+    PerspectiveCamera: MockPerspectiveCamera,
+    WebGLRenderer: MockWebGLRenderer,
+    DirectionalLight: MockDirectionalLight,
+    AmbientLight: MockAmbientLight,
+    HemisphereLight: MockHemisphereLight,
+    GridHelper: MockGridHelper,
+    AxesHelper: MockAxesHelper,
+    TorusGeometry: MockTorusGeometry,
+    ExtrudeGeometry: MockExtrudeGeometry,
+    Shape: MockShape,
     // Add minimal mocks for other THREE classes as needed
     Color: class MockColor {
         constructor(color) {
@@ -126,8 +286,28 @@ vi.mock('three', () => ({
             this.geometry = geometry;
             this.material = material;
             this.position = new MockVector3();
+            this.scale = {
+                x: 1,
+                y: 1,
+                z: 1,
+                set: (x, y, z) => {
+                    this.scale.x = x;
+                    this.scale.y = y;
+                    this.scale.z = z;
+                },
+                setScalar: (s) => {
+                    this.scale.x = s;
+                    this.scale.y = s;
+                    this.scale.z = s;
+                }
+            };
+            this.quaternion = {
+                setFromUnitVectors: vi.fn()
+            };
             this.visible = true;
             this.userData = {};
+            this.castShadow = false;
+            this.receiveShadow = false;
         }
     },
     CanvasTexture: class MockCanvasTexture {
@@ -141,15 +321,26 @@ vi.mock('three', () => ({
             };
             this.colorSpace = 'srgb';
         }
+        clone() {
+            return new MockCanvasTexture(this.canvas);
+        }
         dispose() {}
     },
     RepeatWrapping: 1000,
-    SRGBColorSpace: 'srgb'
+    SRGBColorSpace: 'srgb',
+    PCFSoftShadowMap: 2,
+    ACESFilmicToneMapping: 1
+}));
+
+vi.mock('three-stdlib', () => ({
+    OrbitControls: MockOrbitControls
 }));
 
 // Set up global THREE mock as well for any runtime checks
 globalThis.THREE = {
-    Vector3: MockVector3
+    Vector3: MockVector3,
+    Vector2: MockVector2,
+    Raycaster: MockRaycaster
 };
 
 // Mock canvas 2D context for YarnMaterial
