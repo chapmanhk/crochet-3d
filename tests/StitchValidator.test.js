@@ -640,4 +640,116 @@ describe('StitchValidator', () => {
             expect(typeList).not.toContain(StitchType.DECREASE);
         });
     });
+
+    describe('post stitch validation', () => {
+        it('should error when trying to place post stitch on foundation chain', () => {
+            pattern.autoTurningChain = false;
+            pattern.startWithChain(5);
+            pattern.startNewRow();
+
+            const chain = pattern.graph.getAt(0, 0);
+            const attachPoint = {
+                stitch: chain,
+                type: 'above'
+            };
+
+            const result = StitchValidator.canPlaceStitch(
+                StitchType.FRONT_POST_DOUBLE_CROCHET,
+                attachPoint,
+                pattern
+            );
+
+            expect(result.valid).toBe(false);
+            expect(result.errors.some(e => e.includes('previous row'))).toBe(true);
+        });
+
+        it('should error when trying to place post stitch around chain', () => {
+            pattern.autoTurningChain = false;
+            pattern.startWithChain(5);
+            pattern.startNewRow();
+
+            // Add some SC stitches to row 1
+            const chain = pattern.graph.getRowSorted(0);
+            chain.forEach(ch => pattern.addStitch(StitchType.SINGLE_CROCHET, ch));
+
+            // Start new row
+            pattern.startNewRow();
+
+            // Create a chain stitch manually in row 1 to test against
+            const chainInRow1 = pattern.graph.createNode(StitchType.CHAIN, { row: 1, column: 10 });
+
+            const attachPoint = {
+                stitch: chainInRow1,
+                type: 'above'
+            };
+
+            const result = StitchValidator.canPlaceStitch(
+                StitchType.FRONT_POST_DOUBLE_CROCHET,
+                attachPoint,
+                pattern
+            );
+
+            expect(result.valid).toBe(false);
+            expect(result.errors.some(e => e.includes('does not have a post'))).toBe(true);
+        });
+
+        it('should warn about short stitches for post work', () => {
+            pattern.autoTurningChain = false;
+            pattern.startWithChain(5);
+            pattern.startNewRow();
+
+            // Add some SC stitches to row 1
+            const chain = pattern.graph.getRowSorted(0);
+            chain.forEach(ch => pattern.addStitch(StitchType.SINGLE_CROCHET, ch));
+
+            // Start new row
+            pattern.startNewRow();
+
+            // Try to place post stitch around an SC (short stitch)
+            const sc = pattern.graph.getAt(1, 0);
+            const attachPoint = {
+                stitch: sc,
+                type: 'above'
+            };
+
+            const result = StitchValidator.canPlaceStitch(
+                StitchType.FRONT_POST_DOUBLE_CROCHET,
+                attachPoint,
+                pattern
+            );
+
+            // Should be valid (SC height is 1.0, exactly the minimum)
+            // but taller stitches are preferred
+            expect(result.valid).toBe(true);
+        });
+
+        it('should allow post stitch around DC (tall stitch)', () => {
+            pattern.autoTurningChain = false;
+            pattern.startWithChain(5);
+            pattern.startNewRow();
+
+            // Add some DC stitches to row 1
+            const chain = pattern.graph.getRowSorted(0);
+            chain.forEach(ch => pattern.addStitch(StitchType.DOUBLE_CROCHET, ch));
+
+            // Start new row
+            pattern.startNewRow();
+
+            // Place post stitch around a DC (tall stitch - good for post stitches)
+            const dc = pattern.graph.getAt(1, 0);
+            const attachPoint = {
+                stitch: dc,
+                type: 'above'
+            };
+
+            const result = StitchValidator.canPlaceStitch(
+                StitchType.FRONT_POST_DOUBLE_CROCHET,
+                attachPoint,
+                pattern
+            );
+
+            expect(result.valid).toBe(true);
+            expect(result.errors).toHaveLength(0);
+        });
+    });
 });

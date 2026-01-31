@@ -1,4 +1,4 @@
-import { StitchType, StitchDefinitions, getStitchByKeyboard, StitchModifier } from '../core/StitchTypes.js';
+import { StitchType, StitchDefinitions, getStitchByKeyboard, StitchModifier, getFoundationChainSkipCount } from '../core/StitchTypes.js';
 import { EventBus, Events, EventSubscriptions } from '../utils/EventBus.js';
 import { YarnMaterial } from '../rendering/YarnMaterial.js';
 import { PatternConstants, AttachmentConstants } from '../utils/Constants.js';
@@ -275,6 +275,26 @@ export class UIManager {
                 gap: 6px;
                 margin-top: 6px;
                 cursor: pointer;
+            }
+
+            /* Stitch-specific options */
+            .stitch-specific-options {
+                margin-top: 12px;
+                padding-top: 10px;
+                border-top: 1px dashed #eee;
+                font-size: 12px;
+                color: #555;
+            }
+
+            .stitch-specific-options.hidden,
+            .stitch-options-row.hidden {
+                display: none;
+            }
+
+            .option-hint {
+                font-size: 10px;
+                color: #888;
+                margin-left: 4px;
             }
 
             /* Working direction + marker legend */
@@ -729,6 +749,31 @@ export class UIManager {
                     Work into space
                 </label>
             </div>
+            <div class="stitch-specific-options" id="stitch-specific-options">
+                <div class="stitch-options-title">Stitch-Specific</div>
+                <div class="stitch-options-row hidden" id="spike-depth-row">
+                    <label for="input-spike-depth">Spike depth:</label>
+                    <input type="number" id="input-spike-depth" min="1" max="5" value="1">
+                    <span class="option-hint">rows below</span>
+                </div>
+                <div class="stitch-options-row hidden" id="texture-count-row">
+                    <label for="input-texture-count">Stitch count:</label>
+                    <input type="number" id="input-texture-count" min="3" max="7" value="5">
+                    <span class="option-hint">DCs</span>
+                </div>
+                <div class="stitch-options-row hidden" id="picot-chain-row">
+                    <label for="input-picot-chains">Chain count:</label>
+                    <input type="number" id="input-picot-chains" min="2" max="5" value="3">
+                </div>
+                <div class="stitch-options-row hidden" id="turning-chain-row">
+                    <label for="toggle-tc-counts">TC counts as st:</label>
+                    <select id="select-tc-counts">
+                        <option value="default">Default</option>
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                    </select>
+                </div>
+            </div>
             <div class="color-picker-row">
                 <label>Yarn color:</label>
                 <input type="color" id="color-picker" value="#8B4513">
@@ -809,6 +854,57 @@ export class UIManager {
                 EventBus.emit(Events.ATTACHMENT_OPTIONS_CHANGED, { type: 'space', value: workSpaceToggle.checked });
             });
         }
+
+        // Stitch-specific options
+        const spikeDepthInput = this.infoPanel.querySelector('#input-spike-depth');
+        const textureCountInput = this.infoPanel.querySelector('#input-texture-count');
+        const picotChainInput = this.infoPanel.querySelector('#input-picot-chains');
+        const tcCountsSelect = this.infoPanel.querySelector('#select-tc-counts');
+
+        if (spikeDepthInput) {
+            spikeDepthInput.value = String(this.pattern.currentSpikeDepth || 1);
+            spikeDepthInput.addEventListener('change', () => {
+                const parsed = parseInt(spikeDepthInput.value, 10);
+                const safeValue = Math.max(1, Math.min(5, parsed || 1));
+                spikeDepthInput.value = String(safeValue);
+                this.pattern.currentSpikeDepth = safeValue;
+                EventBus.emit(Events.ATTACHMENT_OPTIONS_CHANGED, { type: 'spikeDepth', value: safeValue });
+            });
+        }
+
+        if (textureCountInput) {
+            textureCountInput.value = String(this.pattern.currentTextureCount || 5);
+            textureCountInput.addEventListener('change', () => {
+                const parsed = parseInt(textureCountInput.value, 10);
+                const safeValue = Math.max(3, Math.min(7, parsed || 5));
+                textureCountInput.value = String(safeValue);
+                this.pattern.currentTextureCount = safeValue;
+                EventBus.emit(Events.ATTACHMENT_OPTIONS_CHANGED, { type: 'textureCount', value: safeValue });
+            });
+        }
+
+        if (picotChainInput) {
+            picotChainInput.value = String(this.pattern.currentPicotChains || 3);
+            picotChainInput.addEventListener('change', () => {
+                const parsed = parseInt(picotChainInput.value, 10);
+                const safeValue = Math.max(2, Math.min(5, parsed || 3));
+                picotChainInput.value = String(safeValue);
+                this.pattern.currentPicotChains = safeValue;
+                EventBus.emit(Events.ATTACHMENT_OPTIONS_CHANGED, { type: 'picotChains', value: safeValue });
+            });
+        }
+
+        if (tcCountsSelect) {
+            tcCountsSelect.value = this.pattern.turningChainCountsOverride || 'default';
+            tcCountsSelect.addEventListener('change', () => {
+                const value = tcCountsSelect.value;
+                this.pattern.turningChainCountsOverride = value === 'default' ? null : (value === 'yes');
+                EventBus.emit(Events.ATTACHMENT_OPTIONS_CHANGED, { type: 'tcCounts', value });
+            });
+        }
+
+        // Update stitch-specific options visibility based on initial selection
+        this.updateStitchSpecificOptions();
 
         // Create color palette swatches
         const palette = this.infoPanel.querySelector('#color-palette');
@@ -1110,7 +1206,72 @@ export class UIManager {
             btn.classList.toggle('selected', btn.dataset.type === type);
         });
 
+        // If we have a foundation chain and haven't added any stitches yet,
+        // update the skip count to match the new stitch type
+        if (this.pattern.hasFoundationChain?.() && this.pattern.currentRow === 0) {
+            const row1Stitches = this.pattern.graph?.getRow(1)?.filter(s => !s.isTurningChain) || [];
+            if (row1Stitches.length === 0) {
+                const skipCount = getFoundationChainSkipCount(type);
+                this.pattern.currentSkipCount = skipCount;
+                this.updateSkipInput(skipCount);
+            }
+        }
+
+        // Update stitch-specific options visibility
+        this.updateStitchSpecificOptions();
+
         EventBus.emit(Events.STITCH_TYPE_SELECTED, { type });
+    }
+
+    /**
+     * Update visibility of stitch-specific options based on selected stitch type
+     */
+    updateStitchSpecificOptions() {
+        if (!this.infoPanel) return;
+
+        const def = StitchDefinitions[this.selectedStitchType];
+        const specificOptionsContainer = this.infoPanel.querySelector('#stitch-specific-options');
+        const spikeRow = this.infoPanel.querySelector('#spike-depth-row');
+        const textureRow = this.infoPanel.querySelector('#texture-count-row');
+        const picotRow = this.infoPanel.querySelector('#picot-chain-row');
+        const tcRow = this.infoPanel.querySelector('#turning-chain-row');
+
+        // Hide all by default
+        if (spikeRow) spikeRow.classList.add('hidden');
+        if (textureRow) textureRow.classList.add('hidden');
+        if (picotRow) picotRow.classList.add('hidden');
+        if (tcRow) tcRow.classList.add('hidden');
+
+        let hasVisibleOption = false;
+
+        // Show spike depth for spike stitch
+        if (def?.isSpikeStitch && spikeRow) {
+            spikeRow.classList.remove('hidden');
+            hasVisibleOption = true;
+        }
+
+        // Show texture count for bobble/popcorn
+        if (def?.configurableComponents && def?.isTextureStitch && textureRow) {
+            textureRow.classList.remove('hidden');
+            hasVisibleOption = true;
+        }
+
+        // Show chain count for picot
+        if (def?.configurableChainCount && picotRow) {
+            picotRow.classList.remove('hidden');
+            hasVisibleOption = true;
+        }
+
+        // Show turning chain option for stitches with turning chains
+        if (def?.turningChain !== undefined && def?.turningChain > 0 && tcRow) {
+            tcRow.classList.remove('hidden');
+            hasVisibleOption = true;
+        }
+
+        // Hide the entire section if no options are visible
+        if (specificOptionsContainer) {
+            specificOptionsContainer.classList.toggle('hidden', !hasVisibleOption);
+        }
     }
 
     /**
@@ -1254,8 +1415,10 @@ export class UIManager {
             if (!length) return;
 
             this.pattern.startWithChain(length);
-            // Auto-set skip to 1 for first stitch (typical crochet: 2nd chain from hook)
-            this.resetStitchOptions({ skipCount: 1 });
+            // Auto-set skip count based on selected stitch type
+            // SC: skip 1 (2nd ch from hook), HDC: skip 2, DC: skip 3, TR: skip 4
+            const skipCount = getFoundationChainSkipCount(this.selectedStitchType);
+            this.resetStitchOptions({ skipCount });
             return;
         }
 
