@@ -725,7 +725,7 @@ export class Pattern {
      */
     findPreviousInRow(row, column) {
         const rowStitches = this.graph.getRowSorted(row);
-        return findPreviousInRowInRow(rowStitches, column, this.workingDirection);
+        return findPreviousInRowInRow(rowStitches, column, this.workingDirection, true);
     }
 
     /**
