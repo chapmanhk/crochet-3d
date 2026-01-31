@@ -1152,16 +1152,24 @@ export class Pattern {
             let currentGroup = null;
 
             workingStitches.forEach(s => {
-                // Include loop selection as a modifier for display
+                // Include loop selection and chain space as modifiers for display
                 const effectiveModifiers = [...(s.modifiers || [])];
                 if (s.loopSelection === 'front' && !effectiveModifiers.includes(StitchModifier.FRONT_LOOP_ONLY)) {
                     effectiveModifiers.push(StitchModifier.FRONT_LOOP_ONLY);
                 } else if (s.loopSelection === 'back' && !effectiveModifiers.includes(StitchModifier.BACK_LOOP_ONLY)) {
                     effectiveModifiers.push(StitchModifier.BACK_LOOP_ONLY);
                 }
-                const displayName = getStitchDisplayName(s.type, effectiveModifiers);
+                if (s.workedIntoSpace && !effectiveModifiers.includes(StitchModifier.CHAIN_SPACE)) {
+                    effectiveModifiers.push(StitchModifier.CHAIN_SPACE);
+                }
 
-                if (currentGroup && currentGroup.name === displayName) {
+                // Add skip prefix if stitches were skipped
+                const skipCount = s.skippedStitches?.length || 0;
+                const skipPrefix = skipCount > 0 ? `sk ${skipCount}, ` : '';
+
+                const displayName = skipPrefix + getStitchDisplayName(s.type, effectiveModifiers);
+
+                if (currentGroup && currentGroup.name === displayName && skipCount === 0) {
                     currentGroup.count++;
                 } else {
                     currentGroup = { name: displayName, abbr: s.abbreviation, count: 1 };

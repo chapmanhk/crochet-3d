@@ -55,9 +55,10 @@ via click-based interactions, plus recommended fixes.
     metadata when generating instructions.
   - **Status:** Fixed - generateInstructions now includes loopSelection as FLO/BLO modifier.
 
-- [ ] **Bug: Skip and “work into space” are not reflected in instructions**
+- [x] **Bug: Skip and "work into space" are not reflected in instructions**
   - **Symptoms:** Generated instructions omit skips and ch-space instructions.
-  - **Fix:** Include “sk N,” “in ch-sp,” or equivalent notation in output.
+  - **Fix:** Include "sk N," "in ch-sp," or equivalent notation in output.
+  - **Status:** Fixed - generateInstructions now includes skip counts and chain space notation.
 
 - [ ] **Bug: Increase modifier does not add stitch count**
   - **Symptoms:** Increases add a single node with `connectionsOut = 2`, but
