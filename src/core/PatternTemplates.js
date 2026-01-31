@@ -51,7 +51,7 @@ export function createGrannySquare(options = {}) {
     const {
         rounds = 1,
         color = 0x8B4513
-    } = { ...options, ...validated };
+    } = validated;
 
     const pattern = new Pattern();
     pattern.metadata.name = 'Granny Square';
@@ -270,7 +270,7 @@ export function createBasicCircle(options = {}) {
         stitchType = StitchType.SINGLE_CROCHET,
         mode = 'joined',
         color = 0x8B4513
-    } = { ...options, ...validated };
+    } = validated;
 
     const pattern = new Pattern();
     pattern.metadata.name = 'Basic Circle';
@@ -407,7 +407,7 @@ export function createBasicSquare(options = {}) {
         rows = null,
         stitchType = StitchType.SINGLE_CROCHET,
         color = 0x8B4513
-    } = { ...options, ...validated };
+    } = validated;
 
     const targetRows = rows || size;
 
@@ -501,7 +501,7 @@ export function createTriangle(options = {}) {
         rows = null,
         stitchType = StitchType.SINGLE_CROCHET,
         color = 0x8B4513
-    } = { ...options, ...validated };
+    } = validated;
 
     const pattern = new Pattern();
     pattern.metadata.name = 'Triangle';
