@@ -140,6 +140,9 @@ export function showModal(options) {
     } = options;
 
     return new Promise((resolve) => {
+        // Store the currently focused element to restore later
+        const previouslyFocusedElement = document.activeElement;
+
         // Create overlay
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
@@ -178,6 +181,10 @@ export function showModal(options) {
             overlay.classList.remove('visible');
             setTimeout(() => {
                 overlay.remove();
+                // Restore focus to previously focused element
+                if (previouslyFocusedElement && previouslyFocusedElement.focus) {
+                    previouslyFocusedElement.focus();
+                }
                 resolve(result);
             }, UIConstants.TRANSITION_DURATION);
         };
@@ -203,9 +210,13 @@ export function showModal(options) {
         overlay.appendChild(container);
         document.body.appendChild(overlay);
 
-        // Trigger animation
+        // Trigger animation and auto-focus first button
         requestAnimationFrame(() => {
             overlay.classList.add('visible');
+            const firstButton = footer.querySelector('button[data-autofocus="true"]') || footer.querySelector('button');
+            if (firstButton) {
+                firstButton.focus();
+            }
         });
 
         // Close on overlay click (outside modal)
@@ -215,10 +226,35 @@ export function showModal(options) {
             }
         });
 
-        // Close on Escape key
+        // Close on Escape key and trap focus with Tab
         keydownHandler = (e) => {
             if (e.key === 'Escape') {
                 closeModal(null);
+                return;
+            }
+
+            // Focus trap: prevent Tab from leaving the modal
+            if (e.key === 'Tab') {
+                const focusableElements = container.querySelectorAll(
+                    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+                );
+                const focusableArray = Array.from(focusableElements);
+                const firstFocusable = focusableArray[0];
+                const lastFocusable = focusableArray[focusableArray.length - 1];
+
+                if (e.shiftKey) {
+                    // Shift+Tab: if on first element, go to last
+                    if (document.activeElement === firstFocusable) {
+                        e.preventDefault();
+                        lastFocusable.focus();
+                    }
+                } else {
+                    // Tab: if on last element, go to first
+                    if (document.activeElement === lastFocusable) {
+                        e.preventDefault();
+                        firstFocusable.focus();
+                    }
+                }
             }
         };
         document.addEventListener('keydown', keydownHandler);
@@ -304,6 +340,9 @@ export function showPrompt(message, defaultValue = '', title = 'Input') {
     }
 
     return new Promise((resolve) => {
+        // Store the currently focused element to restore later
+        const previouslyFocusedElement = document.activeElement;
+
         // Create overlay
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
@@ -354,6 +393,10 @@ export function showPrompt(message, defaultValue = '', title = 'Input') {
             overlay.classList.remove('visible');
             setTimeout(() => {
                 overlay.remove();
+                // Restore focus to previously focused element
+                if (previouslyFocusedElement && previouslyFocusedElement.focus) {
+                    previouslyFocusedElement.focus();
+                }
                 resolve(result);
             }, UIConstants.TRANSITION_DURATION);
         };
@@ -392,12 +435,40 @@ export function showPrompt(message, defaultValue = '', title = 'Input') {
             }
         });
 
-        // Handle keyboard events
+        // Handle keyboard events and trap focus with Tab
         keydownHandler = (e) => {
             if (e.key === 'Escape') {
                 closeModal(null);
-            } else if (e.key === 'Enter') {
+                return;
+            }
+
+            if (e.key === 'Enter') {
                 closeModal(input.value);
+                return;
+            }
+
+            // Focus trap: prevent Tab from leaving the modal
+            if (e.key === 'Tab') {
+                const focusableElements = container.querySelectorAll(
+                    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+                );
+                const focusableArray = Array.from(focusableElements);
+                const firstFocusable = focusableArray[0];
+                const lastFocusable = focusableArray[focusableArray.length - 1];
+
+                if (e.shiftKey) {
+                    // Shift+Tab: if on first element, go to last
+                    if (document.activeElement === firstFocusable) {
+                        e.preventDefault();
+                        lastFocusable.focus();
+                    }
+                } else {
+                    // Tab: if on last element, go to first
+                    if (document.activeElement === lastFocusable) {
+                        e.preventDefault();
+                        firstFocusable.focus();
+                    }
+                }
             }
         };
         document.addEventListener('keydown', keydownHandler);
