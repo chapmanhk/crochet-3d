@@ -495,36 +495,3 @@ export class StitchNode {
 /**
  * Create a stitch with increase modifier
  */
-export function createIncreaseStitch(baseType, options = {}) {
-    return new StitchNode(baseType, {
-        ...options,
-        modifiers: [...(options.modifiers || []), StitchModifier.INCREASE]
-    });
-}
-
-/**
- * Create a stitch with decrease modifier
- */
-export function createDecreaseStitch(baseType, options = {}) {
-    return new StitchNode(baseType, {
-        ...options,
-        modifiers: [...(options.modifiers || []), StitchModifier.DECREASE]
-    });
-}
-
-/**
- * Create a turning chain
- */
-export function createTurningChain(chainCount, countsAsStitch, options = {}) {
-    const chains = [];
-    for (let i = 0; i < chainCount; i++) {
-        const chain = new StitchNode(StitchType.CHAIN, {
-            ...options,
-            column: (options.column || 0) + i,
-            isTurningChain: true,
-            turningChainCountsAsStitch: i === chainCount - 1 && countsAsStitch
-        });
-        chains.push(chain);
-    }
-    return chains;
-}

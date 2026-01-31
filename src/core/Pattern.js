@@ -1,5 +1,4 @@
 import { StitchGraph } from './StitchGraph.js';
-import { StitchNode, createTurningChain } from './StitchNode.js';
 import {
     StitchType,
     StitchModifier,
