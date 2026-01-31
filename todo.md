@@ -118,6 +118,84 @@ via click-based interactions, plus recommended fixes.
   - **Fix:** Increase `MAX_CHAIN_LENGTH` or make it configurable in UI.
   - **Status:** Fixed - Increased MAX_CHAIN_LENGTH from 100 to 500.
 
+## QA Stress Test Findings (Jan 2026)
+
+- [ ] **Bug: Physics update callbacks accumulate over time**
+  - **Symptoms:** Clicking "Settle" or starting/stopping physics repeatedly
+    causes the simulation to run multiple times per frame and CPU usage grows.
+  - **Fix:** Store and call the unsubscribe from `SceneManager.onUpdate()` and
+    avoid registering duplicate update callbacks on subsequent `start()` calls.
+
+- [ ] **Bug: Clicking ghost attachments bypasses stitch validation**
+  - **Symptoms:** Invalid stitches (e.g., post/spike/decrease) can be placed by
+    clicking ghost meshes even though the toolbar/Enter path blocks them.
+  - **Fix:** Invoke `StitchValidator.canPlaceStitch` inside
+    `AttachmentPointManager.onClick()` and surface errors via modal.
+
+- [ ] **Bug: "Work into space" mode can force a new row unexpectedly**
+  - **Symptoms:** When no chain spaces exist, ghosts disappear and a new-row
+    indicator appears even if unworked stitches remain.
+  - **Fix:** Add a fallback to normal attachment points in
+    `AttachmentPointManager.updateAttachmentPoints()` or disable the toggle
+    for that row with a warning.
+
+- [ ] **Bug: Undo/redo to empty graph sets currentRow to -1**
+  - **Symptoms:** After undoing to an empty state, row navigation and
+    attachments can break because `currentRow` becomes negative.
+  - **Fix:** Clamp `currentRow` to 0 in `Pattern.loadState()` when row count is 0.
+
+- [ ] **Bug: Skip count UI is out of sync after foundation chain**
+  - **Symptoms:** The app sets `currentSkipCount = 1` but the UI still shows 0,
+    causing unexpected skipped stitches.
+  - **Fix:** Update `UIManager.updateSkipInput()` to target the correct element
+    (`#input-skip-count`) and avoid referencing undefined `this.stitchOptions`.
+
+- [ ] **Bug: Selection persists across pattern loads**
+  - **Symptoms:** Selected nodes from a previous pattern remain in
+    `RaycastManager.selectedNodes`, and Delete attempts remove stale nodes.
+  - **Fix:** Clear selection on `PATTERN_LOADED`/`PATTERN_CLEARED` and prune
+    selections on `STITCH_REMOVED`.
+
+- [ ] **Bug: Magic ring counted as a stitch in instructions**
+  - **Symptoms:** Instruction row counts include the magic ring node, inflating
+    stitch totals and row summaries.
+  - **Fix:** Exclude `StitchType.MAGIC_RING` from instruction rows or treat it
+    as a special foundation note only.
+
+- [ ] **Bug: Turning-chain-only rows render trailing commas**
+  - **Symptoms:** Instructions show "Ch N, " when a row has only turning chains.
+  - **Fix:** When `workingStitches` is empty, omit the comma and skip joining
+    an empty instruction list.
+
+- [ ] **Bug: Keyboard shortcut log is misleading for Physics panel**
+  - **Symptoms:** Console says "P - Toggle physics panel" but "P" selects
+    Puff stitch and does not toggle the panel.
+  - **Fix:** Either implement a `P` key handler to toggle PhysicsPanel or
+    change the shortcut hint to avoid conflicts.
+
+- [ ] **Bug: Keyboard shortcuts still fire inside selects/modals**
+  - **Symptoms:** Pressing stitch/view shortcuts while a `<select>` is focused
+    or a modal is open still triggers app actions.
+  - **Fix:** In `UIManager.onKeyDown`, ignore events from `SELECT` elements,
+    contentEditable nodes, and when a modal overlay is active.
+
+- [ ] **Bug: Suggested ghost highlight is lost after hover**
+  - **Symptoms:** Hovering over the suggested attachment point resets its
+    scale to default, losing the "suggested" emphasis.
+  - **Fix:** When unhovering, restore the suggested scale if
+    `attachmentPoint.suggested` is true.
+
+- [ ] **Bug: Templates can leave workingDirection inconsistent**
+  - **Symptoms:** Continuing after template creation may suggest the wrong
+    next stitch because `workingDirection` isn't aligned to the last row.
+  - **Fix:** After template build, set `workingDirection` based on the last
+    row parity (or call `pattern.goToRow(currentRow)` to sync).
+
+- [ ] **Bug: Go-to-row input min conflicts with foundation row**
+  - **Symptoms:** With a foundation chain, row 0 should be valid but the
+    input `min="1"` blocks it in some browsers.
+  - **Fix:** Set the input `min` dynamically (0 if foundation exists, else 1)
+    and update on PATTERN_LOADED/ROW_ADDED.
 ---
 
 ## Beanie Pattern Testing Findings
