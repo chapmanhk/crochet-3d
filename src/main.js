@@ -87,10 +87,11 @@ class CrochetApp {
             this.stitchRenderer = new StitchRenderer(this.sceneManager);
 
             // Create interaction manager
-            this.raycastManager = new RaycastManager(this.sceneManager, this.stitchRenderer);
-
             // Create attachment point manager for click-to-add functionality
             this.attachmentManager = new AttachmentPointManager(this.sceneManager, this.pattern);
+
+            // Create interaction manager
+            this.raycastManager = new RaycastManager(this.sceneManager, this.stitchRenderer);
 
             // Create physics engine for fabric simulation
             this.physicsEngine = new PhysicsEngine(this.pattern, this.sceneManager);
@@ -104,9 +105,6 @@ class CrochetApp {
             // Setup application-level event handlers
             this.setupEventHandlers();
             this.setupCameraFollow();
-
-            // Start with a demo pattern
-            this.createDemoPattern();
 
             // Start rendering
             this.sceneManager.start();

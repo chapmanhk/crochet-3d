@@ -2,7 +2,7 @@ import { StitchType, StitchDefinitions, getStitchByKeyboard, StitchModifier } fr
 import { EventBus, Events, EventSubscriptions } from '../utils/EventBus.js';
 import { YarnMaterial } from '../rendering/YarnMaterial.js';
 import { PatternConstants, AttachmentConstants } from '../utils/Constants.js';
-import { showInstructions, showConfirm, showPrompt } from './Modal.js';
+import { showInstructions, showConfirm, showPrompt, showAlert } from './Modal.js';
 
 /**
  * UIManager - Manages all HTML/CSS UI elements
@@ -1009,10 +1009,15 @@ export class UIManager {
                         // Validate bounds to prevent performance issues
                         const parsedLength = parseInt(chainLength, 10);
                         if (Number.isFinite(parsedLength)) {
-                            const length = Math.max(
-                                PatternConstants.MIN_CHAIN_LENGTH,
-                                Math.min(PatternConstants.MAX_CHAIN_LENGTH, parsedLength)
-                            );
+                            const minLength = PatternConstants.MIN_CHAIN_LENGTH;
+                            const maxLength = PatternConstants.MAX_CHAIN_LENGTH;
+                            const length = Math.max(minLength, Math.min(maxLength, parsedLength));
+                            if (length !== parsedLength) {
+                                await showAlert(
+                                    `Chain length adjusted to ${length} (allowed ${minLength}-${maxLength}).`,
+                                    'Chain Length Adjusted'
+                                );
+                            }
                             this.pattern.startWithChain(length);
                         }
                     }

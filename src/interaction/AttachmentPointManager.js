@@ -13,6 +13,7 @@ export class AttachmentPointManager {
     constructor(sceneManager, pattern) {
         this.sceneManager = sceneManager;
         this.pattern = pattern;
+        this.sceneManager.isHoveringAttachmentPoint = false;
 
         // Group for attachment indicators
         this.group = new THREE.Group();
@@ -444,9 +445,11 @@ export class AttachmentPointManager {
             mesh.material = hoverMat;
             mesh.scale.setScalar(AttachmentConstants.HOVER_SCALE);
             this.hoveredPoint = mesh;
+            this.sceneManager.isHoveringAttachmentPoint = true;
             this.sceneManager.domElement.style.cursor = 'pointer';
         } else {
             this.sceneManager.domElement.style.cursor = 'default';
+            this.sceneManager.isHoveringAttachmentPoint = false;
         }
     }
 
@@ -494,6 +497,7 @@ export class AttachmentPointManager {
         });
         this.pointMeshes = [];
         this.hoveredPoint = null;
+        this.sceneManager.isHoveringAttachmentPoint = false;
         // Also clear markers when clearing points
         this.clearMarkers();
     }
@@ -517,6 +521,7 @@ export class AttachmentPointManager {
         canvas.removeEventListener('click', this.onClick);
 
         this.clearPoints();
+        this.sceneManager.isHoveringAttachmentPoint = false;
 
         this.geometryCache.forEach(g => g.dispose());
         this.geometryCache.clear();
