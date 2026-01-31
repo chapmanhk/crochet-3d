@@ -100,9 +100,8 @@ describe('RaycastManager', () => {
         // Advance time
         vi.advanceTimersByTime(50);
 
-        // Should be far fewer than 100 calls (just 2)
+        // Should be far fewer than 100 calls (just 2, not 100+)
         expect(raycastSpy).toHaveBeenCalledTimes(2);
-        expect(raycastSpy).toHaveBeenCalledTimes(2); // Much less than 100
     });
 
     it('removes event listeners on dispose', () => {
