@@ -444,6 +444,26 @@ describe('Pattern', () => {
             expect(first.connections.left).toBe(last);
             expect(last.connections.right).toBe(first);
         });
+
+        it('should not join magic ring to round stitches', () => {
+            pattern.startWithMagicRing(4, StitchType.SINGLE_CROCHET, 'joined');
+
+            const row0 = pattern.graph.getRowSorted(0);
+            const ring = row0.find(stitch => stitch.type === StitchType.MAGIC_RING);
+            const row0Stitches = row0.filter(stitch => stitch.type !== StitchType.MAGIC_RING);
+            const first = row0Stitches[0];
+            const last = row0Stitches[row0Stitches.length - 1];
+
+            expect(first.connections.left).toBe(last);
+            expect(last.connections.right).toBe(first);
+
+            pattern.startNewRow();
+
+            expect(ring.connections.left).toBeNull();
+            expect(ring.connections.right).toBeNull();
+            expect(first.connections.left).toBe(last);
+            expect(last.connections.right).toBe(first);
+        });
     });
 
     describe('addTurningChain', () => {
@@ -562,7 +582,7 @@ describe('Pattern', () => {
             pattern.addStitch(StitchType.SINGLE_CROCHET, row0Stitches[0]);
             const second = pattern.addStitch(StitchType.SINGLE_CROCHET, row0Stitches[1]);
 
-            const stitchCount = row0All.length;
+            const stitchCount = row0Stitches.length;
             const angle = (1 / stitchCount) * Math.PI * 2;
             const radius = PatternConstants.MAGIC_RING_RADIUS + 1 * PatternConstants.ROUND_RADIUS_GROWTH;
             const height = 1.0;
@@ -807,6 +827,29 @@ describe('Pattern', () => {
             // The stitch should be available since the turning chain doesn't count
             expect(pointForAttachedStitch).toBeDefined();
             expect(pointForAttachedStitch.available).toBe(true);
+        });
+    });
+
+    describe('getAttachmentPoints for magic ring', () => {
+        it('should exclude magic ring from attachment points', () => {
+            pattern.startWithMagicRing(4);
+
+            const points = pattern.getAttachmentPoints();
+            expect(points.length).toBe(4);
+            expect(points.some(p => p.stitch.type === StitchType.MAGIC_RING)).toBe(false);
+        });
+    });
+
+    describe('getEffectiveRowStitchCount', () => {
+        it('should count increases as multiple stitches', () => {
+            pattern.startWithChain(3);
+            const chain = pattern.graph.getRowSorted(0);
+            pattern.addStitch(StitchType.SINGLE_CROCHET, chain[0], {
+                modifiers: [StitchModifier.INCREASE]
+            });
+            pattern.addStitch(StitchType.SINGLE_CROCHET, chain[1]);
+
+            expect(pattern.getEffectiveRowStitchCount(1)).toBe(3);
         });
     });
 
