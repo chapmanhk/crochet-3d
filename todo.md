@@ -86,6 +86,291 @@ and attachment/interaction. Each task appears once.
   - If a row ends with more/fewer stitches than previous (unintentional shaping),
     show a warning before starting the next row.
 
+### Accessibility (CRITICAL - WCAG Compliance)
+
+- [ ] **Bug: Missing ARIA labels on all interactive elements**
+  - **Location:** UIManager.js, PhysicsPanel.js, Modal.js
+  - **Symptoms:** Buttons, sliders, inputs lack `aria-label` attributes. Screen readers cannot identify element purpose.
+  - **WCAG:** Level A violation
+  - **Fix:** Add `aria-label` to all buttons (e.g., `aria-label="Chain stitch (ch), keyboard shortcut: C"`), sliders (with `aria-valuetext`), and inputs. Add `aria-describedby` for complex interactions.
+- [ ] **Bug: No semantic HTML structure**
+  - **Location:** UIManager.js:77-550
+  - **Symptoms:** Uses `<div>` instead of `<button>`, `<nav>`, `<main>`, `<aside>`. Buttons created with `document.createElement('button')` but without proper roles.
+  - **WCAG:** Level A violation
+  - **Fix:** Replace divs with semantic elements: `<aside>` for panels, `<nav role="toolbar">` for stitch grid, `<main>` for canvas area, proper `<button>` elements throughout.
+- [ ] **Bug: Color-only communication for attachment points**
+  - **Location:** AttachmentPointManager.js
+  - **Symptoms:** Ghost stitches distinguished only by color (green=ghost, orange=new row, purple=chain space). Unusable for colorblind users.
+  - **WCAG:** Level A violation
+  - **Fix:** Add pattern/shape differentiation (e.g., different geometries) or text labels on hover/focus. Add `aria-label` describing the attachment type.
+- [ ] **Bug: No keyboard navigation between panels**
+  - **Location:** UIManager.js
+  - **Symptoms:** Tab key doesn't move focus through UI panels. Panels not in tab order.
+  - **WCAG:** Level A violation
+  - **Fix:** Add `tabindex="0"` to panels, implement logical tab order, add skip-to-content link for canvas.
+- [ ] **Bug: Modal doesn't trap focus**
+  - **Location:** Modal.js:181-232
+  - **Symptoms:** Focus can escape modal dialog with Tab key. No auto-focus on first button. Focus not restored when modal closes.
+  - **WCAG:** Level AA violation
+  - **Fix:** Implement focus trap (prevent tab outside modal), auto-focus first button on open, restore previous focus on close. Add ESC key handler (already partially exists).
+- [ ] **Bug: Buttons missing focus states**
+  - **Location:** UIManager.js inline styles
+  - **Symptoms:** `:focus` and `:focus-visible` styles not explicitly defined. Keyboard users can't see where focus is.
+  - **WCAG:** Level AA violation
+  - **Fix:** Add `.toolbar-btn:focus-visible { outline: 2px solid #2196F3; outline-offset: 2px; }` and similar for all interactive elements.
+- [ ] **Bug: Form labels not properly associated**
+  - **Location:** UIManager.js:754-774, PhysicsPanel.js
+  - **Symptoms:** Input fields have labels but not associated via `for` attribute. Screen readers can't connect label to input.
+  - **WCAG:** Level A violation
+  - **Fix:** Add `id` to inputs and `for` attribute to labels. Example: `<label for="input-spike-depth">Spike depth:</label>`.
+- [ ] **Bug: No alt text alternatives for 3D visualization**
+  - **Location:** index.html, UIManager.js
+  - **Symptoms:** 3D canvas has no text alternative for non-visual users. Pattern info panel could describe structure but doesn't.
+  - **WCAG:** Level A violation
+  - **Fix:** Add `role="img"` and `aria-label` to canvas describing current pattern state. Update label when pattern changes. Add detailed text description in info panel.
+- [ ] **Bug: Low contrast on some UI elements**
+  - **Location:** UIManager.js inline styles
+  - **Symptoms:** Some text on light backgrounds lacks sufficient contrast (e.g., hints, secondary text).
+  - **WCAG:** Level AA violation
+  - **Fix:** Audit all text colors against backgrounds. Ensure 4.5:1 contrast ratio for normal text, 3:1 for large text. Use contrast checker tool.
+
+### Responsive Design & Mobile Support (CRITICAL)
+
+- [ ] **Bug: No mobile/tablet support - unusable below 1024px**
+  - **Location:** UIManager.js:113-479, styles.css
+  - **Symptoms:** Fixed panel positioning breaks on small screens. Panels off-screen, overlapping, or unusable. No media queries exist.
+  - **Fix:** Add responsive breakpoints: `@media (max-width: 640px)` for mobile, `(max-width: 1024px)` for tablet. Implement collapsible panels, reduce panel widths, stack vertically on mobile.
+- [ ] **Bug: No touch event handling**
+  - **Location:** RaycastManager.js, SceneManager.js
+  - **Symptoms:** Only mouse events registered (mousemove, click). Touch interactions don't work on tablets/phones.
+  - **Fix:** Add touch event handlers (`touchstart`, `touchmove`, `touchend`) alongside mouse handlers. Implement pinch-to-zoom, two-finger pan for 3D canvas.
+- [ ] **Bug: Buttons too small for touch targets**
+  - **Location:** UIManager.js:580 (stitch buttons)
+  - **Symptoms:** Stitch buttons use 6-8px padding, well below WCAG minimum 44x44px touch target size.
+  - **Fix:** On mobile breakpoint, increase button padding to ensure 44x44px minimum. Example: `.stitch-btn { min-width: 44px; min-height: 44px; }` on mobile.
+- [ ] **Bug: Fixed panel widths break on narrow screens**
+  - **Location:** UIManager.js:113-479
+  - **Symptoms:** `.stitch-palette { width: 180px }` and `.info-panel { width: 200px }` fixed widths cause horizontal overflow on small devices.
+  - **Fix:** Use fluid widths with max-width on desktop. Example: `width: min(180px, 40vw);`. On mobile, allow panels to use 100% width or collapse into drawers.
+- [ ] **Bug: Font sizes not scalable**
+  - **Location:** UIConstants.js, UIManager.js
+  - **Symptoms:** Fixed pixel sizes (10px, 12px, 13px, 14px, 16px) don't scale with user preferences.
+  - **Fix:** Use rem units instead of px for font sizes. Define base sizes as CSS variables that scale with viewport.
+- [ ] **Bug: No landscape/portrait orientation handling**
+  - **Location:** styles.css, UIManager.js
+  - **Symptoms:** Layout doesn't adjust when mobile device rotates. Panels may be cramped in landscape.
+  - **Fix:** Add orientation media queries: `@media (orientation: landscape)` to adjust layout. Hide/collapse panels differently in landscape mode.
+- [ ] **Enhancement: Add touch gestures for 3D navigation**
+  - **Location:** SceneManager.js, OrbitControls
+  - **Symptoms:** OrbitControls supports touch but no visual feedback for gesture interactions.
+  - **Fix:** Add touch gesture indicators (e.g., "Pinch to zoom", "Two fingers to rotate") on first touch. Implement haptic feedback if available.
+
+### Loading States & Error Handling (CRITICAL)
+
+- [ ] **Bug: No loading spinner for file operations**
+  - **Location:** main.js:351-407
+  - **Symptoms:** File loading appears frozen during large file load. UI unresponsive with no feedback.
+  - **Fix:** Add loading toast/spinner before FileReader operations. Show "Loading pattern..." message. Remove spinner on success/error.
+- [ ] **Bug: No success notification after save**
+  - **Location:** main.js:334-346
+  - **Symptoms:** Users unsure if export worked. File downloads silently.
+  - **Fix:** Show success toast: "Pattern saved as pattern_YYYYMMDD.json". Include file size if possible.
+- [ ] **Bug: No progress indicator for physics simulation**
+  - **Location:** PhysicsPanel.js:334-335
+  - **Symptoms:** Shows percentage text but no visual progress bar. Settling > 2 seconds looks stuck.
+  - **Fix:** Add animated progress bar: `<div class="progress-bar" style="width: ${progress}%"></div>`. Animate width with CSS transition.
+- [ ] **Bug: Modal validation errors not user-friendly**
+  - **Location:** main.js:360-364, Modal.js:226-232
+  - **Symptoms:** Technical error messages shown to users. "ERROR: Version must be a number" from validation.
+  - **Fix:** Format validation errors for users, not developers. Example: "This file cannot be loaded:\n• Invalid file version\n• Try using a file exported from this application."
+- [ ] **Bug: No timeout on file operations**
+  - **Location:** main.js:351-407
+  - **Symptoms:** FileReader has no timeout. Huge files or slow network freezes forever.
+  - **Fix:** Implement timeout: `Promise.race([fileReaderPromise, timeout(30000)])`. Show error after 30 seconds.
+- [ ] **Bug: Async operations not managed (race conditions)**
+  - **Location:** main.js:351-407
+  - **Symptoms:** Multiple FileReaders could race. No cancellation of pending operations.
+  - **Fix:** Track pending operation, cancel if new one starts. Use AbortController pattern.
+- [ ] **Bug: No error recovery options**
+  - **Location:** Various error handlers
+  - **Symptoms:** When pattern fails to load, users stuck. No "retry" or "rollback" option.
+  - **Fix:** Add "Retry" button to error alerts. Implement rollback to last good state on pattern load failure.
+- [ ] **Bug: Mesh creation errors silently fail**
+  - **Location:** StitchRenderer.js:48-56
+  - **Symptoms:** `createMeshForNode()` errors only logged to console. User sees missing stitch with no explanation.
+  - **Fix:** Show error toast when mesh creation fails. Log detailed error to console for debugging.
+- [ ] **Bug: Go-to-row validation error has no explanation**
+  - **Location:** UIManager.js:1032-1061
+  - **Symptoms:** Invalid row input shows red border but no text explaining why (out of range, non-numeric, etc.).
+  - **Fix:** Add error message element: `<span class="error-message" id="row-error-message"></span>`. Show "Please enter a number between X and Y".
+
+### Performance & Memory (HIGH PRIORITY)
+
+- [ ] **Bug: Unlimited mesh creation causes crashes**
+  - **Location:** StitchRenderer.js:47-56
+  - **Symptoms:** Patterns with 1000+ stitches create 1000+ meshes. Browser crashes or becomes unresponsive. No limit on pattern size.
+  - **Fix:** Warn when pattern > 1000 stitches. Consider LOD (Level of Detail) or instancing for large patterns. Add performance warning in UI.
+- [ ] **Bug: Geometry never disposed (memory leak)**
+  - **Location:** StitchRenderer.js:137-142
+  - **Symptoms:** Cached geometries never freed. Multiple pattern loads accumulate GPU memory. No `dispose()` implementation for geometries.
+  - **Fix:** Implement `dispose()` method: `this.geometryCache.forEach(g => g.dispose()); this.geometryCache.clear();`. Call on pattern clear/reload.
+- [ ] **Bug: Connection meshes rebuilt every physics step**
+  - **Location:** StitchRenderer.js:122-128
+  - **Symptoms:** `updateConnectionMeshes()` called 60× per second during physics. With 1000 stitches = 3000 connections, extremely expensive.
+  - **Fix:** Only rebuild when flagged: `if (!this.connectionRebuildPending) return;`. Set flag on stitch add/remove, clear after rebuild.
+- [ ] **Bug: Full raycast on every mouse move**
+  - **Location:** RaycastManager.js:69-74, main.js
+  - **Symptoms:** Raycasts all meshes on every mousemove event (100+ times/second). With 5000 stitches, extremely expensive.
+  - **Fix:** Throttle mouse move handling: `const throttled = throttle(this.onMouseMove, 50);` (~20 FPS max). Consider spatial indexing for raycasting.
+- [ ] **Bug: Material instances not pooled**
+  - **Location:** YarnMaterial.js
+  - **Symptoms:** Creates new material instances for each stitch. Could reuse materials with same color.
+  - **Fix:** Implement material pooling by color: `materialCache.get(color) || createMaterial(color)`. Dispose unused materials.
+- [ ] **Bug: EventBus listener accumulation**
+  - **Location:** EventBus.js, pattern reload flows
+  - **Symptoms:** Listeners accumulate with each pattern load. `maxListeners = 20` warning but no actual limit.
+  - **Fix:** Ensure all components call `eventSubs.dispose()` on cleanup. Audit pattern reload path for listener leaks.
+- [ ] **Enhancement: Implement LOD (Level of Detail)**
+  - **Location:** StitchRenderer.js
+  - **Symptoms:** All stitches rendered at full quality regardless of distance from camera. Wasteful for large patterns.
+  - **Fix:** Use Three.js `LOD` class. High-quality mesh < 10 units, low-quality 10-50 units, very low > 50 units from camera.
+- [ ] **Enhancement: Add memory usage monitoring**
+  - **Location:** Debug utilities
+  - **Symptoms:** No way to track memory/performance in production.
+  - **Fix:** Add debug method: `window.DEBUG.getMemoryStats()` showing mesh count, connection count, listener count, etc.
+
+### Styling & Design System (MEDIUM PRIORITY)
+
+- [ ] **Bug: No CSS variables/design tokens**
+  - **Location:** UIManager.js:77-550, UIConstants.js
+  - **Symptoms:** Colors, spacing, font sizes hardcoded in multiple places. Hard to maintain consistency. No central theme.
+  - **Fix:** Create CSS custom properties: `:root { --color-primary: #2196F3; --spacing-md: 12px; }`. Use variables throughout: `background: var(--color-primary);`.
+- [ ] **Bug: Inline styles scattered throughout (500+ lines)**
+  - **Location:** UIManager.js:77-550
+  - **Symptoms:** Massive inline CSS injection makes maintenance difficult. Styles duplicated across components.
+  - **Fix:** Extract to separate stylesheet files. Group by component: `stitch-palette.css`, `toolbar.css`, etc.
+- [ ] **Bug: Inconsistent button styles (primary color differs)**
+  - **Location:** UIManager.js, PhysicsPanel.js
+  - **Symptoms:** `.toolbar-btn.primary` uses blue (#2196F3), `.physics-btn.primary` uses green (#4CAF50). Confusing visual hierarchy.
+  - **Fix:** Unify button system. Single `.btn-primary` class with consistent color. Use `.btn-success` for green if needed.
+- [ ] **Bug: Inconsistent spacing (magic numbers)**
+  - **Location:** UIManager.js inline styles
+  - **Symptoms:** Mixed spacing: 4px, 6px, 8px, 10px, 12px, 16px used inconsistently. No spacing scale.
+  - **Fix:** Define spacing scale: `--spacing-1: 4px; --spacing-2: 8px; --spacing-3: 12px; --spacing-4: 16px;`. Use consistently.
+- [ ] **Bug: No visible focus states for keyboard users**
+  - **Location:** UIManager.js, styles.css
+  - **Symptoms:** Buttons have `:hover` but no `:focus-visible`. Keyboard navigation has no visual indicator.
+  - **Fix:** Add focus styles: `.btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }`.
+- [ ] **Bug: Icon/symbol inconsistency**
+  - **Location:** UIManager.js (row navigation, toolbar)
+  - **Symptoms:** Some buttons use text ("Prev"), some use symbols ("←"). Inconsistent visual language.
+  - **Fix:** Choose one approach. Either all text labels or all icons. Consider using icon font or SVG icons consistently.
+- [ ] **Enhancement: Add dark mode theme**
+  - **Location:** styles.css, UIManager.js
+  - **Symptoms:** Only light theme available. No choice for users who prefer dark mode.
+  - **Fix:** Implement dark theme with CSS variables and `prefers-color-scheme` media query. Add manual toggle button.
+- [ ] **Enhancement: Create comprehensive design system**
+  - **Location:** New file: design-system.css
+  - **Symptoms:** No unified design language. Components styled ad-hoc.
+  - **Fix:** Create design system with documented color palette, typography scale, spacing system, component library, shadow styles, border radius values.
+
+### User Flow & Navigation (MEDIUM PRIORITY)
+
+- [ ] **Bug: No onboarding for new users**
+  - **Location:** main.js, index.html
+  - **Symptoms:** First-time users see empty 3D canvas with no guidance. Don't know how to start.
+  - **Fix:** Add welcome modal on first visit: "Welcome to Crochet 3D. Get started: [View Tutorial] [Load Template] [Create Pattern]". Store in localStorage.
+- [ ] **Bug: Keyboard shortcuts not discoverable**
+  - **Location:** main.js:60-90 (console.log only)
+  - **Symptoms:** Shortcuts logged to console only. Users must open DevTools to find them. No in-app help.
+  - **Fix:** Add Help panel with keyboard shortcuts list. Add "?" button to toolbar. Show shortcut hints in button tooltips.
+- [ ] **Bug: No help system**
+  - **Location:** UIManager.js
+  - **Symptoms:** Only "View Instructions" shows after pattern made. No help for UI features, shortcuts, or crochet concepts.
+  - **Fix:** Add Help panel/modal with sections: Getting Started, Keyboard Shortcuts, Stitch Types, Advanced Features. Link to external documentation.
+- [ ] **Bug: Pattern start requires multiple clicks (modal hell)**
+  - **Location:** UIManager.js:1386-1430
+  - **Symptoms:** Start Pattern → Modal (4 options) → Another modal for parameters → Prompt for number → Confirm round mode. 3-4 nested modals.
+  - **Fix:** Simplify to dropdown menu or single form. "Start Pattern" button opens popover with template options, each showing inline form for parameters.
+- [ ] **Bug: No undo confirmation or preview**
+  - **Location:** UIManager.js (undo/redo buttons)
+  - **Symptoms:** Users can accidentally undo important work. No "undo last 3 stitches?" confirmation or preview of what will be undone.
+  - **Fix:** Add tooltip showing what will be undone: "Undo: Remove sc in row 5". Consider undo history panel. For multiple undo, show count.
+- [ ] **Bug: Pattern metadata not saved**
+  - **Location:** Pattern.js, main.js export
+  - **Symptoms:** Can't name or describe patterns. Only default name used for export. No project metadata (author, date, notes).
+  - **Fix:** Add "Pattern Properties" dialog to set name, description, author, tags. Include in JSON export. Show in file picker.
+- [ ] **Bug: No recent files list**
+  - **Location:** main.js, UIManager.js
+  - **Symptoms:** Can't quickly reload recently opened patterns. Must browse file system each time.
+  - **Fix:** Store recent file references in localStorage (or file handles with File System Access API). Add "Recent Patterns" menu with last 5-10 files.
+- [ ] **Bug: Destructive actions unclear (load overwrites without warning)**
+  - **Location:** main.js:354-407
+  - **Symptoms:** Loading pattern file directly overwrites current work without explicit warning if unsaved changes exist.
+  - **Fix:** Before load, check if pattern has unsaved changes: "You have unsaved changes. Continue? [Save] [Discard] [Cancel]".
+- [ ] **Enhancement: Add tutorial/walkthrough**
+  - **Location:** New component
+  - **Symptoms:** First-time users don't understand workflow. Need guided experience.
+  - **Fix:** Implement step-by-step tutorial overlay: "1. Start with foundation chain. 2. Add first row. 3. Try different stitches." Highlight UI elements as tutorial progresses.
+
+### Form Validation & User Feedback (MEDIUM PRIORITY)
+
+- [ ] **Bug: No real-time validation on inputs**
+  - **Location:** UIManager.js (skip input, row navigation input)
+  - **Symptoms:** Validation only happens on blur/submit. Users don't get immediate feedback while typing.
+  - **Fix:** Add `input` event listener (in addition to `change`): Validate on every keystroke, show inline error/success indicators.
+- [ ] **Bug: Range input values not displayed live**
+  - **Location:** PhysicsPanel.js sliders
+  - **Symptoms:** Users must watch separate `<span>` to see slider value. Not intuitive.
+  - **Fix:** Update value display in real-time on `input` event. Consider showing value in tooltip above slider thumb.
+- [ ] **Bug: No form field hints**
+  - **Location:** PhysicsPanel.js, UIManager.js stitch options
+  - **Symptoms:** Users don't know what slider values mean. No explanation of "stiffness", "damping", etc.
+  - **Fix:** Add helper text below inputs: `<span class="field-hint">Controls fabric flexibility in simulation</span>`. Add tooltips with examples.
+- [ ] **Bug: Prompt validation shows multiple modals on error**
+  - **Location:** Modal.js `promptForNumber`
+  - **Symptoms:** Invalid input closes modal, shows error alert, must reopen. Two modal interactions for one error.
+  - **Fix:** Validate before modal closes. Show error inline in modal. Don't close modal on validation failure. Only close on valid submission or cancel.
+- [ ] **Bug: Stitch options have no validation feedback**
+  - **Location:** UIManager.js:754-774
+  - **Symptoms:** Spike depth silently clamped from 6 to 5 without telling user. No visual feedback.
+  - **Fix:** If user enters out-of-range value, show warning: "Value adjusted to 5 (max)". Flash input border or show tooltip.
+- [ ] **Bug: Required fields not marked**
+  - **Location:** Modal prompts, stitch options
+  - **Symptoms:** Users don't know which fields are mandatory vs optional.
+  - **Fix:** Add required indicator (asterisk or "required" label). Use `required` attribute on inputs. Show validation state.
+- [ ] **Enhancement: Add form submission success feedback**
+  - **Location:** Modal.js, UIManager.js
+  - **Symptoms:** After submitting forms (prompts, options), no confirmation that action succeeded.
+  - **Fix:** Show brief success message: "Pattern started", "Color changed", "Options saved". Use toast notifications.
+
+### Animation & Polish (LOW PRIORITY)
+
+- [ ] **Bug: No loading animation/spinner**
+  - **Location:** All async operations
+  - **Symptoms:** No spinner or skeleton while data loads. Just blank space or frozen UI.
+  - **Fix:** Add CSS spinner animation. Show during file load, pattern generation, physics settling. Use rotating circle or dots.
+- [ ] **Bug: Modal entrance abrupt**
+  - **Location:** Modal.js:199-201
+  - **Symptoms:** Even with 150ms scale transition, feels instant on fast systems. No staggered animation for modal content.
+  - **Fix:** Stagger animations for modal elements: header, body, footer appear with 100ms delay between each. Use slide-in or fade-in.
+- [ ] **Bug: No stitch added animation**
+  - **Location:** StitchRenderer.js `createMeshForNode`
+  - **Symptoms:** New stitches appear instantly without transition. Jarring, especially in rapid placement.
+  - **Fix:** Animate mesh scale on add: `mesh.scale.set(0,0,0)` then tween to `(1,1,1)` over 200ms. Use ease-out curve.
+- [ ] **Bug: View mode changes instant**
+  - **Location:** UIManager.js view mode buttons
+  - **Symptoms:** Switching view modes (solid/wireframe/ghost) has no transition. Abrupt visual change.
+  - **Fix:** Add fade transition between view modes. Crossfade old state to new over 150-200ms.
+- [ ] **Enhancement: Add spring easing for physics-related animations**
+  - **Location:** StitchRenderer.js, PhysicsPanel.js
+  - **Symptoms:** Linear easing feels mechanical. Physics simulation could use natural bounce.
+  - **Fix:** Use spring easing curve for physics-related animations. Make fabric movement feel organic.
+- [ ] **Enhancement: Add hover microinteractions**
+  - **Location:** UIManager.js buttons
+  - **Symptoms:** Hover states change color but no smooth transition or scale effect.
+  - **Fix:** Add subtle scale on hover: `transform: scale(1.05)`. Add transition: `transition: all 150ms ease`. Make UI feel responsive.
+
 ### Completed (already fixed)
 
 - [x] **Bug: Foundation chain off-by-one guidance missing**
