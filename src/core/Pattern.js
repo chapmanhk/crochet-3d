@@ -578,6 +578,17 @@ export class Pattern {
     }
 
     /**
+     * Clear the pattern (undoable)
+     */
+    clearPattern() {
+        this.graph.clear();
+        this.currentRow = 0;
+        this.workingDirection = 'right';
+        this.metadata.modifiedAt = Date.now();
+        this.saveHistoryState('Clear pattern');
+    }
+
+    /**
      * Remove a stitch
      */
     removeStitch(node) {
@@ -770,7 +781,19 @@ export class Pattern {
             turningChains
         });
 
+        this.saveHistoryState('Start new row');
         return this.currentRow;
+    }
+
+    /**
+     * Check if row 0 is a foundation chain (flat mode)
+     */
+    hasFoundationChain() {
+        const row0 = this.graph.getRowSorted(0);
+        if (!row0 || row0.length === 0) return false;
+        return row0.every(stitch =>
+            stitch.type === StitchType.CHAIN && !stitch.isTurningChain
+        );
     }
 
     /**
@@ -1062,13 +1085,20 @@ export class Pattern {
     generateInstructions() {
         const lines = [];
         const rowCount = this.graph.getRowCount();
+        const hasFoundation = this.hasFoundationChain();
 
         lines.push(`Pattern: ${this.metadata.name}`);
         lines.push(`Mode: ${this.mode}`);
         lines.push(`Total Stitches: ${this.graph.size}`);
         lines.push('');
 
-        for (let row = 0; row < rowCount; row++) {
+        if (hasFoundation) {
+            const foundationRow = this.graph.getRowSorted(0);
+            lines.push(`Foundation: ch ${foundationRow.length} (${foundationRow.length} sts)`);
+        }
+
+        const startRow = hasFoundation ? 1 : 0;
+        for (let row = startRow; row < rowCount; row++) {
             const stitches = this.graph.getRowSorted(row);
 
             // Separate turning chains from working stitches
@@ -1108,7 +1138,8 @@ export class Pattern {
             const totalWorking = workingStitches.length +
                 (turningChains.some(tc => tc.turningChainCountsAsStitch) ? 1 : 0);
 
-            lines.push(`Row ${row + 1}: ${instruction} (${totalWorking} sts)`);
+            const rowNumber = hasFoundation ? row : row + 1;
+            lines.push(`Row ${rowNumber}: ${instruction} (${totalWorking} sts)`);
         }
 
         return lines.join('\n');

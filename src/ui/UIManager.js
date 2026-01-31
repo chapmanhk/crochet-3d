@@ -513,9 +513,14 @@ export class UIManager {
         this.toolbar.querySelector('#btn-clear').addEventListener('click', async () => {
             const confirmed = await showConfirm('Clear the entire pattern?', 'Clear Pattern');
             if (confirmed) {
-                this.pattern.graph.clear();
-                this.pattern.currentRow = 0;
+                if (typeof this.pattern.clearPattern === 'function') {
+                    this.pattern.clearPattern();
+                } else {
+                    this.pattern.graph.clear();
+                    this.pattern.currentRow = 0;
+                }
                 this.updateInfoPanel();
+                this.updateRowNavigation();
             }
         });
 
@@ -912,10 +917,21 @@ export class UIManager {
      */
     updateInfoPanel() {
         const stats = this.pattern.graph.getStats();
+        const hasFoundation = typeof this.pattern.hasFoundationChain === 'function'
+            ? this.pattern.hasFoundationChain()
+            : false;
+        const hasPattern = stats.totalStitches > 0;
+        const displayRowCount = hasFoundation
+            ? Math.max(0, stats.rowCount - 1)
+            : stats.rowCount;
 
         this.infoPanel.querySelector('#info-total').textContent = stats.totalStitches;
-        this.infoPanel.querySelector('#info-rows').textContent = stats.rowCount;
-        this.infoPanel.querySelector('#info-current-row').textContent = this.pattern.currentRow + 1;
+        this.infoPanel.querySelector('#info-rows').textContent = displayRowCount;
+        this.infoPanel.querySelector('#info-current-row').textContent = hasPattern
+            ? (hasFoundation && this.pattern.currentRow === 0
+                ? 'Foundation'
+                : (hasFoundation ? this.pattern.currentRow : this.pattern.currentRow + 1))
+            : '-';
 
         const workingEl = this.infoPanel.querySelector('#info-working-direction');
         if (workingEl) {
@@ -1060,17 +1076,26 @@ export class UIManager {
 
         const stats = this.pattern.graph.getStats();
         const currentRow = this.pattern.currentRow;
+        const hasFoundation = typeof this.pattern.hasFoundationChain === 'function'
+            ? this.pattern.hasFoundationChain()
+            : false;
         const totalRows = stats.rowCount || 1;
+        const displayTotalRows = hasFoundation
+            ? Math.max(0, totalRows - 1)
+            : totalRows;
+        const displayCurrentRow = hasFoundation
+            ? currentRow
+            : currentRow + 1;
 
         // Update displays
         const currentDisplay = this.rowNavigation.querySelector('#current-row-display');
         const totalDisplay = this.rowNavigation.querySelector('#total-rows-display');
 
         if (currentDisplay) {
-            currentDisplay.textContent = currentRow + 1;
+            currentDisplay.textContent = displayCurrentRow;
         }
         if (totalDisplay) {
-            totalDisplay.textContent = totalRows;
+            totalDisplay.textContent = displayTotalRows;
         }
 
         // Update button states
