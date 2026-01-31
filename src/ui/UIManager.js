@@ -139,6 +139,11 @@ export class UIManager {
                 background: #f5f5f5;
             }
 
+            .stitch-btn:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
             .stitch-btn.selected {
                 border-color: #2196F3;
                 background: #e3f2fd;
@@ -178,6 +183,11 @@ export class UIManager {
 
             .toolbar-btn:hover {
                 background: #f0f0f0;
+            }
+
+            .toolbar-btn:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
             }
 
             .toolbar-btn:disabled {
@@ -403,6 +413,11 @@ export class UIManager {
                 background: #f0f0f0;
             }
 
+            .view-mode-btn:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
             .view-mode-btn.selected {
                 background: #2196F3;
                 color: white;
@@ -445,6 +460,11 @@ export class UIManager {
                 background: #f0f0f0;
             }
 
+            .template-btn:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
             /* Selection actions */
             .selection-actions {
                 margin-top: 8px;
@@ -466,6 +486,11 @@ export class UIManager {
 
             .info-action-btn:hover {
                 background: #f0f0f0;
+            }
+
+            .info-action-btn:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
             }
 
             /* Row Navigation */
@@ -511,6 +536,11 @@ export class UIManager {
                 background: #f0f0f0;
             }
 
+            .row-nav-btn:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
             .row-nav-btn:disabled {
                 opacity: 0.5;
                 cursor: not-allowed;
@@ -535,6 +565,11 @@ export class UIManager {
                 background: #ffebee;
             }
 
+            .row-goto-row input:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
             .row-goto-row button {
                 padding: 6px 12px;
                 border: 1px solid #ddd;
@@ -546,6 +581,30 @@ export class UIManager {
 
             .row-goto-row button:hover {
                 background: #f0f0f0;
+            }
+
+            .row-goto-row button:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
+            /* Focus styles for form inputs */
+            input[type="number"]:focus-visible,
+            input[type="color"]:focus-visible,
+            select:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
+            input[type="checkbox"]:focus-visible,
+            input[type="range"]:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
+            .color-swatch:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
             }
         `;
         document.head.appendChild(style);
@@ -564,11 +623,13 @@ export class UIManager {
      * Create stitch palette panel
      */
     createStitchPalette() {
-        this.stitchPalette = document.createElement('div');
+        this.stitchPalette = document.createElement('aside');
         this.stitchPalette.className = 'crochet-panel stitch-palette';
+        this.stitchPalette.setAttribute('role', 'region');
+        this.stitchPalette.setAttribute('aria-label', 'Stitch palette');
         this.stitchPalette.innerHTML = `
             <h3>Stitches</h3>
-            <div class="stitch-grid"></div>
+            <nav class="stitch-grid" role="toolbar" aria-label="Stitch selection"></nav>
         `;
 
         const grid = this.stitchPalette.querySelector('.stitch-grid');
@@ -611,7 +672,7 @@ export class UIManager {
      * Create templates panel
      */
     createTemplatesPanel() {
-        this.templatesPanel = document.createElement('div');
+        this.templatesPanel = document.createElement('aside');
         this.templatesPanel.className = 'crochet-panel templates-panel';
         this.templatesPanel.setAttribute('role', 'region');
         this.templatesPanel.setAttribute('aria-label', 'Pattern templates');
@@ -637,7 +698,7 @@ export class UIManager {
      * Create toolbar
      */
     createToolbar() {
-        this.toolbar = document.createElement('div');
+        this.toolbar = document.createElement('nav');
         this.toolbar.className = 'crochet-panel crochet-toolbar';
         this.toolbar.setAttribute('role', 'toolbar');
         this.toolbar.setAttribute('aria-label', 'Pattern editing toolbar');
@@ -695,7 +756,7 @@ export class UIManager {
      * Create info panel
      */
     createInfoPanel() {
-        this.infoPanel = document.createElement('div');
+        this.infoPanel = document.createElement('aside');
         this.infoPanel.className = 'crochet-panel info-panel';
         this.infoPanel.setAttribute('role', 'region');
         this.infoPanel.setAttribute('aria-label', 'Pattern information and controls');
@@ -964,7 +1025,7 @@ export class UIManager {
      * Create view mode selector panel
      */
     createViewModeSelector() {
-        this.viewModeSelector = document.createElement('div');
+        this.viewModeSelector = document.createElement('nav');
         this.viewModeSelector.className = 'crochet-panel view-mode-selector';
         this.viewModeSelector.setAttribute('role', 'toolbar');
         this.viewModeSelector.setAttribute('aria-label', 'View mode selector');
@@ -1002,7 +1063,7 @@ export class UIManager {
      * Create row navigation panel
      */
     createRowNavigation() {
-        this.rowNavigation = document.createElement('div');
+        this.rowNavigation = document.createElement('aside');
         this.rowNavigation.className = 'crochet-panel row-navigation';
         this.rowNavigation.setAttribute('role', 'region');
         this.rowNavigation.setAttribute('aria-label', 'Row navigation');
