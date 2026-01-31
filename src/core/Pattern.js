@@ -1009,7 +1009,7 @@ export class Pattern {
         const listeners = this.graph.listeners;
         this.graph = StitchGraph.fromJSON(stateData);
         this.graph.listeners = listeners;
-        this.currentRow = this.graph.getRowCount() - 1;
+        this.currentRow = Math.max(0, this.graph.getRowCount() - 1);
         EventBus.emit(Events.PATTERN_LOADED, { pattern: this });
     }
 

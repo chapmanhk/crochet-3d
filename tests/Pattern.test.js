@@ -571,6 +571,16 @@ describe('Pattern', () => {
             expect(pattern.graph.size).toBe(6);
         });
 
+        it('should clamp currentRow when redoing to empty pattern', () => {
+            pattern.clearPattern();
+
+            pattern.undo();
+            pattern.redo();
+
+            expect(pattern.graph.size).toBe(0);
+            expect(pattern.currentRow).toBe(0);
+        });
+
         it('should report canUndo correctly', () => {
             expect(pattern.canUndo()).toBe(false);
 
