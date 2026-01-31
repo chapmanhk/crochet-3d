@@ -30,7 +30,7 @@ export const PatternConstants = {
 
     // Chain length bounds for input validation
     MIN_CHAIN_LENGTH: 1,
-    MAX_CHAIN_LENGTH: 100,
+    MAX_CHAIN_LENGTH: 500,
     DEFAULT_CHAIN_LENGTH: 10
 };
 

@@ -81,7 +81,13 @@ export class StitchValidator {
             const rowStitches = pattern.graph.getRowSorted(row);
             const attachIndex = rowStitches.indexOf(attachStitch);
 
-            if (attachIndex === -1 || attachIndex > rowStitches.length - decreaseCount) {
+            // Check bounds based on working direction
+            const direction = pattern.workingDirection === 'left' ? -1 : 1;
+            const hasEnoughStitches = direction === 1
+                ? attachIndex !== -1 && attachIndex <= rowStitches.length - decreaseCount
+                : attachIndex !== -1 && attachIndex >= decreaseCount - 1;
+
+            if (!hasEnoughStitches) {
                 result.errors.push(`Decrease requires ${decreaseCount} adjacent stitches`);
                 result.valid = false;
                 return result;
@@ -89,7 +95,8 @@ export class StitchValidator {
 
             // Check that all stitches needed for decrease are available
             for (let i = 1; i < decreaseCount; i++) {
-                const nextStitch = rowStitches[attachIndex + i];
+                const nextIndex = attachIndex + (i * direction);
+                const nextStitch = rowStitches[nextIndex];
                 if (!nextStitch) {
                     result.errors.push(`Not enough stitches for ${decreaseCount}-stitch decrease`);
                     result.valid = false;
@@ -112,9 +119,10 @@ export class StitchValidator {
             const rowStitches = pattern.graph.getRowSorted(row);
             const attachIndex = rowStitches.indexOf(attachStitch);
 
-            // Find actual attachment after skip
-            const actualAttachIndex = attachIndex + skipCount;
-            if (actualAttachIndex >= rowStitches.length) {
+            // Find actual attachment after skip, respecting working direction
+            const direction = pattern.workingDirection === 'left' ? -1 : 1;
+            const actualAttachIndex = attachIndex + (skipCount * direction);
+            if (actualAttachIndex < 0 || actualAttachIndex >= rowStitches.length) {
                 result.errors.push(`Cannot skip ${skipCount} stitches - not enough stitches in row`);
                 result.valid = false;
                 return result;

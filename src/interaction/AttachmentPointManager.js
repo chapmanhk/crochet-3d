@@ -141,6 +141,7 @@ export class AttachmentPointManager {
         this.eventSubs.on(Events.PATTERN_LOADED, () => this.updateAttachmentPoints());
         this.eventSubs.on(Events.PATTERN_CLEARED, () => this.clearPoints());
         this.eventSubs.on(Events.ROW_ADDED, () => this.updateAttachmentPoints());
+        this.eventSubs.on(Events.ROW_NAVIGATED, () => this.updateAttachmentPoints());
         this.eventSubs.on(Events.PHYSICS_STEP, () => this.updateDynamicPositions());
         this.eventSubs.on(Events.STITCH_TYPE_SELECTED, ({ type }) => {
             this.previewStitchType = type;

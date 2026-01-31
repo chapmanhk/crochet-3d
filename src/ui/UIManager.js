@@ -3,6 +3,7 @@ import { EventBus, Events, EventSubscriptions } from '../utils/EventBus.js';
 import { YarnMaterial } from '../rendering/YarnMaterial.js';
 import { PatternConstants, AttachmentConstants } from '../utils/Constants.js';
 import { showInstructions, showConfirm, showPrompt, showAlert } from './Modal.js';
+import { StitchValidator } from '../core/StitchValidator.js';
 
 /**
  * UIManager - Manages all HTML/CSS UI elements
@@ -827,14 +828,22 @@ export class UIManager {
         // Clear any previous error state
         input.classList.remove('error');
 
-        // Validate: must be positive and within range
-        if (isNaN(rowNum) || rowNum < 1) {
+        // Check if foundation chain exists
+        const hasFoundation = typeof this.pattern.hasFoundationChain === 'function'
+            ? this.pattern.hasFoundationChain()
+            : false;
+
+        // Validate input: with foundation, 0 is valid (goes to foundation); otherwise must be >= 1
+        const minRow = hasFoundation ? 0 : 1;
+        if (isNaN(rowNum) || rowNum < minRow) {
             input.classList.add('error');
             return;
         }
 
-        // Convert from 1-indexed display to 0-indexed internal
-        const rowIndex = rowNum - 1;
+        // Convert display row to internal row index
+        // With foundation: display N -> internal N (foundation is 0)
+        // Without foundation: display N -> internal N-1
+        const rowIndex = hasFoundation ? rowNum : rowNum - 1;
         const success = this.goToRow(rowIndex);
 
         if (success) {
@@ -864,6 +873,9 @@ export class UIManager {
         this.eventSubs.on(Events.ROW_ADDED, () => {
             this.updateInfoPanel();
             this.updateRowNavigation();
+        });
+        this.eventSubs.on(Events.ROW_NAVIGATED, () => {
+            this.updateInfoPanel();
         });
 
         this.eventSubs.on(Events.HISTORY_CHANGED, () => this.updateUndoRedoButtons());
@@ -992,10 +1004,20 @@ export class UIManager {
     async addStitchAtNextPosition() {
         try {
             const useChainSpaces = Boolean(this.pattern.currentWorkIntoSpace);
-            const attachPoints = useChainSpaces
+            let attachPoints = useChainSpaces
                 ? this.pattern.getChainSpaces()
                 : this.pattern.getAttachmentPoints();
-            const availablePoints = attachPoints.filter(p => p.available !== false);
+            let availablePoints = attachPoints.filter(p => p.available !== false);
+
+            // Fallback: if "work into space" is enabled but no chain spaces exist,
+            // use normal attachment points instead
+            if (useChainSpaces && availablePoints.length === 0) {
+                attachPoints = this.pattern.getAttachmentPoints();
+                availablePoints = attachPoints.filter(p => p.available !== false);
+                if (availablePoints.length > 0) {
+                    console.warn('No chain spaces found - using normal attachment points');
+                }
+            }
 
             if (!availablePoints || availablePoints.length === 0) {
                 // No pattern started - create foundation chain
@@ -1019,12 +1041,14 @@ export class UIManager {
                                 );
                             }
                             this.pattern.startWithChain(length);
+                            // Auto-set skip to 1 for first stitch (typical crochet: 2nd chain from hook)
+                            this.pattern.currentSkipCount = 1;
+                            this.updateSkipInput(1);
                         }
                     }
                 } else {
-                    // Start new row
+                    // Start new row (consistent with clicking the new row ghost)
                     this.pattern.startNewRow({ stitchType: this.selectedStitchType });
-                    this.addStitchAtNextPosition();
                 }
                 return;
             }
@@ -1035,12 +1059,40 @@ export class UIManager {
             if (attachPoint && attachPoint.stitch) {
                 const useSpace = attachPoint.type === 'chain-space' || this.pattern.currentWorkIntoSpace;
                 const skipCount = useSpace ? 0 : (this.pattern.currentSkipCount || 0);
-                this.pattern.addStitch(this.selectedStitchType, attachPoint.stitch, {
+                const stitchOptions = {
                     modifiers: this.pattern.currentModifiers,
                     skipCount,
                     loopSelection: this.pattern.currentLoopSelection,
                     workIntoSpace: useSpace
-                });
+                };
+
+                // Validate stitch placement before adding
+                const validation = StitchValidator.canPlaceStitch(
+                    this.selectedStitchType,
+                    attachPoint,
+                    this.pattern,
+                    stitchOptions
+                );
+
+                if (!validation.valid) {
+                    await showAlert(validation.errors.join('\n'), 'Cannot Place Stitch');
+                    return;
+                }
+
+                if (validation.warnings.length > 0) {
+                    console.warn('Stitch placement warnings:', validation.warnings);
+                }
+
+                this.pattern.addStitch(this.selectedStitchType, attachPoint.stitch, stitchOptions);
+
+                // Reset auto-skip after first stitch on row 1 (foundation chain guidance)
+                if (this.pattern.currentSkipCount > 0 && this.pattern.hasFoundationChain?.()) {
+                    const row1Stitches = this.pattern.graph.getRow(1)?.filter(s => !s.isTurningChain) || [];
+                    if (row1Stitches.length === 1) {
+                        this.pattern.currentSkipCount = 0;
+                        this.updateSkipInput(0);
+                    }
+                }
             }
         } catch (err) {
             console.error('Error adding stitch:', err);
@@ -1125,6 +1177,16 @@ export class UIManager {
                 const hint = isFoundation ? ' (start at chain end)' : '';
                 workingEl.textContent = `${directionLabel}${hint}`;
             }
+        }
+    }
+
+    /**
+     * Update skip input field in stitch options panel
+     */
+    updateSkipInput(value) {
+        const skipInput = this.stitchOptions?.querySelector('#input-skip');
+        if (skipInput) {
+            skipInput.value = String(value);
         }
     }
 

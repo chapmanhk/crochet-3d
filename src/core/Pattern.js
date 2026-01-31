@@ -495,14 +495,16 @@ export class Pattern {
             if (attachIndex === -1) {
                 console.warn('Attachment node not found in its row, using original attachment');
             } else {
+                // Traverse in the correct direction based on working direction
+                const direction = this.workingDirection === 'left' ? -1 : 1;
                 for (let i = 0; i < skipCount; i++) {
-                    const idx = attachIndex + i;
+                    const idx = attachIndex + (i * direction);
                     if (idx >= 0 && idx < prevRowStitches.length) {
                         skippedStitches.push(prevRowStitches[idx]);
                     }
                 }
 
-                const newAttachIndex = attachIndex + skipCount;
+                const newAttachIndex = attachIndex + (skipCount * direction);
                 if (newAttachIndex >= 0 && newAttachIndex < prevRowStitches.length) {
                     actualAttachNode = prevRowStitches[newAttachIndex];
                 }
@@ -549,8 +551,10 @@ export class Pattern {
                 const attachIndex = prevRowStitches.indexOf(attachToNode);
 
                 if (attachIndex !== -1) {
+                    // Traverse in the correct direction based on working direction
+                    const direction = this.workingDirection === 'left' ? -1 : 1;
                     for (let i = 1; i < decreaseCount; i++) {
-                        const nextIndex = attachIndex + i;
+                        const nextIndex = attachIndex + (i * direction);
                         if (nextIndex >= 0 && nextIndex < prevRowStitches.length) {
                             const nextStitch = prevRowStitches[nextIndex];
                             if (nextStitch) {
@@ -1034,12 +1038,10 @@ export class Pattern {
             return false;
         }
 
-        const previousRow = this.currentRow;
-        if (rowIndex !== previousRow && this.mode === 'flat') {
-            const rowDelta = Math.abs(rowIndex - previousRow);
-            if (rowDelta % 2 === 1) {
-                this.workingDirection = this.workingDirection === 'right' ? 'left' : 'right';
-            }
+        // In flat mode, set direction based on target row parity
+        // (even rows work left, odd rows work right)
+        if (this.mode === 'flat') {
+            this.workingDirection = rowIndex % 2 === 0 ? 'left' : 'right';
         }
 
         this.currentRow = rowIndex;
@@ -1150,9 +1152,24 @@ export class Pattern {
             let currentGroup = null;
 
             workingStitches.forEach(s => {
-                const displayName = getStitchDisplayName(s.type, s.modifiers);
+                // Include loop selection and chain space as modifiers for display
+                const effectiveModifiers = [...(s.modifiers || [])];
+                if (s.loopSelection === 'front' && !effectiveModifiers.includes(StitchModifier.FRONT_LOOP_ONLY)) {
+                    effectiveModifiers.push(StitchModifier.FRONT_LOOP_ONLY);
+                } else if (s.loopSelection === 'back' && !effectiveModifiers.includes(StitchModifier.BACK_LOOP_ONLY)) {
+                    effectiveModifiers.push(StitchModifier.BACK_LOOP_ONLY);
+                }
+                if (s.workedIntoSpace && !effectiveModifiers.includes(StitchModifier.CHAIN_SPACE)) {
+                    effectiveModifiers.push(StitchModifier.CHAIN_SPACE);
+                }
 
-                if (currentGroup && currentGroup.name === displayName) {
+                // Add skip prefix if stitches were skipped
+                const skipCount = s.skippedStitches?.length || 0;
+                const skipPrefix = skipCount > 0 ? `sk ${skipCount}, ` : '';
+
+                const displayName = skipPrefix + getStitchDisplayName(s.type, effectiveModifiers);
+
+                if (currentGroup && currentGroup.name === displayName && skipCount === 0) {
                     currentGroup.count++;
                 } else {
                     currentGroup = { name: displayName, abbr: s.abbreviation, count: 1 };
@@ -1175,8 +1192,14 @@ export class Pattern {
                 .map(g => g.count > 1 ? `${g.count} ${g.abbr}` : g.abbr)
                 .join(', ');
 
-            const totalWorking = workingStitches.length +
-                (turningChains.some(tc => tc.turningChainCountsAsStitch) ? 1 : 0);
+            // Calculate working stitch count, accounting for increases
+            const totalWorking = workingStitches.reduce((count, s) => {
+                if (s.isIncrease) {
+                    // Increases add extra stitches (2 or 3 in 1)
+                    return count + (s.metadata?.increasesTo || 2);
+                }
+                return count + 1;
+            }, 0) + (turningChains.some(tc => tc.turningChainCountsAsStitch) ? 1 : 0);
 
             const rowNumber = hasFoundation ? row : row + 1;
             lines.push(`Row ${rowNumber}: ${instruction} (${totalWorking} sts)`);
