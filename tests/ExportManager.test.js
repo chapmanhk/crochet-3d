@@ -573,6 +573,74 @@ describe('ExportManager', () => {
             expect(testExportManager.getStitchSymbol('double_crochet')).toBe('⊥');
         });
     });
+
+    describe('Edge cases and error handling', () => {
+        it('should emit EXPORT_ERROR for invalid PNG dimensions', async () => {
+            const module = await import('../src/utils/ExportManager.js');
+            const manager = new module.ExportManager(mockPattern, mockRenderer);
+            const callback = vi.fn();
+            EventBus.on(Events.EXPORT_ERROR, callback);
+
+            await expect(manager.exportPNG({ width: -1, height: 100 }))
+                .rejects.toThrow('Invalid dimensions');
+
+            expect(callback).toHaveBeenCalledWith(expect.objectContaining({
+                type: 'png',
+                error: expect.any(String)
+            }));
+        });
+
+        it('should reject PNG export when resize canvas has no 2D context', async () => {
+            const module = await import('../src/utils/ExportManager.js');
+            const manager = new module.ExportManager(mockPattern, mockRenderer);
+
+            const originalCreateElement = document.createElement.bind(document);
+            vi.spyOn(document, 'createElement').mockImplementation((tag) => {
+                if (tag === 'canvas') {
+                    return { getContext: () => null };
+                }
+                return originalCreateElement(tag);
+            });
+
+            await expect(manager.exportPNG({ width: 1200, height: 900 }))
+                .rejects.toThrow('Failed to get 2D context');
+
+            vi.restoreAllMocks();
+        });
+
+        it('should throw for invalid data URL format', () => {
+            const module = await import('../src/utils/ExportManager.js');
+            const manager = new module.ExportManager(mockPattern, mockRenderer);
+
+            expect(() => manager.dataURLToBlob('not-a-data-url'))
+                .toThrow('Invalid data URL format');
+        });
+
+        it('should throw for invalid base64 in data URL', () => {
+            const module = await import('../src/utils/ExportManager.js');
+            const manager = new module.ExportManager(mockPattern, mockRenderer);
+            const originalAtob = globalThis.atob;
+
+            globalThis.atob = vi.fn(() => { throw new Error('bad'); });
+
+            expect(() => manager.dataURLToBlob('data:image/png;base64,@@@'))
+                .toThrow('failed to decode base64');
+
+            if (originalAtob) {
+                globalThis.atob = originalAtob;
+            } else {
+                delete globalThis.atob;
+            }
+        });
+
+        it('should escape PDF strings safely', () => {
+            const module = await import('../src/utils/ExportManager.js');
+            const manager = new module.ExportManager(mockPattern, mockRenderer);
+
+            const escaped = manager.escapePDFString('a\\b(c)\n\t');
+            expect(escaped).toBe('a\\\\b\\(c\\)\\n\\t');
+        });
+    });
 });
 
 describe('ExportManager - Integration with UIManager', () => {
