@@ -108,6 +108,28 @@ describe('Pattern', () => {
         });
     });
 
+    describe('startWithFoundationSC', () => {
+        it('should create foundation stitches in row 0', () => {
+            const stitches = pattern.startWithFoundationSC(4);
+
+            expect(stitches).toHaveLength(4);
+            expect(pattern.graph.size).toBe(4);
+            stitches.forEach((stitch, index) => {
+                expect(stitch.type).toBe(StitchType.FOUNDATION_SINGLE_CROCHET);
+                expect(stitch.row).toBe(0);
+                expect(stitch.column).toBe(index);
+            });
+        });
+
+        it('should connect foundation stitches horizontally', () => {
+            const stitches = pattern.startWithFoundationSC(3);
+
+            expect(stitches[0].connections.right).toBe(stitches[1]);
+            expect(stitches[1].connections.left).toBe(stitches[0]);
+            expect(stitches[1].connections.right).toBe(stitches[2]);
+        });
+    });
+
     describe('startWithMagicRing', () => {
         it('should create magic ring with default 6 stitches', () => {
             const stitches = pattern.startWithMagicRing();
@@ -217,6 +239,27 @@ describe('Pattern', () => {
 
             expect(stitch.connections.below).toContain(chain[0]);
             expect(stitch.connections.below).toContain(chain[1]);
+        });
+
+        it('should support skipping stitches when adding', () => {
+            const chain = pattern.graph.getRowSorted(0);
+            const stitch = pattern.addStitch(StitchType.SINGLE_CROCHET, chain[0], {
+                skipCount: 1
+            });
+
+            expect(stitch.connections.below).toContain(chain[1]);
+            expect(stitch.skippedStitches).toContain(chain[0]);
+        });
+
+        it('should mark stitches worked into spaces', () => {
+            const chain = pattern.graph.getRowSorted(0);
+            const stitch = pattern.addStitch(StitchType.SINGLE_CROCHET, chain[0], {
+                workIntoSpace: true
+            });
+
+            expect(stitch.workedIntoSpace).toBe(true);
+            expect(stitch.connections.space).toBe(chain[0]);
+            expect(stitch.connections.below).toHaveLength(0);
         });
     });
 
@@ -422,6 +465,55 @@ describe('Pattern', () => {
             // The turning chain for row 2 should attach to where row 1 ended (rightmost)
             const rightmostColumn = Math.max(...row1Working.map(s => s.column));
             expect(attachedTo.column).toBe(rightmostColumn);
+        });
+    });
+
+    describe('turning chain overrides', () => {
+        it('should apply per-stitch override for counting as stitch', () => {
+            pattern.startWithChain(3);
+            pattern.setTurningChainCounts(StitchType.DOUBLE_CROCHET, false);
+
+            pattern.startNewRow({ stitchType: StitchType.DOUBLE_CROCHET });
+
+            const row1 = pattern.graph.getRow(1);
+            const turningChains = row1.filter(s => s.isTurningChain);
+            expect(turningChains).toHaveLength(3);
+            expect(turningChains.every(tc => tc.turningChainCountsAsStitch === false)).toBe(true);
+        });
+
+        it('should revert to default when override cleared', () => {
+            pattern.startWithChain(3);
+            pattern.setTurningChainCounts(StitchType.DOUBLE_CROCHET, false);
+            pattern.startNewRow({ stitchType: StitchType.DOUBLE_CROCHET });
+
+            pattern.clearTurningChainOverride(StitchType.DOUBLE_CROCHET);
+            pattern.startNewRow({ stitchType: StitchType.DOUBLE_CROCHET });
+
+            const row2 = pattern.graph.getRow(2);
+            const turningChains = row2.filter(s => s.isTurningChain);
+            expect(turningChains).toHaveLength(3);
+            expect(turningChains.every(tc => tc.turningChainCountsAsStitch === true)).toBe(true);
+        });
+    });
+
+    describe('goToRow', () => {
+        it('should flip working direction when jumping odd number of rows', () => {
+            pattern.startWithChain(3);
+            pattern.startNewRow(); // row 1, workingDirection right
+
+            expect(pattern.workingDirection).toBe('right');
+            pattern.goToRow(0);
+            expect(pattern.workingDirection).toBe('left');
+        });
+
+        it('should keep working direction when jumping even number of rows', () => {
+            pattern.startWithChain(3);
+            pattern.startNewRow(); // row 1
+            pattern.startNewRow(); // row 2
+
+            const originalDirection = pattern.workingDirection;
+            pattern.goToRow(0);
+            expect(pattern.workingDirection).toBe(originalDirection);
         });
     });
 
