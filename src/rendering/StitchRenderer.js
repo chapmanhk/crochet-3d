@@ -32,6 +32,7 @@ export class StitchRenderer {
         this.connectionTmpMid = new THREE.Vector3();
         this.connectionRebuildPending = false;
         this.pattern = null;
+        this.highlightedRow = null;
 
         // Event subscriptions for cleanup
         this.eventSubs = new EventSubscriptions();
@@ -90,6 +91,14 @@ export class StitchRenderer {
                 this.updateConnectionMeshes();
             } catch (err) {
                 console.error('Error updating mesh for type change:', err);
+            }
+        });
+
+        this.eventSubs.on(Events.ROW_HIGHLIGHT_CHANGED, ({ row }) => {
+            try {
+                this.setHighlightedRow(row);
+            } catch (err) {
+                console.error('Error updating row highlight:', err);
             }
         });
 
@@ -347,7 +356,11 @@ export class StitchRenderer {
 
         try {
             const geometry = this.getGeometry(node.type);
-            const material = this.getMaterial(node.color);
+            const material = this.getMaterial(node.color, {
+                selected: node.isSelected,
+                highlighted: node.isHighlighted,
+                rowHighlighted: this.highlightedRow !== null && node.row === this.highlightedRow
+            });
 
             if (!geometry || !material) {
                 console.warn('Failed to get geometry or material for node:', node.id);
@@ -415,7 +428,8 @@ export class StitchRenderer {
         // Update material (cached by YarnMaterial - don't dispose old reference)
         mesh.material = this.getMaterial(node.color, {
             selected: node.isSelected,
-            highlighted: node.isHighlighted
+            highlighted: node.isHighlighted,
+            rowHighlighted: this.highlightedRow !== null && node.row === this.highlightedRow
         });
 
         // Update position
@@ -431,7 +445,28 @@ export class StitchRenderer {
 
         mesh.material = this.getMaterial(node.color, {
             selected: node.isSelected,
-            highlighted: node.isHighlighted
+            highlighted: node.isHighlighted,
+            rowHighlighted: this.highlightedRow !== null && node.row === this.highlightedRow
+        });
+    }
+
+    /**
+     * Update which row is visually highlighted
+     */
+    setHighlightedRow(rowIndex) {
+        this.highlightedRow = Number.isFinite(rowIndex) ? rowIndex : null;
+        this.refreshRowHighlights();
+    }
+
+    /**
+     * Refresh materials for all meshes to reflect row highlight state
+     */
+    refreshRowHighlights() {
+        this.meshMap.forEach(mesh => {
+            const node = mesh.userData.node;
+            if (node) {
+                this.updateSelectionVisual(node);
+            }
         });
     }
 

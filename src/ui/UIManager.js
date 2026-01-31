@@ -496,10 +496,9 @@ export class UIManager {
 
         const grid = this.stitchPalette.querySelector('.stitch-grid');
 
-        // Add button for each stitch type that has a keyboard shortcut
+        // Add button for each non-deprecated stitch type
         Object.entries(StitchDefinitions).forEach(([type, def]) => {
-            // Only show stitches with keyboard shortcuts in the palette
-            if (!def.keyboard) return;
+            if (def.deprecated) return;
 
             const btn = document.createElement('button');
             btn.className = 'stitch-btn';
@@ -510,9 +509,10 @@ export class UIManager {
                 btn.classList.add('selected');
             }
 
+            const keyLabel = def.keyboard ? def.keyboard.toUpperCase() : '-';
             btn.innerHTML = `
                 <span class="abbr">${def.abbreviation}</span>
-                <span class="key">${def.keyboard.toUpperCase()}</span>
+                <span class="key">${keyLabel}</span>
             `;
 
             btn.addEventListener('click', () => this.selectStitchType(type));
@@ -747,7 +747,7 @@ export class UIManager {
             { id: 'top', label: 'Top', shortcut: '2' },
             { id: 'front', label: 'Front', shortcut: '3' },
             { id: 'side', label: 'Side', shortcut: '4' },
-            { id: 'schematic', label: 'Schematic', shortcut: '5' }
+            { id: 'schematic', label: 'Layout', shortcut: '5' }
         ];
 
         viewModes.forEach(mode => {
