@@ -70,11 +70,12 @@ via click-based interactions, plus recommended fixes.
 
 ## Attachment Modes & UX Feedback
 
-- [ ] **Bug: “Work into space” hides normal attachments**
+- [x] **Bug: "Work into space" hides normal attachments**
   - **Symptoms:** If no chain spaces are present, the UI shows no attachments
     and suggests a new row even if unworked stitches remain.
-  - **Fix:** When “work into space” yields zero spaces, show normal attachments
+  - **Fix:** When "work into space" yields zero spaces, show normal attachments
     with a warning or auto-disable the toggle for that row.
+  - **Status:** Fixed - Falls back to normal attachments when no chain spaces exist.
 
 - [x] **Bug: Advanced stitch validation unused**
   - **Symptoms:** Post and spike stitches can be placed in invalid contexts

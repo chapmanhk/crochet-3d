@@ -993,10 +993,20 @@ export class UIManager {
     async addStitchAtNextPosition() {
         try {
             const useChainSpaces = Boolean(this.pattern.currentWorkIntoSpace);
-            const attachPoints = useChainSpaces
+            let attachPoints = useChainSpaces
                 ? this.pattern.getChainSpaces()
                 : this.pattern.getAttachmentPoints();
-            const availablePoints = attachPoints.filter(p => p.available !== false);
+            let availablePoints = attachPoints.filter(p => p.available !== false);
+
+            // Fallback: if "work into space" is enabled but no chain spaces exist,
+            // use normal attachment points instead
+            if (useChainSpaces && availablePoints.length === 0) {
+                attachPoints = this.pattern.getAttachmentPoints();
+                availablePoints = attachPoints.filter(p => p.available !== false);
+                if (availablePoints.length > 0) {
+                    console.warn('No chain spaces found - using normal attachment points');
+                }
+            }
 
             if (!availablePoints || availablePoints.length === 0) {
                 // No pattern started - create foundation chain
