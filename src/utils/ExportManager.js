@@ -106,6 +106,12 @@ export class ExportManager {
             }
 
             const data = this.pattern.toJSON();
+            if (!data.exportNotes) {
+                data.exportNotes = {};
+            }
+            if (!data.exportNotes.turningChainColumns) {
+                data.exportNotes.turningChainColumns = 'Turning chains may use negative column values to avoid clashes with working stitches.';
+            }
             const json = pretty
                 ? JSON.stringify(data, null, 2)
                 : JSON.stringify(data);

@@ -161,6 +161,13 @@ describe('ExportManager', () => {
             expect(parsed.metadata.author).toBe('Test Author');
         });
 
+        it('should include turning chain column note in JSON export', () => {
+            const json = exportManager.exportJSON();
+            const parsed = JSON.parse(json);
+
+            expect(parsed.exportNotes?.turningChainColumns).toBeDefined();
+        });
+
         it('should format JSON with indentation when pretty option is true', () => {
             const json = exportManager.exportJSON({ pretty: true });
 
