@@ -10,6 +10,14 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EventBus, Events } from '../src/utils/EventBus.js';
+import { showConfirm, showPrompt, showAlert, showInstructions } from '../src/ui/Modal.js';
+
+vi.mock('../src/ui/Modal.js', () => ({
+    showConfirm: vi.fn(() => Promise.resolve(true)),
+    showPrompt: vi.fn(() => Promise.resolve('10')),
+    showAlert: vi.fn(() => Promise.resolve()),
+    showInstructions: vi.fn(() => Promise.resolve())
+}));
 
 // Mock Pattern class for UIManager
 class MockPattern {
@@ -17,6 +25,10 @@ class MockPattern {
         this.currentRow = 0;
         this.selectedStitchType = 'SINGLE_CROCHET';
         this.currentColor = 0x8B4513;
+        this.currentLoopSelection = 'both';
+        this.currentModifiers = [];
+        this.currentSkipCount = 0;
+        this.currentWorkIntoSpace = false;
         this.graph = {
             size: 0,
             getStats: () => ({
@@ -27,13 +39,18 @@ class MockPattern {
         };
         this.history = [];
         this.historyIndex = -1;
+        this.getAttachmentPoints = vi.fn(() => []);
+        this.getChainSpaces = vi.fn(() => []);
+        this.addStitch = vi.fn();
+        this.startWithChain = vi.fn((length) => {
+            this.graph.size = length;
+        });
     }
     canUndo() { return false; }
     canRedo() { return false; }
     undo() {}
     redo() {}
     startNewRow() { this.currentRow++; }
-    getAttachmentPoints() { return []; }
     generateInstructions() { return 'Row 1: ch 10'; }
     getRowCount() { return 3; }
     goToRow(row) {
@@ -629,5 +646,134 @@ describe('UIManager - Events Integration', () => {
         EventBus.emit(Events.PATTERN_LOADED, {});
 
         expect(updateSpy).toHaveBeenCalled();
+    });
+});
+
+describe('UIManager - Stitch options and actions', () => {
+    let UIManager;
+    let uiManager;
+    let mockPattern;
+    let mockSceneManager;
+
+    beforeEach(async () => {
+        EventBus.clear();
+        document.body.innerHTML = '';
+
+        mockPattern = new MockPattern();
+        mockSceneManager = new MockSceneManager();
+
+        const module = await import('../src/ui/UIManager.js');
+        UIManager = module.UIManager;
+        uiManager = new UIManager(mockPattern, mockSceneManager);
+    });
+
+    afterEach(() => {
+        if (uiManager && uiManager.dispose) {
+            uiManager.dispose();
+        }
+        document.body.innerHTML = '';
+    });
+
+    it('updates loop selection and emits attachment options change', () => {
+        const callback = vi.fn();
+        EventBus.on(Events.ATTACHMENT_OPTIONS_CHANGED, callback);
+
+        const loopSelect = document.querySelector('#select-loop');
+        loopSelect.value = 'front';
+        loopSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+        expect(mockPattern.currentLoopSelection).toBe('front');
+        expect(callback).toHaveBeenCalledWith({ type: 'loop', value: 'front' });
+    });
+
+    it('updates modifiers and skip count', () => {
+        const callback = vi.fn();
+        EventBus.on(Events.ATTACHMENT_OPTIONS_CHANGED, callback);
+
+        const modifierSelect = document.querySelector('#select-modifier');
+        modifierSelect.value = 'inc';
+        modifierSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+        expect(mockPattern.currentModifiers).toHaveLength(1);
+        expect(callback).toHaveBeenCalledWith({ type: 'modifier', value: 'inc' });
+
+        const skipInput = document.querySelector('#input-skip-count');
+        skipInput.value = '2';
+        skipInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+        expect(mockPattern.currentSkipCount).toBe(2);
+        expect(callback).toHaveBeenCalledWith({ type: 'skip', value: 2 });
+    });
+
+    it('toggles work into space option', () => {
+        const callback = vi.fn();
+        EventBus.on(Events.ATTACHMENT_OPTIONS_CHANGED, callback);
+
+        const toggle = document.querySelector('#toggle-work-space');
+        toggle.checked = true;
+        toggle.dispatchEvent(new Event('change', { bubbles: true }));
+
+        expect(mockPattern.currentWorkIntoSpace).toBe(true);
+        expect(callback).toHaveBeenCalledWith({ type: 'space', value: true });
+    });
+
+    it('selects yarn color and emits event', () => {
+        const callback = vi.fn();
+        EventBus.on(Events.COLOR_SELECTED, callback);
+
+        uiManager.selectColor(0xff0000);
+
+        expect(mockPattern.currentColor).toBe(0xff0000);
+        expect(callback).toHaveBeenCalledWith({ color: 0xff0000 });
+
+        const colorPicker = document.querySelector('#color-picker');
+        expect(colorPicker.value).toBe('#ff0000');
+    });
+
+    it('adds a stitch at next available attachment point', async () => {
+        const stitch = { id: 'attach', row: 0, column: 0 };
+        mockPattern.getAttachmentPoints.mockReturnValue([
+            { stitch, type: 'above', available: true, suggested: true }
+        ]);
+        mockPattern.currentSkipCount = 1;
+
+        await uiManager.addStitchAtNextPosition();
+
+        expect(mockPattern.addStitch).toHaveBeenCalledWith(
+            uiManager.selectedStitchType,
+            stitch,
+            expect.objectContaining({
+                modifiers: mockPattern.currentModifiers,
+                skipCount: 1,
+                loopSelection: mockPattern.currentLoopSelection,
+                workIntoSpace: false
+            })
+        );
+    });
+
+    it('prompts before starting new row if attachments remain', async () => {
+        mockPattern.getAttachmentPoints.mockReturnValue([
+            { stitch: { id: 'attach' }, available: true }
+        ]);
+        showConfirm.mockResolvedValueOnce(false);
+
+        await uiManager.handleStartNewRow();
+
+        expect(mockPattern.currentRow).toBe(0);
+    });
+
+    it('shows instructions via modal helper', () => {
+        const button = document.querySelector('#btn-instructions');
+        button.click();
+        expect(showInstructions).toHaveBeenCalled();
+    });
+
+    it('uses alert when chain length is adjusted', async () => {
+        mockPattern.graph.size = 0;
+        showPrompt.mockResolvedValueOnce('999');
+
+        await uiManager.addStitchAtNextPosition();
+
+        expect(showAlert).toHaveBeenCalled();
     });
 });

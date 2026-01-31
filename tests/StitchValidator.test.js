@@ -510,4 +510,115 @@ describe('StitchValidator', () => {
             expect(['irregular', 'diamond']).toContain(result.shape);
         });
     });
+
+    describe('validateTurningChain', () => {
+        it('should warn when no turning chain exists', () => {
+            pattern.startWithChain(4);
+            pattern.autoTurningChain = false;
+            pattern.startNewRow({ skipTurningChain: true });
+
+            const result = StitchValidator.validateTurningChain(pattern, StitchType.SINGLE_CROCHET);
+
+            expect(result.warnings.some(w => w.includes('No turning chain'))).toBe(true);
+        });
+
+        it('should warn when turning chain count differs from standard', () => {
+            pattern.startWithChain(4);
+            pattern.startNewRow({ stitchType: StitchType.DOUBLE_CROCHET });
+
+            const result = StitchValidator.validateTurningChain(pattern, StitchType.SINGLE_CROCHET);
+
+            expect(result.warnings.some(w => w.includes('Turning chain count'))).toBe(true);
+        });
+    });
+
+    describe('skip validation', () => {
+        it('should error when skipping beyond row length', () => {
+            pattern.startWithChain(3);
+            pattern.startNewRow();
+
+            const attachPoint = {
+                stitch: pattern.graph.getAt(0, 0),
+                type: 'above'
+            };
+
+            const result = StitchValidator.canPlaceStitch(
+                StitchType.SINGLE_CROCHET,
+                attachPoint,
+                pattern,
+                { skipCount: 5 }
+            );
+
+            expect(result.valid).toBe(false);
+            expect(result.errors.some(e => e.includes('Cannot skip'))).toBe(true);
+        });
+    });
+
+    describe('work into space validation', () => {
+        it('should warn when working into non-space stitch', () => {
+            pattern.startWithChain(3);
+            pattern.startNewRow();
+            const chain0 = pattern.graph.getAt(0, 0);
+            pattern.addStitch(StitchType.SINGLE_CROCHET, chain0);
+            pattern.startNewRow();
+
+            const attachPoint = {
+                stitch: pattern.graph.getAt(1, 0),
+                type: 'above'
+            };
+
+            const result = StitchValidator.canPlaceStitch(
+                StitchType.SINGLE_CROCHET,
+                attachPoint,
+                pattern,
+                { workIntoSpace: true }
+            );
+
+            expect(result.warnings.some(w => w.includes('chain space'))).toBe(true);
+        });
+    });
+
+    describe('canSkipStitch', () => {
+        it('should not allow skipping first stitch in row', () => {
+            pattern.startWithChain(3);
+            const chain0 = pattern.graph.getAt(0, 0);
+
+            const result = StitchValidator.canSkipStitch(chain0, pattern);
+
+            expect(result.canSkip).toBe(false);
+            expect(result.reason).toContain('first stitch');
+        });
+
+        it('should not allow skipping stitches with connections above', () => {
+            pattern.startWithChain(3);
+            pattern.startNewRow();
+            const chain0 = pattern.graph.getAt(0, 0);
+            pattern.addStitch(StitchType.SINGLE_CROCHET, chain0);
+
+            const result = StitchValidator.canSkipStitch(chain0, pattern);
+
+            expect(result.canSkip).toBe(false);
+            expect(result.reason).toContain('already has stitches');
+        });
+    });
+
+    describe('getValidStitchTypes', () => {
+        it('should return valid stitch types excluding deprecated ones', () => {
+            pattern.startWithChain(3);
+            pattern.startNewRow();
+
+            const attachPoint = {
+                stitch: pattern.graph.getAt(0, 0),
+                type: 'above'
+            };
+
+            const validTypes = StitchValidator.getValidStitchTypes(pattern, attachPoint);
+            const typeList = validTypes.map(entry => entry.type);
+
+            expect(validTypes.length).toBeGreaterThan(0);
+            expect(typeList).toContain(StitchType.SINGLE_CROCHET);
+            expect(typeList).not.toContain(StitchType.INCREASE);
+            expect(typeList).not.toContain(StitchType.DECREASE);
+        });
+    });
 });
