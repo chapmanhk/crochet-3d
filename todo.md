@@ -60,11 +60,12 @@ via click-based interactions, plus recommended fixes.
   - **Fix:** Include "sk N," "in ch-sp," or equivalent notation in output.
   - **Status:** Fixed - generateInstructions now includes skip counts and chain space notation.
 
-- [ ] **Bug: Increase modifier does not add stitch count**
+- [x] **Bug: Increase modifier does not add stitch count**
   - **Symptoms:** Increases add a single node with `connectionsOut = 2`, but
     row stitch counts (and instructions) stay at 1.
   - **Fix:** Either (a) model increases as multiple stitches, or (b) keep a
-    single node but compute “working stitch count” separately for output.
+    single node but compute "working stitch count" separately for output.
+  - **Status:** Fixed - generateInstructions now counts increases as 2 or 3 stitches based on metadata.increasesTo.
 
 - [x] **Bug: Decrease modifiers ignore working direction**
   - **Symptoms:** Decrease uses `attachIndex + i` in sorted order even if

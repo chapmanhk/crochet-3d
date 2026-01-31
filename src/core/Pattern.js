@@ -1192,8 +1192,14 @@ export class Pattern {
                 .map(g => g.count > 1 ? `${g.count} ${g.abbr}` : g.abbr)
                 .join(', ');
 
-            const totalWorking = workingStitches.length +
-                (turningChains.some(tc => tc.turningChainCountsAsStitch) ? 1 : 0);
+            // Calculate working stitch count, accounting for increases
+            const totalWorking = workingStitches.reduce((count, s) => {
+                if (s.isIncrease) {
+                    // Increases add extra stitches (2 or 3 in 1)
+                    return count + (s.metadata?.increasesTo || 2);
+                }
+                return count + 1;
+            }, 0) + (turningChains.some(tc => tc.turningChainCountsAsStitch) ? 1 : 0);
 
             const rowNumber = hasFoundation ? row : row + 1;
             lines.push(`Row ${rowNumber}: ${instruction} (${totalWorking} sts)`);
