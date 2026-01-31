@@ -103,7 +103,21 @@ export class SceneManager {
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = SceneConstants.TONE_MAPPING_EXPOSURE;
 
-        this.container.appendChild(this.renderer.domElement);
+        // Wrap canvas in semantic <main> element
+        const mainElement = document.createElement('main');
+        mainElement.setAttribute('role', 'main');
+        mainElement.setAttribute('aria-label', '3D crochet pattern visualization');
+        mainElement.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;';
+
+        // Set aria-label on canvas for accessibility
+        this.renderer.domElement.setAttribute('role', 'img');
+        this.renderer.domElement.setAttribute('aria-label', '3D crochet pattern canvas');
+
+        mainElement.appendChild(this.renderer.domElement);
+        this.container.appendChild(mainElement);
+
+        // Store reference to main element for cleanup
+        this.mainElement = mainElement;
     }
 
     /**
@@ -435,7 +449,11 @@ export class SceneManager {
         this.clearStitches();
         this.renderer.dispose();
 
-        if (this.renderer.domElement.parentElement) {
+        // Remove the main element wrapper
+        if (this.mainElement && this.mainElement.parentElement) {
+            this.mainElement.parentElement.removeChild(this.mainElement);
+        } else if (this.renderer.domElement.parentElement) {
+            // Fallback for backwards compatibility
             this.renderer.domElement.parentElement.removeChild(this.renderer.domElement);
         }
     }

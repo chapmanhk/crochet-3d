@@ -21,7 +21,7 @@ export class PhysicsPanel {
      * Create the physics control panel
      */
     createPanel() {
-        this.panel = document.createElement('div');
+        this.panel = document.createElement('aside');
         this.panel.className = 'physics-panel';
         this.panel.setAttribute('role', 'region');
         this.panel.setAttribute('aria-label', 'Physics simulation controls');

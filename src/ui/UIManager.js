@@ -564,11 +564,13 @@ export class UIManager {
      * Create stitch palette panel
      */
     createStitchPalette() {
-        this.stitchPalette = document.createElement('div');
+        this.stitchPalette = document.createElement('aside');
         this.stitchPalette.className = 'crochet-panel stitch-palette';
+        this.stitchPalette.setAttribute('role', 'region');
+        this.stitchPalette.setAttribute('aria-label', 'Stitch palette');
         this.stitchPalette.innerHTML = `
             <h3>Stitches</h3>
-            <div class="stitch-grid"></div>
+            <nav class="stitch-grid" role="toolbar" aria-label="Stitch selection"></nav>
         `;
 
         const grid = this.stitchPalette.querySelector('.stitch-grid');
@@ -611,7 +613,7 @@ export class UIManager {
      * Create templates panel
      */
     createTemplatesPanel() {
-        this.templatesPanel = document.createElement('div');
+        this.templatesPanel = document.createElement('aside');
         this.templatesPanel.className = 'crochet-panel templates-panel';
         this.templatesPanel.setAttribute('role', 'region');
         this.templatesPanel.setAttribute('aria-label', 'Pattern templates');
@@ -637,7 +639,7 @@ export class UIManager {
      * Create toolbar
      */
     createToolbar() {
-        this.toolbar = document.createElement('div');
+        this.toolbar = document.createElement('nav');
         this.toolbar.className = 'crochet-panel crochet-toolbar';
         this.toolbar.setAttribute('role', 'toolbar');
         this.toolbar.setAttribute('aria-label', 'Pattern editing toolbar');
@@ -695,7 +697,7 @@ export class UIManager {
      * Create info panel
      */
     createInfoPanel() {
-        this.infoPanel = document.createElement('div');
+        this.infoPanel = document.createElement('aside');
         this.infoPanel.className = 'crochet-panel info-panel';
         this.infoPanel.setAttribute('role', 'region');
         this.infoPanel.setAttribute('aria-label', 'Pattern information and controls');
@@ -964,7 +966,7 @@ export class UIManager {
      * Create view mode selector panel
      */
     createViewModeSelector() {
-        this.viewModeSelector = document.createElement('div');
+        this.viewModeSelector = document.createElement('nav');
         this.viewModeSelector.className = 'crochet-panel view-mode-selector';
         this.viewModeSelector.setAttribute('role', 'toolbar');
         this.viewModeSelector.setAttribute('aria-label', 'View mode selector');
@@ -1002,7 +1004,7 @@ export class UIManager {
      * Create row navigation panel
      */
     createRowNavigation() {
-        this.rowNavigation = document.createElement('div');
+        this.rowNavigation = document.createElement('aside');
         this.rowNavigation.className = 'crochet-panel row-navigation';
         this.rowNavigation.setAttribute('role', 'region');
         this.rowNavigation.setAttribute('aria-label', 'Row navigation');
