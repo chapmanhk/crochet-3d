@@ -103,7 +103,8 @@ via click-based interactions, plus recommended fixes.
 
 ## Limits & Guidance
 
-- [ ] **Bug: Max chain length (100) is small for scarves**
+- [x] **Bug: Max chain length (100) is small for scarves**
   - **Symptoms:** Long scarf foundations can exceed 100 chains.
   - **Fix:** Increase `MAX_CHAIN_LENGTH` or make it configurable in UI.
+  - **Status:** Fixed - Increased MAX_CHAIN_LENGTH from 100 to 500.
 
