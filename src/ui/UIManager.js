@@ -582,14 +582,22 @@ export class UIManager {
             btn.dataset.type = type;
             btn.title = def.description;
 
+            const keyLabel = def.keyboard ? def.keyboard.toUpperCase() : '-';
+            const ariaLabel = def.keyboard
+                ? `${def.name} stitch (${def.abbreviation}), keyboard shortcut: ${keyLabel}`
+                : `${def.name} stitch (${def.abbreviation})`;
+            btn.setAttribute('aria-label', ariaLabel);
+
             if (type === this.selectedStitchType) {
                 btn.classList.add('selected');
+                btn.setAttribute('aria-pressed', 'true');
+            } else {
+                btn.setAttribute('aria-pressed', 'false');
             }
 
-            const keyLabel = def.keyboard ? def.keyboard.toUpperCase() : '-';
             btn.innerHTML = `
-                <span class="abbr">${def.abbreviation}</span>
-                <span class="key">${keyLabel}</span>
+                <span class="abbr" aria-hidden="true">${def.abbreviation}</span>
+                <span class="key" aria-hidden="true">${keyLabel}</span>
             `;
 
             btn.addEventListener('click', () => this.selectStitchType(type));
@@ -605,12 +613,14 @@ export class UIManager {
     createTemplatesPanel() {
         this.templatesPanel = document.createElement('div');
         this.templatesPanel.className = 'crochet-panel templates-panel';
+        this.templatesPanel.setAttribute('role', 'region');
+        this.templatesPanel.setAttribute('aria-label', 'Pattern templates');
         this.templatesPanel.innerHTML = `
             <h3>Templates</h3>
-            <button class="template-btn" data-template="granny">Granny Square</button>
-            <button class="template-btn" data-template="circle">Basic Circle</button>
-            <button class="template-btn" data-template="square">Basic Square</button>
-            <button class="template-btn" data-template="triangle">Triangle</button>
+            <button class="template-btn" data-template="granny" aria-label="Create a granny square pattern">Granny Square</button>
+            <button class="template-btn" data-template="circle" aria-label="Create a basic circle pattern">Basic Circle</button>
+            <button class="template-btn" data-template="square" aria-label="Create a basic square pattern">Basic Square</button>
+            <button class="template-btn" data-template="triangle" aria-label="Create a triangle pattern">Triangle</button>
         `;
 
         this.templatesPanel.querySelectorAll('.template-btn').forEach(btn => {
@@ -629,13 +639,15 @@ export class UIManager {
     createToolbar() {
         this.toolbar = document.createElement('div');
         this.toolbar.className = 'crochet-panel crochet-toolbar';
+        this.toolbar.setAttribute('role', 'toolbar');
+        this.toolbar.setAttribute('aria-label', 'Pattern editing toolbar');
         this.toolbar.innerHTML = `
-            <button class="toolbar-btn" id="btn-undo" title="Undo (Ctrl+Z)">Undo</button>
-            <button class="toolbar-btn" id="btn-redo" title="Redo (Ctrl+Y)">Redo</button>
-            <button class="toolbar-btn primary" id="btn-start-pattern" title="Start a new pattern">Start Pattern</button>
-            <button class="toolbar-btn" id="btn-new-row" title="Start new row">New Row</button>
-            <button class="toolbar-btn" id="btn-add-stitch" title="Add stitch to pattern">Add Stitch</button>
-            <button class="toolbar-btn" id="btn-clear" title="Clear pattern">Clear</button>
+            <button class="toolbar-btn" id="btn-undo" title="Undo (Ctrl+Z)" aria-label="Undo last action, keyboard shortcut: Control+Z">Undo</button>
+            <button class="toolbar-btn" id="btn-redo" title="Redo (Ctrl+Y)" aria-label="Redo last undone action, keyboard shortcut: Control+Y">Redo</button>
+            <button class="toolbar-btn primary" id="btn-start-pattern" title="Start a new pattern" aria-label="Start a new crochet pattern">Start Pattern</button>
+            <button class="toolbar-btn" id="btn-new-row" title="Start new row" aria-label="Start a new row in the pattern">New Row</button>
+            <button class="toolbar-btn" id="btn-add-stitch" title="Add stitch to pattern" aria-label="Add the selected stitch to the pattern">Add Stitch</button>
+            <button class="toolbar-btn" id="btn-clear" title="Clear pattern" aria-label="Clear the entire pattern">Clear</button>
         `;
 
         // Wire up buttons
@@ -685,6 +697,8 @@ export class UIManager {
     createInfoPanel() {
         this.infoPanel = document.createElement('div');
         this.infoPanel.className = 'crochet-panel info-panel';
+        this.infoPanel.setAttribute('role', 'region');
+        this.infoPanel.setAttribute('aria-label', 'Pattern information and controls');
         this.infoPanel.innerHTML = `
             <h3>Pattern Info</h3>
             <div class="info-row">
@@ -717,14 +731,14 @@ export class UIManager {
                     <span class="info-value" id="info-selected-pos">-</span>
                 </div>
                 <div class="selection-actions">
-                    <button class="info-action-btn" id="btn-apply-selection-color">Apply color to selection</button>
+                    <button class="info-action-btn" id="btn-apply-selection-color" aria-label="Apply current yarn color to selected stitches">Apply color to selection</button>
                 </div>
             </div>
             <div class="stitch-options">
                 <div class="stitch-options-title">Stitch Options</div>
                 <div class="stitch-options-row">
                     <label for="select-loop">Loops:</label>
-                    <select id="select-loop">
+                    <select id="select-loop" aria-label="Select which loops to work into">
                         <option value="both">Both</option>
                         <option value="front">Front</option>
                         <option value="back">Back</option>
@@ -732,7 +746,7 @@ export class UIManager {
                 </div>
                 <div class="stitch-options-row">
                     <label for="select-modifier">Modifier:</label>
-                    <select id="select-modifier">
+                    <select id="select-modifier" aria-label="Select stitch modifier for increases or decreases">
                         <option value="none">None</option>
                         <option value="inc">Increase (2 in 1)</option>
                         <option value="inc3">Increase (3 in 1)</option>
@@ -742,10 +756,10 @@ export class UIManager {
                 </div>
                 <div class="stitch-options-row">
                     <label for="input-skip-count">Skip:</label>
-                    <input type="number" id="input-skip-count" min="0" value="0">
+                    <input type="number" id="input-skip-count" min="0" value="0" aria-label="Number of stitches to skip before placing next stitch">
                 </div>
                 <label class="stitch-options-toggle">
-                    <input type="checkbox" id="toggle-work-space">
+                    <input type="checkbox" id="toggle-work-space" aria-label="Work into chain space instead of stitch">
                     Work into space
                 </label>
             </div>
@@ -753,21 +767,21 @@ export class UIManager {
                 <div class="stitch-options-title">Stitch-Specific</div>
                 <div class="stitch-options-row hidden" id="spike-depth-row">
                     <label for="input-spike-depth">Spike depth:</label>
-                    <input type="number" id="input-spike-depth" min="1" max="5" value="1">
-                    <span class="option-hint">rows below</span>
+                    <input type="number" id="input-spike-depth" min="1" max="5" value="1" aria-label="Spike stitch depth in rows below current row" aria-describedby="spike-hint">
+                    <span class="option-hint" id="spike-hint">rows below</span>
                 </div>
                 <div class="stitch-options-row hidden" id="texture-count-row">
                     <label for="input-texture-count">Stitch count:</label>
-                    <input type="number" id="input-texture-count" min="3" max="7" value="5">
-                    <span class="option-hint">DCs</span>
+                    <input type="number" id="input-texture-count" min="3" max="7" value="5" aria-label="Number of double crochet stitches in texture stitch" aria-describedby="texture-hint">
+                    <span class="option-hint" id="texture-hint">DCs</span>
                 </div>
                 <div class="stitch-options-row hidden" id="picot-chain-row">
                     <label for="input-picot-chains">Chain count:</label>
-                    <input type="number" id="input-picot-chains" min="2" max="5" value="3">
+                    <input type="number" id="input-picot-chains" min="2" max="5" value="3" aria-label="Number of chains in picot stitch">
                 </div>
                 <div class="stitch-options-row hidden" id="turning-chain-row">
-                    <label for="toggle-tc-counts">TC counts as st:</label>
-                    <select id="select-tc-counts">
+                    <label for="select-tc-counts">TC counts as st:</label>
+                    <select id="select-tc-counts" aria-label="Whether turning chain counts as a stitch">
                         <option value="default">Default</option>
                         <option value="yes">Yes</option>
                         <option value="no">No</option>
@@ -775,21 +789,21 @@ export class UIManager {
                 </div>
             </div>
             <div class="color-picker-row">
-                <label>Yarn color:</label>
-                <input type="color" id="color-picker" value="#8B4513">
+                <label for="color-picker">Yarn color:</label>
+                <input type="color" id="color-picker" value="#8B4513" aria-label="Select yarn color for new stitches">
             </div>
-            <div class="color-palette" id="color-palette"></div>
+            <div class="color-palette" id="color-palette" role="group" aria-label="Preset yarn colors"></div>
             <div class="marker-legend">
                 <div class="marker-legend-title">Markers</div>
-                <div class="legend-item"><span class="legend-dot start"></span>Chain start</div>
-                <div class="legend-item"><span class="legend-dot end"></span>Chain end</div>
-                <div class="legend-item"><span class="legend-dot working"></span>Next stitch</div>
-                <div class="legend-item"><span class="legend-dot new-row"></span>Turn / new row</div>
+                <div class="legend-item"><span class="legend-dot start" aria-hidden="true"></span>Chain start</div>
+                <div class="legend-item"><span class="legend-dot end" aria-hidden="true"></span>Chain end</div>
+                <div class="legend-item"><span class="legend-dot working" aria-hidden="true"></span>Next stitch</div>
+                <div class="legend-item"><span class="legend-dot new-row" aria-hidden="true"></span>Turn / new row</div>
             </div>
-            <button class="toolbar-btn instructions-btn" id="btn-instructions">
+            <button class="toolbar-btn instructions-btn" id="btn-instructions" aria-label="View written pattern instructions">
                 View Instructions
             </button>
-            <button class="toolbar-btn instructions-btn" id="btn-crown-guide">
+            <button class="toolbar-btn instructions-btn" id="btn-crown-guide" aria-label="View crown shaping guide for decreasing rounds">
                 Crown Shaping Guide
             </button>
         `;
@@ -911,14 +925,19 @@ export class UIManager {
         const presetColors = YarnMaterial.getPresetColors();
 
         presetColors.forEach(({ name, color }) => {
-            const swatch = document.createElement('div');
+            const swatch = document.createElement('button');
             swatch.className = 'color-swatch';
             swatch.style.backgroundColor = '#' + color.toString(16).padStart(6, '0');
             swatch.title = name;
             swatch.dataset.color = color;
+            swatch.setAttribute('aria-label', `Select ${name} yarn color`);
+            swatch.setAttribute('role', 'button');
 
             if (color === this.pattern.currentColor) {
                 swatch.classList.add('selected');
+                swatch.setAttribute('aria-pressed', 'true');
+            } else {
+                swatch.setAttribute('aria-pressed', 'false');
             }
 
             swatch.addEventListener('click', () => this.selectColor(color));
@@ -947,6 +966,8 @@ export class UIManager {
     createViewModeSelector() {
         this.viewModeSelector = document.createElement('div');
         this.viewModeSelector.className = 'crochet-panel view-mode-selector';
+        this.viewModeSelector.setAttribute('role', 'toolbar');
+        this.viewModeSelector.setAttribute('aria-label', 'View mode selector');
 
         const viewModes = [
             { id: 'perspective', label: '3D', shortcut: '1' },
@@ -960,10 +981,14 @@ export class UIManager {
             const btn = document.createElement('button');
             btn.className = 'view-mode-btn';
             btn.dataset.viewMode = mode.id;
-            btn.innerHTML = `${mode.label}<span class="shortcut">${mode.shortcut}</span>`;
+            btn.setAttribute('aria-label', `Switch to ${mode.label} view, keyboard shortcut: ${mode.shortcut}`);
+            btn.innerHTML = `${mode.label}<span class="shortcut" aria-hidden="true">${mode.shortcut}</span>`;
 
             if (mode.id === this.currentViewMode) {
                 btn.classList.add('selected');
+                btn.setAttribute('aria-pressed', 'true');
+            } else {
+                btn.setAttribute('aria-pressed', 'false');
             }
 
             btn.addEventListener('click', () => this.setViewMode(mode.id));
@@ -979,23 +1004,25 @@ export class UIManager {
     createRowNavigation() {
         this.rowNavigation = document.createElement('div');
         this.rowNavigation.className = 'crochet-panel row-navigation';
+        this.rowNavigation.setAttribute('role', 'region');
+        this.rowNavigation.setAttribute('aria-label', 'Row navigation');
 
         const stats = this.pattern.graph.getStats();
 
         this.rowNavigation.innerHTML = `
-            <div class="row-nav-display">
+            <div class="row-nav-display" aria-live="polite" aria-atomic="true">
                 <span id="row-label">Row</span>
                 <span id="current-row-display">${this.pattern.currentRow + 1}</span>
                 <span id="row-of-label">of</span>
                 <span id="total-rows-display">${stats.rowCount || 1}</span>
             </div>
             <div class="row-nav-buttons">
-                <button class="row-nav-btn" id="btn-prev-row" title="Previous row (PageUp)">← Prev</button>
-                <button class="row-nav-btn" id="btn-next-row" title="Next row (PageDown)">Next →</button>
+                <button class="row-nav-btn" id="btn-prev-row" title="Previous row (PageUp)" aria-label="Go to previous row, keyboard shortcut: Page Up">← Prev</button>
+                <button class="row-nav-btn" id="btn-next-row" title="Next row (PageDown)" aria-label="Go to next row, keyboard shortcut: Page Down">Next →</button>
             </div>
             <div class="row-goto-row">
-                <input type="number" id="input-go-to-row" placeholder="Row #" min="1">
-                <button id="btn-go-to-row">Go</button>
+                <input type="number" id="input-go-to-row" placeholder="Row #" min="1" aria-label="Enter row number to navigate to">
+                <button id="btn-go-to-row" aria-label="Navigate to entered row number">Go</button>
             </div>
         `;
 
@@ -1203,7 +1230,9 @@ export class UIManager {
         // Update visual
         const buttons = this.stitchPalette.querySelectorAll('.stitch-btn');
         buttons.forEach(btn => {
-            btn.classList.toggle('selected', btn.dataset.type === type);
+            const isSelected = btn.dataset.type === type;
+            btn.classList.toggle('selected', isSelected);
+            btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
         });
 
         // If we have a foundation chain and haven't added any stitches yet,
@@ -1287,7 +1316,9 @@ export class UIManager {
         // Update swatch selection
         const swatches = this.infoPanel.querySelectorAll('.color-swatch');
         swatches.forEach(swatch => {
-            swatch.classList.toggle('selected', parseInt(swatch.dataset.color) === color);
+            const isSelected = parseInt(swatch.dataset.color) === color;
+            swatch.classList.toggle('selected', isSelected);
+            swatch.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
         });
 
         EventBus.emit(Events.COLOR_SELECTED, { color });
@@ -1993,7 +2024,9 @@ export class UIManager {
         // Update button UI
         const buttons = this.viewModeSelector.querySelectorAll('.view-mode-btn');
         buttons.forEach(btn => {
-            btn.classList.toggle('selected', btn.dataset.viewMode === mode);
+            const isSelected = btn.dataset.viewMode === mode;
+            btn.classList.toggle('selected', isSelected);
+            btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
         });
 
         // Emit view mode changed event

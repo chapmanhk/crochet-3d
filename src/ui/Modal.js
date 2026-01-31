@@ -143,6 +143,9 @@ export function showModal(options) {
         // Create overlay
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('aria-labelledby', 'modal-header');
 
         // Create container
         const container = document.createElement('div');
@@ -151,6 +154,7 @@ export function showModal(options) {
         // Header
         const header = document.createElement('div');
         header.className = 'modal-header';
+        header.id = 'modal-header';
         header.textContent = title;
         container.appendChild(header);
 
@@ -184,6 +188,10 @@ export function showModal(options) {
             if (btnConfig.primary) btn.classList.add('primary');
             if (btnConfig.danger) btn.classList.add('danger');
             btn.textContent = btnConfig.text;
+            btn.setAttribute('aria-label', btnConfig.text);
+            if (index === 0) {
+                btn.setAttribute('data-autofocus', 'true');
+            }
             btn.addEventListener('click', () => {
                 if (btnConfig.onClick) btnConfig.onClick();
                 closeModal(btnConfig.text);
@@ -299,6 +307,9 @@ export function showPrompt(message, defaultValue = '', title = 'Input') {
         // Create overlay
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('aria-labelledby', 'prompt-header');
 
         // Create container
         const container = document.createElement('div');
@@ -307,19 +318,25 @@ export function showPrompt(message, defaultValue = '', title = 'Input') {
         // Header
         const header = document.createElement('div');
         header.className = 'modal-header';
+        header.id = 'prompt-header';
         header.textContent = title;
         container.appendChild(header);
 
         // Body
         const body = document.createElement('div');
         body.className = 'modal-body';
-        body.textContent = message;
+        const label = document.createElement('label');
+        label.htmlFor = 'prompt-input';
+        label.textContent = message;
+        body.appendChild(label);
 
         // Input field
         const input = document.createElement('input');
         input.type = 'text';
+        input.id = 'prompt-input';
         input.className = 'modal-input';
         input.value = defaultValue;
+        input.setAttribute('aria-label', message);
         body.appendChild(input);
 
         container.appendChild(body);
@@ -345,6 +362,7 @@ export function showPrompt(message, defaultValue = '', title = 'Input') {
         const cancelBtn = document.createElement('button');
         cancelBtn.className = 'modal-btn';
         cancelBtn.textContent = 'Cancel';
+        cancelBtn.setAttribute('aria-label', 'Cancel');
         cancelBtn.addEventListener('click', () => closeModal(null));
         footer.appendChild(cancelBtn);
 
@@ -352,6 +370,7 @@ export function showPrompt(message, defaultValue = '', title = 'Input') {
         const okBtn = document.createElement('button');
         okBtn.className = 'modal-btn primary';
         okBtn.textContent = 'OK';
+        okBtn.setAttribute('aria-label', 'OK');
         okBtn.addEventListener('click', () => closeModal(input.value));
         footer.appendChild(okBtn);
 

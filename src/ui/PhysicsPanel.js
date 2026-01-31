@@ -23,69 +23,77 @@ export class PhysicsPanel {
     createPanel() {
         this.panel = document.createElement('div');
         this.panel.className = 'physics-panel';
+        this.panel.setAttribute('role', 'region');
+        this.panel.setAttribute('aria-label', 'Physics simulation controls');
         this.panel.innerHTML = `
             <div class="physics-header">
                 <span>Physics</span>
-                <button class="physics-toggle" id="physics-toggle">▼</button>
+                <button class="physics-toggle" id="physics-toggle" aria-label="Toggle physics panel" aria-expanded="false">▼</button>
             </div>
             <div class="physics-content" id="physics-content">
                 <div class="physics-buttons">
-                    <button class="physics-btn primary" id="btn-settle">
+                    <button class="physics-btn primary" id="btn-settle" aria-label="Run physics simulation to settle the pattern">
                         Settle
                     </button>
-                    <button class="physics-btn" id="btn-reset">
+                    <button class="physics-btn" id="btn-reset" aria-label="Reset pattern to original positions">
                         Reset
                     </button>
                 </div>
 
-                <div class="physics-status" id="physics-status">
+                <div class="physics-status" id="physics-status" aria-live="polite" aria-atomic="true">
                     Ready
                 </div>
 
                 <div class="physics-controls">
                     <label>
-                        <input type="checkbox" id="chk-gravity" checked>
+                        <input type="checkbox" id="chk-gravity" checked aria-label="Enable gravity in physics simulation">
                         Gravity
                     </label>
 
                     <label>
-                        <input type="checkbox" id="chk-ground" checked>
+                        <input type="checkbox" id="chk-ground" checked aria-label="Enable ground collision detection">
                         Ground Collision
                     </label>
 
                     <label>
-                        <input type="checkbox" id="chk-shear" checked>
+                        <input type="checkbox" id="chk-shear" checked aria-label="Enable shear constraints for fabric stability">
                         Shear Constraints
                     </label>
 
                     <label>
-                        <input type="checkbox" id="chk-bend" checked>
+                        <input type="checkbox" id="chk-bend" checked aria-label="Enable bend constraints for fabric flexibility">
                         Bend Constraints
                     </label>
 
                     <div class="slider-group">
-                        <label>Stiffness</label>
+                        <label for="slider-stiffness">Stiffness</label>
                         <input type="range" id="slider-stiffness"
-                               min="0.1" max="1" step="0.1" value="0.8">
-                        <span id="val-stiffness">0.8</span>
+                               min="0.1" max="1" step="0.1" value="0.8"
+                               aria-label="Fabric stiffness from 0.1 to 1"
+                               aria-valuemin="0.1" aria-valuemax="1" aria-valuenow="0.8" aria-valuetext="0.8">
+                        <span id="val-stiffness" aria-hidden="true">0.8</span>
                     </div>
 
                     <div class="slider-group">
-                        <label>Gravity</label>
+                        <label for="slider-gravity">Gravity</label>
                         <input type="range" id="slider-gravity"
-                               min="0" max="2" step="0.1" value="0.5">
-                        <span id="val-gravity">0.5</span>
+                               min="0" max="2" step="0.1" value="0.5"
+                               aria-label="Gravity strength from 0 to 2"
+                               aria-valuemin="0" aria-valuemax="2" aria-valuenow="0.5" aria-valuetext="0.5">
+                        <span id="val-gravity" aria-hidden="true">0.5</span>
                     </div>
 
                     <div class="slider-group">
-                        <label>Damping</label>
+                        <label for="slider-damping">Damping</label>
                         <input type="range" id="slider-damping"
-                               min="0.9" max="0.99" step="0.01" value="0.97">
-                        <span id="val-damping">0.97</span>
+                               min="0.9" max="0.99" step="0.01" value="0.97"
+                               aria-label="Motion damping from 0.9 to 0.99"
+                               aria-valuemin="0.9" aria-valuemax="0.99" aria-valuenow="0.97" aria-valuetext="0.97">
+                        <span id="val-damping" aria-hidden="true">0.97</span>
                     </div>
                 </div>
 
-                <div class="physics-stats" id="physics-stats">
+                <div class="physics-stats" id="physics-stats" aria-live="polite">
                     Bodies: 0 | Constraints: 0
                 </div>
             </div>
@@ -288,7 +296,10 @@ export class PhysicsPanel {
         const stiffnessSlider = this.panel.querySelector('#slider-stiffness');
         stiffnessSlider.addEventListener('input', (e) => {
             const value = parseFloat(e.target.value);
-            this.panel.querySelector('#val-stiffness').textContent = value.toFixed(1);
+            const valueText = value.toFixed(1);
+            this.panel.querySelector('#val-stiffness').textContent = valueText;
+            e.target.setAttribute('aria-valuenow', value);
+            e.target.setAttribute('aria-valuetext', valueText);
             this.physicsEngine.setParams({ stiffness: value });
         });
 
@@ -296,7 +307,10 @@ export class PhysicsPanel {
         const gravitySlider = this.panel.querySelector('#slider-gravity');
         gravitySlider.addEventListener('input', (e) => {
             const value = parseFloat(e.target.value);
-            this.panel.querySelector('#val-gravity').textContent = value.toFixed(1);
+            const valueText = value.toFixed(1);
+            this.panel.querySelector('#val-gravity').textContent = valueText;
+            e.target.setAttribute('aria-valuenow', value);
+            e.target.setAttribute('aria-valuetext', valueText);
             this.physicsEngine.params.gravity.y = -value;
         });
 
@@ -304,7 +318,10 @@ export class PhysicsPanel {
         const dampingSlider = this.panel.querySelector('#slider-damping');
         dampingSlider.addEventListener('input', (e) => {
             const value = parseFloat(e.target.value);
-            this.panel.querySelector('#val-damping').textContent = value.toFixed(2);
+            const valueText = value.toFixed(2);
+            this.panel.querySelector('#val-damping').textContent = valueText;
+            e.target.setAttribute('aria-valuenow', value);
+            e.target.setAttribute('aria-valuetext', valueText);
             this.physicsEngine.setParams({ damping: value });
         });
 
@@ -343,6 +360,10 @@ export class PhysicsPanel {
     toggle() {
         this.isExpanded = !this.isExpanded;
         this.panel.classList.toggle('expanded', this.isExpanded);
+        const toggleBtn = this.panel.querySelector('#physics-toggle');
+        if (toggleBtn) {
+            toggleBtn.setAttribute('aria-expanded', this.isExpanded ? 'true' : 'false');
+        }
     }
 
     /**
