@@ -67,9 +67,33 @@ class MockVector3 {
     }
 }
 
+class MockVector2 {
+    constructor(x = 0, y = 0) {
+        this.x = x;
+        this.y = y;
+    }
+    set(x, y) {
+        this.x = x;
+        this.y = y;
+        return this;
+    }
+}
+
+class MockRaycaster {
+    constructor() {
+        this._intersections = [];
+    }
+    setFromCamera() {}
+    intersectObjects() {
+        return this._intersections;
+    }
+}
+
 // Mock the 'three' module
 vi.mock('three', () => ({
     Vector3: MockVector3,
+    Vector2: MockVector2,
+    Raycaster: MockRaycaster,
     // Add minimal mocks for other THREE classes as needed
     Color: class MockColor {
         constructor(color) {
