@@ -40,11 +40,12 @@ via click-based interactions, plus recommended fixes.
     `updateInfoPanel()`.
   - **Status:** Fixed - Added ROW_NAVIGATED listeners in AttachmentPointManager and UIManager.
 
-- [ ] **Bug: Working direction can be wrong after large row jumps**
+- [x] **Bug: Working direction can be wrong after large row jumps**
   - **Symptoms:** `goToRow` toggles direction by row delta parity instead of
     target row parity.
   - **Fix:** In flat mode, set working direction based on target row parity:
     e.g., even rows -> right, odd rows -> left (or whichever matches row 1).
+  - **Status:** Fixed - goToRow now sets direction based on target row parity (even=left, odd=right).
 
 ## Stitch Options & Pattern Output
 

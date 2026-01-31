@@ -1038,12 +1038,10 @@ export class Pattern {
             return false;
         }
 
-        const previousRow = this.currentRow;
-        if (rowIndex !== previousRow && this.mode === 'flat') {
-            const rowDelta = Math.abs(rowIndex - previousRow);
-            if (rowDelta % 2 === 1) {
-                this.workingDirection = this.workingDirection === 'right' ? 'left' : 'right';
-            }
+        // In flat mode, set direction based on target row parity
+        // (even rows work left, odd rows work right)
+        if (this.mode === 'flat') {
+            this.workingDirection = rowIndex % 2 === 0 ? 'left' : 'right';
         }
 
         this.currentRow = rowIndex;
