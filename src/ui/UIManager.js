@@ -714,6 +714,21 @@ export class UIManager {
 
                 .stitch-btn {
                     padding: 6px 4px;
+                    min-height: 44px;
+                    min-width: 44px;
+                }
+
+                /* Minimum touch target sizes for tablet (44x44px WCAG requirement) */
+                .toolbar-btn {
+                    min-height: 44px;
+                }
+
+                .row-nav-btn,
+                .view-mode-btn,
+                .template-btn,
+                .info-action-btn,
+                .row-goto-row button {
+                    min-height: 44px;
                 }
 
                 /* Smaller fonts */
@@ -835,7 +850,7 @@ export class UIManager {
                     gap: 6px;
                 }
 
-                /* Minimum touch target size (44x44px) */
+                /* Minimum touch target size (44x44px WCAG requirement) */
                 .stitch-btn {
                     min-height: 44px;
                     min-width: 44px;
@@ -843,13 +858,14 @@ export class UIManager {
                 }
 
                 .toolbar-btn {
-                    min-height: 36px;
+                    min-height: 44px;
                 }
 
                 .row-nav-btn,
                 .view-mode-btn,
                 .template-btn,
-                .info-action-btn {
+                .info-action-btn,
+                .row-goto-row button {
                     min-height: 44px;
                     padding: 8px 12px;
                 }
