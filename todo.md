@@ -91,9 +91,10 @@ and attachment/interaction. Each task appears once.
   - Similar to the existing ShapingGuide, add specific guidance for closing
     circular patterns (decrease evenly, close with drawstring, etc.).
   - **Status:** Fixed - Crown Shaping Guide button added with full implementation using getCrownShapingGuide() (UIManager.js:867-868, 1014-1019, 1784-1809).
-- [ ] **Enhancement: Show stitch count per row in real-time**
+- [x] **Enhancement: Show stitch count per row in real-time**
   - While working a row, display running stitch count vs. previous row count
     to help crocheters track increases/decreases.
+  - **Status:** Fixed - Enhanced stitch count display shows "current / previous" format with color-coded visual indicators (UIManager.js:1983-2011). Green "=" for equal counts, blue "+N" for increases, orange "-N" for decreases. Updates in real-time on STITCH_ADDED events. Added comprehensive tests for all three cases.
 - [ ] **Enhancement: Warn when row stitch count differs from previous row**
   - If a row ends with more/fewer stitches than previous (unintentional shaping),
     show a warning before starting the next row.

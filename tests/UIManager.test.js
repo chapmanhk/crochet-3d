@@ -966,4 +966,74 @@ describe('UIManager - Row Count Warnings', () => {
         expect(showConfirm).toHaveBeenCalled();
         expect(startSpy).not.toHaveBeenCalled();
     });
+
+    it('displays real-time stitch count with visual indicators', () => {
+        // Mock a pattern with rows
+        mockPattern.currentRow = 1;
+        mockPattern.hasFoundationChain = vi.fn(() => true);
+
+        // Row 0 (foundation) has 10 stitches, row 1 has 12 stitches
+        mockPattern.graph.getRow.mockImplementation((row) => {
+            if (row === 0) {
+                return Array(10).fill({ type: 'ch', isTurningChain: false });
+            }
+            if (row === 1) {
+                return Array(12).fill({ type: 'sc', isTurningChain: false });
+            }
+            return [];
+        });
+
+        uiManager.updateInfoPanel();
+
+        const rowStitchesEl = document.querySelector('#info-row-stitches');
+        expect(rowStitchesEl).toBeTruthy();
+
+        // Should show "12 / 10 +2" with increase indicator
+        expect(rowStitchesEl.innerHTML).toContain('12 / 10');
+        expect(rowStitchesEl.innerHTML).toContain('+2');
+        expect(rowStitchesEl.innerHTML).toContain('increase');
+    });
+
+    it('displays equal indicator when row count matches previous', () => {
+        mockPattern.currentRow = 2;
+        mockPattern.hasFoundationChain = vi.fn(() => false);
+
+        // Row 1 has 10 stitches, row 2 has 10 stitches
+        mockPattern.graph.getRow.mockImplementation((row) => {
+            if (row === 1 || row === 2) {
+                return Array(10).fill({ type: 'sc', isTurningChain: false });
+            }
+            return [];
+        });
+
+        uiManager.updateInfoPanel();
+
+        const rowStitchesEl = document.querySelector('#info-row-stitches');
+        expect(rowStitchesEl.innerHTML).toContain('10 / 10');
+        expect(rowStitchesEl.innerHTML).toContain('=');
+        expect(rowStitchesEl.innerHTML).toContain('equal');
+    });
+
+    it('displays decrease indicator when row count is less than previous', () => {
+        mockPattern.currentRow = 1;
+        mockPattern.hasFoundationChain = vi.fn(() => true);
+
+        // Row 0 has 10 stitches, row 1 has 8 stitches
+        mockPattern.graph.getRow.mockImplementation((row) => {
+            if (row === 0) {
+                return Array(10).fill({ type: 'ch', isTurningChain: false });
+            }
+            if (row === 1) {
+                return Array(8).fill({ type: 'sc', isTurningChain: false });
+            }
+            return [];
+        });
+
+        uiManager.updateInfoPanel();
+
+        const rowStitchesEl = document.querySelector('#info-row-stitches');
+        expect(rowStitchesEl.innerHTML).toContain('8 / 10');
+        expect(rowStitchesEl.innerHTML).toContain('-2');
+        expect(rowStitchesEl.innerHTML).toContain('decrease');
+    });
 });
