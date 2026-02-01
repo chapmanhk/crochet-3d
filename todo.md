@@ -119,11 +119,12 @@ and attachment/interaction. Each task appears once.
   - **WCAG:** Level A violation
   - **Fix:** Add pattern/shape differentiation (e.g., different geometries) or text labels on hover/focus. Add `aria-label` describing the attachment type.
   - **Status:** Fixed - Implemented different geometries for attachment types: Cone for new row indicators, Torus ring for chain spaces, and Sphere for regular stitches. Added descriptive aria labels to mesh userData. Commit f041b3e.
-- [ ] **Bug: No keyboard navigation between panels**
+- [x] **Bug: No keyboard navigation between panels**
   - **Location:** UIManager.js
   - **Symptoms:** Tab key doesn't move focus through UI panels. Panels not in tab order.
   - **WCAG:** Level A violation
   - **Fix:** Add `tabindex="0"` to panels, implement logical tab order, add skip-to-content link for canvas.
+  - **Status:** Fixed - All panels now have tabindex="0" for keyboard navigation (UIManager.js:649, 699, 726, 785, 1055, 1094). Added focus-visible styles for panels (UIManager.js:102-105). Implemented skip-to-content link in index.html with accessibility styles in styles.css. Added id="main-canvas" to main element in SceneManager.js. Added comprehensive tests for keyboard navigation in UIManager.test.js.
 - [x] **Bug: Modal doesn't trap focus**
   - **Location:** Modal.js:181-232
   - **Symptoms:** Focus can escape modal dialog with Tab key. No auto-focus on first button. Focus not restored when modal closes.

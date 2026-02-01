@@ -99,6 +99,11 @@ export class UIManager {
                 z-index: 100;
             }
 
+            .crochet-panel:focus-visible {
+                outline: 3px solid #2196F3;
+                outline-offset: 2px;
+            }
+
             .crochet-panel h3 {
                 margin: 0 0 10px 0;
                 font-size: 14px;
@@ -646,6 +651,7 @@ export class UIManager {
         this.stitchPalette.className = 'crochet-panel stitch-palette';
         this.stitchPalette.setAttribute('role', 'region');
         this.stitchPalette.setAttribute('aria-label', 'Stitch palette');
+        this.stitchPalette.setAttribute('tabindex', '0');
         this.stitchPalette.innerHTML = `
             <h3>Stitches</h3>
             <nav class="stitch-grid" role="toolbar" aria-label="Stitch selection"></nav>
@@ -695,6 +701,7 @@ export class UIManager {
         this.templatesPanel.className = 'crochet-panel templates-panel';
         this.templatesPanel.setAttribute('role', 'region');
         this.templatesPanel.setAttribute('aria-label', 'Pattern templates');
+        this.templatesPanel.setAttribute('tabindex', '0');
         this.templatesPanel.innerHTML = `
             <h3>Templates</h3>
             <button class="template-btn" data-template="granny" aria-label="Create a granny square pattern">Granny Square</button>
@@ -721,6 +728,7 @@ export class UIManager {
         this.toolbar.className = 'crochet-panel crochet-toolbar';
         this.toolbar.setAttribute('role', 'toolbar');
         this.toolbar.setAttribute('aria-label', 'Pattern editing toolbar');
+        this.toolbar.setAttribute('tabindex', '0');
         this.toolbar.innerHTML = `
             <button class="toolbar-btn" id="btn-undo" title="Undo (Ctrl+Z)" aria-label="Undo last action, keyboard shortcut: Control+Z">Undo</button>
             <button class="toolbar-btn" id="btn-redo" title="Redo (Ctrl+Y)" aria-label="Redo last undone action, keyboard shortcut: Control+Y">Redo</button>
@@ -779,6 +787,7 @@ export class UIManager {
         this.infoPanel.className = 'crochet-panel info-panel';
         this.infoPanel.setAttribute('role', 'region');
         this.infoPanel.setAttribute('aria-label', 'Pattern information and controls');
+        this.infoPanel.setAttribute('tabindex', '0');
         this.infoPanel.innerHTML = `
             <h3>Pattern Info</h3>
             <div class="info-row">
@@ -1048,6 +1057,7 @@ export class UIManager {
         this.viewModeSelector.className = 'crochet-panel view-mode-selector';
         this.viewModeSelector.setAttribute('role', 'toolbar');
         this.viewModeSelector.setAttribute('aria-label', 'View mode selector');
+        this.viewModeSelector.setAttribute('tabindex', '0');
 
         const viewModes = [
             { id: 'perspective', label: '3D', shortcut: '1' },
@@ -1086,6 +1096,7 @@ export class UIManager {
         this.rowNavigation.className = 'crochet-panel row-navigation';
         this.rowNavigation.setAttribute('role', 'region');
         this.rowNavigation.setAttribute('aria-label', 'Row navigation');
+        this.rowNavigation.setAttribute('tabindex', '0');
 
         const stats = this.pattern.graph.getStats();
 
