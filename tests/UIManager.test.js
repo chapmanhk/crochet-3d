@@ -1152,4 +1152,232 @@ describe('UIManager - Keyboard Navigation & Accessibility', () => {
             expect(shortcutStyleMatch).toBeNull();
         });
     });
+
+    describe('Responsive Design & Mobile Support', () => {
+        it('should include responsive media queries in styles', () => {
+            const style = document.querySelector('style');
+            const styleContent = style.textContent;
+
+            // Check for tablet breakpoint
+            expect(styleContent).toContain('@media (max-width: 1024px)');
+
+            // Check for mobile breakpoint
+            expect(styleContent).toContain('@media (max-width: 640px)');
+
+            // Check for landscape orientation handling
+            expect(styleContent).toContain('@media (max-width: 900px) and (orientation: landscape)');
+        });
+
+        it('should create panel toggle buttons', () => {
+            expect(uiManager.panelToggles).toBeInstanceOf(Map);
+            expect(uiManager.panelToggles.size).toBe(5); // 5 panels: stitches, info, templates, view-mode, row-nav
+        });
+
+        it('should create toggle buttons with correct classes', () => {
+            const toggles = document.querySelectorAll('.panel-toggle');
+            expect(toggles.length).toBe(5);
+
+            // Check for specific toggle button classes
+            expect(document.querySelector('.panel-toggle.stitches')).toBeTruthy();
+            expect(document.querySelector('.panel-toggle.info')).toBeTruthy();
+            expect(document.querySelector('.panel-toggle.templates')).toBeTruthy();
+            expect(document.querySelector('.panel-toggle.view-mode')).toBeTruthy();
+            expect(document.querySelector('.panel-toggle.row-nav')).toBeTruthy();
+        });
+
+        it('should have proper ARIA attributes on toggle buttons', () => {
+            const toggles = document.querySelectorAll('.panel-toggle');
+
+            toggles.forEach(toggle => {
+                expect(toggle.getAttribute('aria-label')).toContain('Toggle');
+                expect(toggle.getAttribute('aria-expanded')).not.toBeNull();
+                expect(toggle.getAttribute('aria-controls')).not.toBeNull();
+            });
+        });
+
+        it('should apply minimum touch target sizes for mobile in CSS', () => {
+            const style = document.querySelector('style');
+            const styleContent = style.textContent;
+
+            // Check for 44x44px touch targets
+            expect(styleContent).toContain('min-height: 44px');
+            expect(styleContent).toContain('min-width: 44px');
+        });
+
+        it('should define panel-toggle styles', () => {
+            const style = document.querySelector('style');
+            const styleContent = style.textContent;
+
+            expect(styleContent).toContain('.panel-toggle {');
+            expect(styleContent).toContain('.panel-toggle:hover');
+            expect(styleContent).toContain('.panel-toggle.active');
+        });
+
+        it('should adjust panel widths for tablet breakpoint', () => {
+            const style = document.querySelector('style');
+            const styleContent = style.textContent;
+
+            // Check that tablet breakpoint reduces panel widths
+            const tabletMediaQuery = styleContent.match(/@media \(max-width: 1024px\) \{([^}]*\})*[^}]*\}/s);
+            expect(tabletMediaQuery).toBeTruthy();
+
+            // Within tablet breakpoint, check for reduced widths
+            const tabletContent = tabletMediaQuery ? tabletMediaQuery[0] : '';
+            expect(tabletContent).toContain('width: 150px'); // stitch palette
+            expect(tabletContent).toContain('width: 170px'); // info panel
+        });
+
+        it('should make panels responsive with auto width on mobile', () => {
+            const style = document.querySelector('style');
+            const styleContent = style.textContent;
+
+            const mobileMediaQuery = styleContent.match(/@media \(max-width: 640px\) \{([^}]*\})*[^}]*\}/s);
+            expect(mobileMediaQuery).toBeTruthy();
+
+            // Check for auto width and max-width on mobile
+            const mobileContent = mobileMediaQuery ? mobileMediaQuery[0] : '';
+            expect(mobileContent).toContain('width: auto');
+            expect(mobileContent).toContain('max-width: 320px');
+        });
+
+        it('should reduce stitch grid columns for tablet', () => {
+            const style = document.querySelector('style');
+            const styleContent = style.textContent;
+
+            const tabletMediaQuery = styleContent.match(/@media \(max-width: 1024px\) \{([^}]*\})*[^}]*\}/s);
+            const tabletContent = tabletMediaQuery ? tabletMediaQuery[0] : '';
+
+            // Tablet should use 2 columns instead of 3
+            expect(tabletContent).toContain('grid-template-columns: repeat(2, 1fr)');
+        });
+
+        it('should maintain 3 columns on mobile for better spacing', () => {
+            const style = document.querySelector('style');
+            const styleContent = style.textContent;
+
+            const mobileMediaQuery = styleContent.match(/@media \(max-width: 640px\) \{([^}]*\})*[^}]*\}/s);
+            const mobileContent = mobileMediaQuery ? mobileMediaQuery[0] : '';
+
+            // Mobile keeps 3 columns for stitches
+            expect(mobileContent).toContain('grid-template-columns: repeat(3, 1fr)');
+        });
+
+        it('should include collapsed class styling', () => {
+            const style = document.querySelector('style');
+            const styleContent = style.textContent;
+
+            expect(styleContent).toContain('.crochet-panel.collapsed');
+            expect(styleContent).toContain('display: none');
+        });
+
+        it('should add max-height to panels for scrolling on mobile', () => {
+            const style = document.querySelector('style');
+            const styleContent = style.textContent;
+
+            const mobileMediaQuery = styleContent.match(/@media \(max-width: 640px\) \{([^}]*\})*[^}]*\}/s);
+            const mobileContent = mobileMediaQuery ? mobileMediaQuery[0] : '';
+
+            expect(mobileContent).toContain('max-height: 60vh');
+            expect(mobileContent).toContain('overflow-y: auto');
+        });
+
+        it('should make toolbar wrap on mobile', () => {
+            const style = document.querySelector('style');
+            const styleContent = style.textContent;
+
+            const mobileMediaQuery = styleContent.match(/@media \(max-width: 640px\) \{([^}]*\})*[^}]*\}/s);
+            const mobileContent = mobileMediaQuery ? mobileMediaQuery[0] : '';
+
+            expect(mobileContent).toContain('flex-wrap: wrap');
+        });
+
+        it('should reduce font sizes for mobile', () => {
+            const style = document.querySelector('style');
+            const styleContent = style.textContent;
+
+            const mobileMediaQuery = styleContent.match(/@media \(max-width: 640px\) \{([^}]*\})*[^}]*\}/s);
+            const mobileContent = mobileMediaQuery ? mobileMediaQuery[0] : '';
+
+            // Check for smaller font sizes
+            expect(mobileContent).toContain('font-size: 12px');
+            expect(mobileContent).toContain('font-size: 11px');
+            expect(mobileContent).toContain('font-size: 10px');
+            expect(mobileContent).toContain('font-size: 9px');
+        });
+
+        it('should handle landscape orientation', () => {
+            const style = document.querySelector('style');
+            const styleContent = style.textContent;
+
+            const landscapeMediaQuery = styleContent.match(/@media \(max-width: 900px\) and \(orientation: landscape\) \{([^}]*\})*[^}]*\}/s);
+            expect(landscapeMediaQuery).toBeTruthy();
+
+            const landscapeContent = landscapeMediaQuery ? landscapeMediaQuery[0] : '';
+            expect(landscapeContent).toContain('max-height: 50vh');
+            expect(landscapeContent).toContain('max-height: 40vh');
+        });
+
+        it('should have togglePanel method', () => {
+            expect(typeof uiManager.togglePanel).toBe('function');
+        });
+
+        it('should have handleResponsiveLayout method', () => {
+            expect(typeof uiManager.handleResponsiveLayout).toBe('function');
+        });
+
+        it('should toggle panel visibility when toggle button is clicked', () => {
+            const stitchesToggle = document.querySelector('.panel-toggle.stitches');
+            const stitchPalette = uiManager.stitchPalette;
+
+            // Initially collapsed on mobile (if window is small enough)
+            // For testing, we'll just verify the toggle mechanism works
+            const initialState = stitchPalette.classList.contains('collapsed');
+
+            stitchesToggle.click();
+
+            expect(stitchPalette.classList.contains('collapsed')).toBe(!initialState);
+        });
+
+        it('should update aria-expanded when toggling panels', () => {
+            const infoToggle = document.querySelector('.panel-toggle.info');
+            const infoPanel = uiManager.infoPanel;
+
+            const initialExpanded = infoToggle.getAttribute('aria-expanded');
+            const initialCollapsed = infoPanel.classList.contains('collapsed');
+
+            infoToggle.click();
+
+            const newExpanded = infoToggle.getAttribute('aria-expanded');
+            const newCollapsed = infoPanel.classList.contains('collapsed');
+
+            // Either the panel state changed, or aria-expanded reflects the new state correctly
+            expect(newCollapsed).toBe(!initialCollapsed);
+            expect(newExpanded).toBe(newCollapsed ? 'false' : 'true');
+        });
+
+        it('should add active class to toggle button when panel is shown', () => {
+            const templatesToggle = document.querySelector('.panel-toggle.templates');
+            const templatesPanel = uiManager.templatesPanel;
+
+            // Get initial state
+            const initialCollapsed = templatesPanel.classList.contains('collapsed');
+
+            // Click to toggle
+            templatesToggle.click();
+
+            const newCollapsed = templatesPanel.classList.contains('collapsed');
+            const newActive = templatesToggle.classList.contains('active');
+
+            // Verify panel state changed
+            expect(newCollapsed).toBe(!initialCollapsed);
+
+            // When panel is shown (not collapsed), active class should be true
+            // When panel is hidden (collapsed), active class should be false
+            if (!newCollapsed) {
+                expect(newActive).toBe(true);
+            } else {
+                expect(newActive).toBe(false);
+            }
+        });
+    });
 });
