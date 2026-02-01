@@ -1037,3 +1037,77 @@ describe('UIManager - Row Count Warnings', () => {
         expect(rowStitchesEl.innerHTML).toContain('decrease');
     });
 });
+
+describe('UIManager - Keyboard Navigation & Accessibility', () => {
+    let UIManager;
+    let uiManager;
+    let mockPattern;
+    let mockSceneManager;
+
+    beforeEach(async () => {
+        EventBus.clear();
+        document.body.innerHTML = '';
+
+        mockPattern = new MockPattern();
+        mockSceneManager = new MockSceneManager();
+
+        const module = await import('../src/ui/UIManager.js');
+        UIManager = module.UIManager;
+        uiManager = new UIManager(mockPattern, mockSceneManager);
+    });
+
+    afterEach(() => {
+        if (uiManager && uiManager.dispose) {
+            uiManager.dispose();
+        }
+        document.body.innerHTML = '';
+    });
+
+    describe('Panel Keyboard Navigation', () => {
+        it('should add tabindex="0" to stitch palette panel', () => {
+            const panel = document.querySelector('.stitch-palette');
+            expect(panel).not.toBeNull();
+            expect(panel.getAttribute('tabindex')).toBe('0');
+        });
+
+        it('should add tabindex="0" to templates panel', () => {
+            const panel = document.querySelector('.templates-panel');
+            expect(panel).not.toBeNull();
+            expect(panel.getAttribute('tabindex')).toBe('0');
+        });
+
+        it('should add tabindex="0" to toolbar', () => {
+            const panel = document.querySelector('.crochet-toolbar');
+            expect(panel).not.toBeNull();
+            expect(panel.getAttribute('tabindex')).toBe('0');
+        });
+
+        it('should add tabindex="0" to info panel', () => {
+            const panel = document.querySelector('.info-panel');
+            expect(panel).not.toBeNull();
+            expect(panel.getAttribute('tabindex')).toBe('0');
+        });
+
+        it('should add tabindex="0" to view mode selector', () => {
+            const panel = document.querySelector('.view-mode-selector');
+            expect(panel).not.toBeNull();
+            expect(panel.getAttribute('tabindex')).toBe('0');
+        });
+
+        it('should add tabindex="0" to row navigation panel', () => {
+            const panel = document.querySelector('.row-navigation');
+            expect(panel).not.toBeNull();
+            expect(panel.getAttribute('tabindex')).toBe('0');
+        });
+
+        it('should have proper ARIA attributes on all panels', () => {
+            const panels = document.querySelectorAll('.crochet-panel');
+            expect(panels.length).toBeGreaterThan(0);
+
+            panels.forEach(panel => {
+                expect(panel.getAttribute('aria-label')).not.toBeNull();
+                expect(panel.getAttribute('role')).not.toBeNull();
+            });
+        });
+    });
+});

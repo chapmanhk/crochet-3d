@@ -105,6 +105,7 @@ export class SceneManager {
 
         // Wrap canvas in semantic <main> element
         const mainElement = document.createElement('main');
+        mainElement.setAttribute('id', 'main-canvas');
         mainElement.setAttribute('role', 'main');
         mainElement.setAttribute('aria-label', '3D crochet pattern visualization');
         mainElement.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;';
