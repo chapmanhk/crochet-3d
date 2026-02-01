@@ -74,9 +74,10 @@ and attachment/interaction. Each task appears once.
 
 ### Selection & color
 
-- [ ] **Bug: Color changes apply only to future stitches**
+- [x] **Bug: Color changes apply only to future stitches**
   - **Symptoms:** Selecting stitches doesn't allow recolor.
   - **Fix:** Add "Apply color to selection" action in the info panel.
+  - **Status:** Fixed - "Apply color to selection" button added to info panel (UIManager.js:795). The applyColorToSelection() method updates selected stitch colors and emits STITCH_COLOR_CHANGED event (UIManager.js:1391-1402). StitchRenderer listens for the event and updates mesh colors (StitchRenderer.js:97-102).
 - [x] **Bug: Selection persists across pattern loads**
   - **Symptoms:** Selected nodes from a previous pattern remain in
     `RaycastManager.selectedNodes`, and Delete attempts remove stale nodes.
