@@ -232,6 +232,25 @@ export class UIManager {
                 color: #333;
             }
 
+            .stitch-count-indicator {
+                display: inline-block;
+                margin-left: 4px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+
+            .stitch-count-indicator.equal {
+                color: #4CAF50;
+            }
+
+            .stitch-count-indicator.increase {
+                color: #2196F3;
+            }
+
+            .stitch-count-indicator.decrease {
+                color: #FF9800;
+            }
+
             /* Selection info */
             .selection-info {
                 margin-top: 12px;
@@ -1964,12 +1983,30 @@ export class UIManager {
         const rowStitchesEl = this.infoPanel.querySelector('#info-row-stitches');
         if (rowStitchesEl) {
             if (!hasPattern) {
-                rowStitchesEl.textContent = '-';
+                rowStitchesEl.innerHTML = '-';
             } else {
                 const counts = this.getRowStitchCounts();
-                rowStitchesEl.textContent = counts.hasPrevious
-                    ? `${counts.currentCount} (prev ${counts.previousCount})`
-                    : String(counts.currentCount);
+                if (counts.hasPrevious) {
+                    // Calculate the difference
+                    const diff = counts.currentCount - counts.previousCount;
+                    let indicator = '';
+                    let indicatorClass = '';
+
+                    if (diff === 0) {
+                        indicator = '=';
+                        indicatorClass = 'equal';
+                    } else if (diff > 0) {
+                        indicator = `+${diff}`;
+                        indicatorClass = 'increase';
+                    } else {
+                        indicator = `${diff}`;
+                        indicatorClass = 'decrease';
+                    }
+
+                    rowStitchesEl.innerHTML = `${counts.currentCount} / ${counts.previousCount} <span class="stitch-count-indicator ${indicatorClass}">${indicator}</span>`;
+                } else {
+                    rowStitchesEl.innerHTML = String(counts.currentCount);
+                }
             }
         }
 

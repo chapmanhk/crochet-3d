@@ -74,9 +74,10 @@ and attachment/interaction. Each task appears once.
 
 ### Selection & color
 
-- [ ] **Bug: Color changes apply only to future stitches**
+- [x] **Bug: Color changes apply only to future stitches**
   - **Symptoms:** Selecting stitches doesn't allow recolor.
   - **Fix:** Add "Apply color to selection" action in the info panel.
+  - **Status:** Fixed - "Apply color to selection" button added to info panel (UIManager.js:795). The applyColorToSelection() method updates selected stitch colors and emits STITCH_COLOR_CHANGED event (UIManager.js:1391-1402). StitchRenderer listens for the event and updates mesh colors (StitchRenderer.js:97-102).
 - [x] **Bug: Selection persists across pattern loads**
   - **Symptoms:** Selected nodes from a previous pattern remain in
     `RaycastManager.selectedNodes`, and Delete attempts remove stale nodes.
@@ -90,9 +91,10 @@ and attachment/interaction. Each task appears once.
   - Similar to the existing ShapingGuide, add specific guidance for closing
     circular patterns (decrease evenly, close with drawstring, etc.).
   - **Status:** Fixed - Crown Shaping Guide button added with full implementation using getCrownShapingGuide() (UIManager.js:867-868, 1014-1019, 1784-1809).
-- [ ] **Enhancement: Show stitch count per row in real-time**
+- [x] **Enhancement: Show stitch count per row in real-time**
   - While working a row, display running stitch count vs. previous row count
     to help crocheters track increases/decreases.
+  - **Status:** Fixed - Enhanced stitch count display shows "current / previous" format with color-coded visual indicators (UIManager.js:1983-2011). Green "=" for equal counts, blue "+N" for increases, orange "-N" for decreases. Updates in real-time on STITCH_ADDED events. Added comprehensive tests for all three cases.
 - [ ] **Enhancement: Warn when row stitch count differs from previous row**
   - If a row ends with more/fewer stitches than previous (unintentional shaping),
     show a warning before starting the next row.
