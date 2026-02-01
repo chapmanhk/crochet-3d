@@ -68,6 +68,7 @@ export class UIManager {
         this.createInfoPanel();
         this.createViewModeSelector();
         this.createRowNavigation();
+        this.createPanelToggles();
         this.setupEventListeners();
     }
 
@@ -630,6 +631,270 @@ export class UIManager {
                 outline: 2px solid #2196F3;
                 outline-offset: 2px;
             }
+
+            /* Panel toggle button for mobile */
+            .panel-toggle {
+                display: none;
+                position: fixed;
+                padding: 8px 12px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background: #fff;
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: 600;
+                transition: all 0.15s ease;
+                z-index: 999;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            }
+
+            .panel-toggle:hover {
+                background: #f0f0f0;
+            }
+
+            .panel-toggle:focus-visible {
+                outline: 2px solid #2196F3;
+                outline-offset: 2px;
+            }
+
+            .panel-toggle.active {
+                background: #2196F3;
+                color: white;
+                border-color: #1976D2;
+            }
+
+            /* Responsive: Tablet (max-width: 1024px) */
+            @media (max-width: 1024px) {
+                /* Reduce panel widths */
+                .stitch-palette {
+                    width: 150px;
+                    left: 12px;
+                    top: 12px;
+                }
+
+                .info-panel {
+                    width: 170px;
+                    right: 12px;
+                    top: 12px;
+                }
+
+                .templates-panel {
+                    width: 150px;
+                    left: 12px;
+                    bottom: 120px;
+                }
+
+                .row-navigation {
+                    min-width: 140px;
+                    right: 12px;
+                    bottom: 12px;
+                }
+
+                .view-mode-selector {
+                    left: 12px;
+                    bottom: 60px;
+                }
+
+                .crochet-toolbar {
+                    padding: 6px 10px;
+                    gap: 6px;
+                    top: 12px;
+                }
+
+                .toolbar-btn {
+                    padding: 6px 12px;
+                    font-size: 12px;
+                }
+
+                /* Reduce grid to 2 columns */
+                .stitch-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 4px;
+                }
+
+                .stitch-btn {
+                    padding: 6px 4px;
+                }
+
+                /* Smaller fonts */
+                .crochet-panel h3 {
+                    font-size: 13px;
+                }
+
+                .info-row {
+                    font-size: 11px;
+                }
+            }
+
+            /* Responsive: Mobile (max-width: 640px) */
+            @media (max-width: 640px) {
+                /* Show panel toggle buttons */
+                .panel-toggle {
+                    display: block;
+                }
+
+                .panel-toggle.stitches {
+                    top: 8px;
+                    left: 8px;
+                }
+
+                .panel-toggle.info {
+                    top: 8px;
+                    right: 8px;
+                }
+
+                .panel-toggle.templates {
+                    bottom: 100px;
+                    left: 8px;
+                }
+
+                .panel-toggle.view-mode {
+                    bottom: 60px;
+                    left: 8px;
+                }
+
+                .panel-toggle.row-nav {
+                    bottom: 8px;
+                    right: 8px;
+                }
+
+                /* Hide panels by default on mobile */
+                .crochet-panel {
+                    transition: opacity 0.2s ease, transform 0.2s ease;
+                    max-height: 60vh;
+                    overflow-y: auto;
+                }
+
+                .crochet-panel.collapsed {
+                    display: none;
+                }
+
+                /* Reposition panels for mobile */
+                .stitch-palette {
+                    top: 48px;
+                    left: 8px;
+                    right: 8px;
+                    width: auto;
+                    max-width: 320px;
+                }
+
+                .info-panel {
+                    top: 48px;
+                    right: 8px;
+                    left: 8px;
+                    width: auto;
+                    max-width: 320px;
+                }
+
+                .templates-panel {
+                    bottom: 140px;
+                    left: 8px;
+                    right: 8px;
+                    width: auto;
+                    max-width: 320px;
+                }
+
+                .view-mode-selector {
+                    bottom: 100px;
+                    left: 8px;
+                    right: 8px;
+                    width: auto;
+                    max-width: 320px;
+                    justify-content: center;
+                }
+
+                .row-navigation {
+                    bottom: 48px;
+                    right: 8px;
+                    left: 8px;
+                    width: auto;
+                    max-width: 320px;
+                    margin: 0 auto;
+                }
+
+                /* Make toolbar wrap */
+                .crochet-toolbar {
+                    top: 8px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    flex-wrap: wrap;
+                    padding: 4px 8px;
+                    gap: 4px;
+                    max-width: calc(100% - 100px);
+                }
+
+                .toolbar-btn {
+                    padding: 6px 10px;
+                    font-size: 11px;
+                    white-space: nowrap;
+                }
+
+                /* Single column grid for stitches */
+                .stitch-grid {
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 6px;
+                }
+
+                /* Minimum touch target size (44x44px) */
+                .stitch-btn {
+                    min-height: 44px;
+                    min-width: 44px;
+                    padding: 4px;
+                }
+
+                .toolbar-btn {
+                    min-height: 36px;
+                }
+
+                .row-nav-btn,
+                .view-mode-btn,
+                .template-btn,
+                .info-action-btn {
+                    min-height: 44px;
+                    padding: 8px 12px;
+                }
+
+                /* Smaller text for mobile */
+                .crochet-panel h3 {
+                    font-size: 12px;
+                }
+
+                .info-row {
+                    font-size: 10px;
+                }
+
+                .stitch-btn .abbr {
+                    font-size: 12px;
+                }
+
+                .stitch-btn .key {
+                    font-size: 9px;
+                }
+            }
+
+            /* Landscape mobile orientation */
+            @media (max-width: 900px) and (orientation: landscape) {
+                /* Stack panels horizontally in landscape */
+                .stitch-palette,
+                .info-panel,
+                .templates-panel {
+                    max-height: 50vh;
+                }
+
+                .row-navigation {
+                    max-height: 40vh;
+                }
+
+                /* More compact panels */
+                .crochet-panel {
+                    padding: 8px;
+                }
+
+                .crochet-panel h3 {
+                    font-size: 11px;
+                    margin-bottom: 6px;
+                }
+            }
         `;
         document.head.appendChild(style);
     }
@@ -1142,6 +1407,109 @@ export class UIManager {
 
         this.container.appendChild(this.rowNavigation);
         this.updateRowNavigation();
+    }
+
+    /**
+     * Create panel toggle buttons for mobile
+     */
+    createPanelToggles() {
+        this.panelToggles = new Map();
+
+        // Define panels to toggle (only panels, not the toolbar)
+        const panels = [
+            { element: this.stitchPalette, label: 'Stitches', className: 'stitches' },
+            { element: this.infoPanel, label: 'Info', className: 'info' },
+            { element: this.templatesPanel, label: 'Templates', className: 'templates' },
+            { element: this.viewModeSelector, label: 'View', className: 'view-mode' },
+            { element: this.rowNavigation, label: 'Rows', className: 'row-nav' }
+        ];
+
+        panels.forEach(({ element, label, className }) => {
+            const toggle = document.createElement('button');
+            toggle.className = `panel-toggle ${className}`;
+            toggle.textContent = label;
+            toggle.setAttribute('aria-label', `Toggle ${label} panel`);
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.setAttribute('aria-controls', element.className);
+
+            // Add collapsed class to panels by default on mobile
+            // This will be handled by CSS media queries
+            if (window.matchMedia && window.matchMedia('(max-width: 640px)').matches) {
+                element.classList.add('collapsed');
+            }
+
+            toggle.addEventListener('click', () => {
+                this.togglePanel(element, toggle);
+            });
+
+            this.container.appendChild(toggle);
+            this.panelToggles.set(element, toggle);
+        });
+
+        // Handle window resize to show/hide toggle buttons
+        this.handleResponsiveLayout();
+        window.addEventListener('resize', () => this.handleResponsiveLayout());
+    }
+
+    /**
+     * Toggle panel visibility on mobile
+     */
+    togglePanel(panel, toggle) {
+        const isCollapsed = panel.classList.contains('collapsed');
+
+        // Close all other panels on mobile
+        if (window.matchMedia && window.matchMedia('(max-width: 640px)').matches && isCollapsed) {
+            this.panelToggles.forEach((otherToggle, otherPanel) => {
+                if (otherPanel !== panel && !otherPanel.classList.contains('collapsed')) {
+                    otherPanel.classList.add('collapsed');
+                    otherToggle.classList.remove('active');
+                    otherToggle.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+
+        // Toggle the clicked panel
+        panel.classList.toggle('collapsed');
+
+        // Set active class based on new state (active when NOT collapsed)
+        const newCollapsed = panel.classList.contains('collapsed');
+        if (newCollapsed) {
+            toggle.classList.remove('active');
+        } else {
+            toggle.classList.add('active');
+        }
+
+        toggle.setAttribute('aria-expanded', newCollapsed ? 'false' : 'true');
+    }
+
+    /**
+     * Handle responsive layout changes
+     */
+    handleResponsiveLayout() {
+        // Check if matchMedia is available (not available in some test environments)
+        if (!window.matchMedia) {
+            return;
+        }
+
+        const isMobile = window.matchMedia('(max-width: 640px)').matches;
+
+        if (isMobile) {
+            // On mobile, collapse all panels by default
+            this.panelToggles.forEach((toggle, panel) => {
+                if (!panel.classList.contains('collapsed')) {
+                    panel.classList.add('collapsed');
+                    toggle.classList.remove('active');
+                    toggle.setAttribute('aria-expanded', 'false');
+                }
+            });
+        } else {
+            // On desktop/tablet, show all panels
+            this.panelToggles.forEach((toggle, panel) => {
+                panel.classList.remove('collapsed');
+                toggle.classList.remove('active');
+                toggle.setAttribute('aria-expanded', 'true');
+            });
+        }
     }
 
     /**
