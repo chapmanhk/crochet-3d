@@ -243,12 +243,12 @@ export class PhysicsPanel {
 
             .slider-group span {
                 font-size: 12px;
-                color: #999;
+                color: #757575;
             }
 
             .physics-stats {
                 font-size: 11px;
-                color: #999;
+                color: #757575;
                 text-align: center;
                 padding-top: 8px;
                 border-top: 1px solid #eee;

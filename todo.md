@@ -150,11 +150,12 @@ and attachment/interaction. Each task appears once.
   - **WCAG:** Level A violation
   - **Fix:** Add `role="img"` and `aria-label` to canvas describing current pattern state. Update label when pattern changes. Add detailed text description in info panel.
   - **Status:** Partially Fixed - Canvas now has `role="img"` and `aria-label="3D crochet pattern canvas"`. Main element wrapper added with aria-label. Commit 000d855. Dynamic label updates could be added as enhancement.
-- [ ] **Bug: Low contrast on some UI elements**
-  - **Location:** UIManager.js inline styles
+- [x] **Bug: Low contrast on some UI elements**
+  - **Location:** UIManager.js inline styles, PhysicsPanel.js inline styles
   - **Symptoms:** Some text on light backgrounds lacks sufficient contrast (e.g., hints, secondary text).
   - **WCAG:** Level AA violation
   - **Fix:** Audit all text colors against backgrounds. Ensure 4.5:1 contrast ratio for normal text, 3:1 for large text. Use contrast checker tool.
+  - **Status:** Fixed - Updated 5 low-contrast elements to meet WCAG AA standards. Changed `.stitch-btn .key`, `.option-hint`, and `.view-mode-btn .shortcut` from #888 (3.54:1) to #666 (5.74:1) in UIManager.js. Changed `.slider-group span` and `.physics-stats` from #999 (2.85:1) to #757575 (4.54:1) in PhysicsPanel.js. Added comprehensive tests for contrast compliance in UIManager.test.js and PhysicsPanel.test.js.
 
 ### Responsive Design & Mobile Support (CRITICAL)
 
