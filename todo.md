@@ -95,9 +95,10 @@ and attachment/interaction. Each task appears once.
   - While working a row, display running stitch count vs. previous row count
     to help crocheters track increases/decreases.
   - **Status:** Fixed - Enhanced stitch count display shows "current / previous" format with color-coded visual indicators (UIManager.js:1983-2011). Green "=" for equal counts, blue "+N" for increases, orange "-N" for decreases. Updates in real-time on STITCH_ADDED events. Added comprehensive tests for all three cases.
-- [ ] **Enhancement: Warn when row stitch count differs from previous row**
+- [x] **Enhancement: Warn when row stitch count differs from previous row**
   - If a row ends with more/fewer stitches than previous (unintentional shaping),
     show a warning before starting the next row.
+  - **Status:** Fixed - `confirmRowCountMismatch()` method added to both UIManager (UIManager.js:1767) and AttachmentPointManager (AttachmentPointManager.js:524). Warns user when row stitch count differs from previous row, unless the difference is due to explicit shaping (increases, decreases, skips). Comprehensive tests added to AttachmentPointManager.test.js covering warning scenarios, user confirmation/cancellation, matching counts, and explicit shaping cases.
 
 ### Accessibility (CRITICAL - WCAG Compliance)
 

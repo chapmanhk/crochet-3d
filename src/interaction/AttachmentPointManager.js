@@ -3,7 +3,7 @@ import { StitchType, getStitchDefinition } from '../core/StitchTypes.js';
 import { StitchValidator } from '../core/StitchValidator.js';
 import { EventBus, Events, EventSubscriptions } from '../utils/EventBus.js';
 import { AttachmentConstants } from '../utils/Constants.js';
-import { showAlert } from '../ui/Modal.js';
+import { showAlert, showConfirm } from '../ui/Modal.js';
 
 /**
  * AttachmentPointManager - Manages clickable attachment points for adding stitches
@@ -518,6 +518,67 @@ export class AttachmentPointManager {
     }
 
     /**
+     * Warn if row stitch count differs from previous row (unintentional shaping)
+     * @returns {Promise<boolean>} - True if user confirms or no warning needed
+     */
+    async confirmRowCountMismatch() {
+        const currentRow = this.pattern.currentRow;
+        if (currentRow <= 0) {
+            return true;
+        }
+
+        // Check if foundation exists
+        const hasFoundation = typeof this.pattern.hasFoundationChain === 'function'
+            ? this.pattern.hasFoundationChain()
+            : false;
+
+        // Don't warn when going from foundation to row 1
+        if (hasFoundation && currentRow === 1) {
+            return true;
+        }
+
+        // Get stitch counts for current and previous rows
+        const currentCount = this.pattern.getEffectiveRowStitchCount(currentRow);
+        const previousCount = this.pattern.getEffectiveRowStitchCount(currentRow - 1);
+
+        // No warning if counts match or either is 0
+        if (currentCount === 0 || previousCount === 0 || currentCount === previousCount) {
+            return true;
+        }
+
+        // Check if the row has explicit shaping (increases, decreases, skips)
+        const currentRowStitches = this.pattern.graph.getRow(currentRow) || [];
+        const hasExplicitShaping = currentRowStitches.some(stitch => {
+            if (!stitch) return false;
+            if (stitch.isIncrease || stitch.isDecrease) return true;
+            if ((stitch.skippedStitches?.length || 0) > 0) return true;
+            const connectionsOut = stitch.effectiveConnections?.connectionsOut ?? 1;
+            const connectionsIn = stitch.effectiveConnections?.connectionsIn ?? 1;
+            return connectionsOut > 1 || connectionsIn > 1;
+        });
+
+        // If there's explicit shaping, no warning (intentional)
+        if (hasExplicitShaping) {
+            return true;
+        }
+
+        // Calculate display row labels
+        const getDisplayLabel = (row) => {
+            if (hasFoundation) {
+                return row === 0 ? 'Foundation Row' : `Row ${row}`;
+            }
+            return `Row ${row + 1}`;
+        };
+
+        const currentLabel = getDisplayLabel(currentRow);
+        const prevLabel = getDisplayLabel(currentRow - 1);
+        const message = `${currentLabel} has ${currentCount} stitches, but ${prevLabel} has ${previousCount}. ` +
+            'This may indicate an unintended increase/decrease. Start a new row anyway?';
+
+        return showConfirm(message, 'Row Count Warning');
+    }
+
+    /**
      * Handle click on attachment points
      */
     async onClick(event) {
@@ -525,6 +586,12 @@ export class AttachmentPointManager {
 
         // Handle new row indicator click
         if (this.hoveredPoint.userData.isNewRowIndicator) {
+            // Confirm if row count differs from previous row (may be unintentional)
+            const proceed = await this.confirmRowCountMismatch();
+            if (!proceed) {
+                return;
+            }
+
             // Start a new row, which will add turning chain and flip direction
             this.pattern.startNewRow({ stitchType: this.previewStitchType });
             // Update attachment points after starting new row
