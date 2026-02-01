@@ -8,10 +8,11 @@ import { EventBus, Events } from '../src/utils/EventBus.js';
 import { StitchType } from '../src/core/StitchTypes.js';
 import { StitchValidator } from '../src/core/StitchValidator.js';
 import { AttachmentConstants } from '../src/utils/Constants.js';
-import { showAlert } from '../src/ui/Modal.js';
+import { showAlert, showConfirm } from '../src/ui/Modal.js';
 
 vi.mock('../src/ui/Modal.js', () => ({
-    showAlert: vi.fn(() => Promise.resolve())
+    showAlert: vi.fn(() => Promise.resolve()),
+    showConfirm: vi.fn(() => Promise.resolve(true))
 }));
 
 describe('AttachmentPointManager', () => {
@@ -150,5 +151,130 @@ describe('AttachmentPointManager', () => {
         expect(showAlert).toHaveBeenCalledWith('Invalid stitch', 'Cannot Place Stitch');
         expect(pattern.addStitch).not.toHaveBeenCalled();
         validationSpy.mockRestore();
+    });
+
+    it('warns when row count differs before starting new row via new row indicator', async () => {
+        // Setup pattern with mismatched row counts
+        pattern.currentRow = 1;
+        pattern.hasFoundationChain = vi.fn(() => false);
+        pattern.getEffectiveRowStitchCount = vi.fn((row) => {
+            if (row === 1) return 5; // Current row has 5 stitches
+            if (row === 0) return 10; // Previous row has 10 stitches
+            return 0;
+        });
+        pattern.graph.getRow = vi.fn((row) => {
+            if (row === 1) {
+                return [
+                    { type: 'sc', isTurningChain: false },
+                    { type: 'sc', isTurningChain: false },
+                    { type: 'sc', isTurningChain: false },
+                    { type: 'sc', isTurningChain: false },
+                    { type: 'sc', isTurningChain: false }
+                ];
+            }
+            return [];
+        });
+
+        const mesh = {
+            userData: { isNewRowIndicator: true, isAttachmentPoint: true }
+        };
+        manager.hoveredPoint = mesh;
+
+        // Mock user declining the warning
+        showConfirm.mockResolvedValueOnce(false);
+
+        await manager.onClick();
+
+        // Should show confirmation and not start new row
+        expect(showConfirm).toHaveBeenCalledWith(
+            expect.stringContaining('Row 2 has 5 stitches, but Row 1 has 10'),
+            'Row Count Warning'
+        );
+        expect(pattern.startNewRow).not.toHaveBeenCalled();
+    });
+
+    it('starts new row when user confirms row count mismatch warning', async () => {
+        // Setup pattern with mismatched row counts
+        pattern.currentRow = 1;
+        pattern.hasFoundationChain = vi.fn(() => false);
+        pattern.getEffectiveRowStitchCount = vi.fn((row) => {
+            if (row === 1) return 5;
+            if (row === 0) return 10;
+            return 0;
+        });
+        pattern.graph.getRow = vi.fn((row) => {
+            if (row === 1) {
+                return Array(5).fill({ type: 'sc', isTurningChain: false });
+            }
+            return [];
+        });
+
+        const mesh = {
+            userData: { isNewRowIndicator: true, isAttachmentPoint: true }
+        };
+        manager.hoveredPoint = mesh;
+
+        // Mock user accepting the warning
+        showConfirm.mockResolvedValueOnce(true);
+
+        await manager.onClick();
+
+        // Should show confirmation and start new row
+        expect(showConfirm).toHaveBeenCalled();
+        expect(pattern.startNewRow).toHaveBeenCalledWith({ stitchType: manager.previewStitchType });
+    });
+
+    it('does not warn when row counts match', async () => {
+        // Setup pattern with matching row counts
+        pattern.currentRow = 1;
+        pattern.hasFoundationChain = vi.fn(() => false);
+        pattern.getEffectiveRowStitchCount = vi.fn(() => 10); // Both rows have 10 stitches
+        pattern.graph.getRow = vi.fn(() => Array(10).fill({ type: 'sc', isTurningChain: false }));
+
+        const mesh = {
+            userData: { isNewRowIndicator: true, isAttachmentPoint: true }
+        };
+        manager.hoveredPoint = mesh;
+
+        showConfirm.mockClear();
+
+        await manager.onClick();
+
+        // Should not show warning and start new row directly
+        expect(showConfirm).not.toHaveBeenCalled();
+        expect(pattern.startNewRow).toHaveBeenCalled();
+    });
+
+    it('does not warn when row has explicit shaping (increases)', async () => {
+        // Setup pattern with mismatch but explicit shaping
+        pattern.currentRow = 1;
+        pattern.hasFoundationChain = vi.fn(() => false);
+        pattern.getEffectiveRowStitchCount = vi.fn((row) => {
+            if (row === 1) return 12; // Increased from 10
+            if (row === 0) return 10;
+            return 0;
+        });
+        pattern.graph.getRow = vi.fn((row) => {
+            if (row === 1) {
+                return [
+                    { type: 'sc', isTurningChain: false, isIncrease: true }, // Explicit increase
+                    ...Array(10).fill({ type: 'sc', isTurningChain: false })
+                ];
+            }
+            return [];
+        });
+
+        const mesh = {
+            userData: { isNewRowIndicator: true, isAttachmentPoint: true }
+        };
+        manager.hoveredPoint = mesh;
+
+        showConfirm.mockClear();
+
+        await manager.onClick();
+
+        // Should not warn for intentional shaping
+        expect(showConfirm).not.toHaveBeenCalled();
+        expect(pattern.startNewRow).toHaveBeenCalled();
     });
 });
