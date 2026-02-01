@@ -3,12 +3,13 @@ import { EventBus, Events, createEventSubscriptions } from '../utils/EventBus.js
 import { throttle } from '../utils/throttle.js';
 
 /**
- * RaycastManager - Handles mouse interaction with 3D objects
+ * RaycastManager - Handles mouse and touch interaction with 3D objects
  *
  * Manages:
- * - Click detection on stitches
- * - Hover detection
+ * - Click/tap detection on stitches
+ * - Hover detection (mouse and single-touch)
  * - Selection management
+ * - Multi-touch gesture detection (delegates to OrbitControls)
  */
 
 export class RaycastManager {
@@ -26,13 +27,24 @@ export class RaycastManager {
         this.selectedNodes = new Set();
         this.eventSubs = createEventSubscriptions();
 
+        // Touch state tracking
+        this.isTouchActive = false;
+        this.touchStartTime = 0;
+        this.lastTouchCount = 0;
+
         // Bind methods
         this.onMouseMove = this.onMouseMove.bind(this);
         this.onClick = this.onClick.bind(this);
         this.onKeyDown = this.onKeyDown.bind(this);
+        this.onTouchStart = this.onTouchStart.bind(this);
+        this.onTouchMove = this.onTouchMove.bind(this);
+        this.onTouchEnd = this.onTouchEnd.bind(this);
 
         // Create throttled wrapper for mousemove
         this._throttledMouseMove = throttle(this.onMouseMove, this.throttleMs);
+
+        // Create throttled wrapper for touchmove
+        this._throttledTouchMove = throttle(this.onTouchMove, this.throttleMs);
 
         // Setup listeners
         this.setupEventListeners();
@@ -45,9 +57,15 @@ export class RaycastManager {
     setupEventListeners() {
         const canvas = this.sceneManager.domElement;
 
+        // Mouse events
         canvas.addEventListener('mousemove', this._throttledMouseMove);
         canvas.addEventListener('click', this.onClick);
         window.addEventListener('keydown', this.onKeyDown);
+
+        // Touch events
+        canvas.addEventListener('touchstart', this.onTouchStart, { passive: false });
+        canvas.addEventListener('touchmove', this._throttledTouchMove, { passive: false });
+        canvas.addEventListener('touchend', this.onTouchEnd, { passive: false });
     }
 
     /**
@@ -190,6 +208,171 @@ export class RaycastManager {
         } catch (err) {
             console.error('Error in click handler:', err);
         }
+    }
+
+    /**
+     * Handle touch start for tap detection and hover
+     */
+    onTouchStart(event) {
+        try {
+            this.isTouchActive = true;
+            this.touchStartTime = performance.now();
+            this.lastTouchCount = event.touches.length;
+
+            // For multi-touch (pinch/pan), skip interaction detection
+            if (event.touches.length > 1) {
+                // Clear any hover state during multi-touch
+                if (this.hoveredNode) {
+                    this.hoveredNode.setHighlighted(false);
+                    this.stitchRenderer.updateSelectionVisual(this.hoveredNode);
+                    EventBus.emit(Events.STITCH_UNHOVERED, { node: this.hoveredNode });
+                    this.hoveredNode = null;
+                }
+                if (this.sceneManager?.domElement) {
+                    this.sceneManager.domElement.style.cursor = 'default';
+                }
+                return;
+            }
+
+            // Single touch - treat like mouse move for hover
+            const touch = event.touches[0];
+            this.updateTouchPosition(touch);
+
+            // Don't prevent default - let OrbitControls handle panning
+        } catch (err) {
+            console.error('Error in touch start handler:', err);
+        }
+    }
+
+    /**
+     * Handle touch move for hover detection
+     */
+    onTouchMove(event) {
+        try {
+            // For multi-touch (pinch/pan), skip hover detection
+            if (event.touches.length > 1) {
+                return;
+            }
+
+            if (this.sceneManager?.isHoveringAttachmentPoint) {
+                if (this.hoveredNode) {
+                    try {
+                        this.hoveredNode.setHighlighted(false);
+                        this.stitchRenderer.updateSelectionVisual(this.hoveredNode);
+                        EventBus.emit(Events.STITCH_UNHOVERED, { node: this.hoveredNode });
+                    } catch (err) {
+                        console.warn('Error unhighlighting node:', err);
+                    }
+                    this.hoveredNode = null;
+                }
+                return;
+            }
+
+            const touch = event.touches[0];
+            this.updateTouchPosition(touch);
+
+            const intersects = this.raycast();
+
+            if (intersects.length > 0) {
+                const mesh = intersects[0]?.object;
+                const node = mesh?.userData?.node;
+
+                if (node && node !== this.hoveredNode) {
+                    // Unhover previous
+                    if (this.hoveredNode) {
+                        try {
+                            this.hoveredNode.setHighlighted(false);
+                            this.stitchRenderer.updateSelectionVisual(this.hoveredNode);
+                            EventBus.emit(Events.STITCH_UNHOVERED, { node: this.hoveredNode });
+                        } catch (err) {
+                            console.warn('Error unhighlighting previous node:', err);
+                        }
+                    }
+
+                    // Hover new
+                    this.hoveredNode = node;
+                    node.setHighlighted(true);
+                    this.stitchRenderer.updateSelectionVisual(node);
+                    EventBus.emit(Events.STITCH_HOVERED, { node });
+                }
+            } else {
+                // No intersection
+                if (this.hoveredNode) {
+                    try {
+                        this.hoveredNode.setHighlighted(false);
+                        this.stitchRenderer.updateSelectionVisual(this.hoveredNode);
+                        EventBus.emit(Events.STITCH_UNHOVERED, { node: this.hoveredNode });
+                    } catch (err) {
+                        console.warn('Error unhighlighting node:', err);
+                    }
+                    this.hoveredNode = null;
+                }
+            }
+        } catch (err) {
+            console.error('Error in touch move handler:', err);
+        }
+    }
+
+    /**
+     * Handle touch end for selection (tap)
+     */
+    onTouchEnd(event) {
+        try {
+            // If this was a multi-touch gesture, don't treat as tap
+            if (this.lastTouchCount > 1) {
+                this.isTouchActive = false;
+                return;
+            }
+
+            // Calculate tap duration
+            const tapDuration = performance.now() - this.touchStartTime;
+            const MAX_TAP_DURATION = 300; // milliseconds
+
+            // Only treat as tap if it was quick (not a drag)
+            if (tapDuration > MAX_TAP_DURATION) {
+                this.isTouchActive = false;
+                return;
+            }
+
+            if (this.sceneManager?.isHoveringAttachmentPoint) {
+                this.isTouchActive = false;
+                return;
+            }
+
+            // Use changedTouches to get the touch that ended
+            const touch = event.changedTouches[0];
+            this.updateTouchPosition(touch);
+
+            const intersects = this.raycast();
+
+            if (intersects.length > 0) {
+                const mesh = intersects[0]?.object;
+                const node = mesh?.userData?.node;
+
+                if (node) {
+                    // Touch doesn't have shift/ctrl, so always single select
+                    // Could implement long-press for multi-select in future
+                    this.selectSingle(node);
+                }
+            } else {
+                // Tapped on empty space
+                this.clearSelection();
+            }
+
+            this.isTouchActive = false;
+        } catch (err) {
+            console.error('Error in touch end handler:', err);
+            this.isTouchActive = false;
+        }
+    }
+
+    /**
+     * Update mouse position from touch coordinates
+     */
+    updateTouchPosition(touch) {
+        const rect = this.sceneManager.domElement.getBoundingClientRect();
+        this.mouse.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
     }
 
     /**
@@ -336,9 +519,15 @@ export class RaycastManager {
         const canvas = this.sceneManager?.domElement;
         if (!canvas) return;
 
+        // Remove mouse event listeners
         canvas.removeEventListener('mousemove', this._throttledMouseMove);
         canvas.removeEventListener('click', this.onClick);
         window.removeEventListener('keydown', this.onKeyDown);
+
+        // Remove touch event listeners
+        canvas.removeEventListener('touchstart', this.onTouchStart);
+        canvas.removeEventListener('touchmove', this._throttledTouchMove);
+        canvas.removeEventListener('touchend', this.onTouchEnd);
 
         // Clear stale references to prevent memory leaks
         if (this.eventSubs) {
