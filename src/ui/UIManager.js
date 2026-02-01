@@ -162,7 +162,7 @@ export class UIManager {
 
             .stitch-btn .key {
                 font-size: 10px;
-                color: #888;
+                color: #666;
                 margin-top: 2px;
             }
 
@@ -327,7 +327,7 @@ export class UIManager {
 
             .option-hint {
                 font-size: 10px;
-                color: #888;
+                color: #666;
                 margin-left: 4px;
             }
 
@@ -450,7 +450,7 @@ export class UIManager {
 
             .view-mode-btn .shortcut {
                 font-size: 10px;
-                color: #888;
+                color: #666;
                 margin-left: 4px;
             }
 

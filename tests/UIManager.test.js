@@ -1110,4 +1110,46 @@ describe('UIManager - Keyboard Navigation & Accessibility', () => {
             });
         });
     });
+
+    describe('WCAG Contrast Compliance', () => {
+        it('should use accessible contrast for stitch button keyboard shortcuts', () => {
+            // Verify .stitch-btn .key uses #666 instead of #888
+            const style = document.querySelector('style');
+            const styleContent = style.textContent;
+
+            // Should contain the correct color for .stitch-btn .key
+            expect(styleContent).toContain('.stitch-btn .key');
+            expect(styleContent).toContain('color: #666');
+
+            // Should not contain the old low-contrast color
+            const keyStyleMatch = styleContent.match(/\.stitch-btn \.key\s*\{[^}]*color:\s*#888/);
+            expect(keyStyleMatch).toBeNull();
+        });
+
+        it('should use accessible contrast for option hints', () => {
+            const style = document.querySelector('style');
+            const styleContent = style.textContent;
+
+            // Verify .option-hint uses #666 instead of #888
+            expect(styleContent).toContain('.option-hint');
+            expect(styleContent).toContain('color: #666');
+
+            // Should not contain the old low-contrast color
+            const hintStyleMatch = styleContent.match(/\.option-hint\s*\{[^}]*color:\s*#888/);
+            expect(hintStyleMatch).toBeNull();
+        });
+
+        it('should use accessible contrast for view mode shortcuts', () => {
+            const style = document.querySelector('style');
+            const styleContent = style.textContent;
+
+            // Verify .view-mode-btn .shortcut uses #666 instead of #888
+            expect(styleContent).toContain('.view-mode-btn .shortcut');
+            expect(styleContent).toContain('color: #666');
+
+            // Should not contain the old low-contrast color
+            const shortcutStyleMatch = styleContent.match(/\.view-mode-btn \.shortcut\s*\{[^}]*color:\s*#888/);
+            expect(shortcutStyleMatch).toBeNull();
+        });
+    });
 });

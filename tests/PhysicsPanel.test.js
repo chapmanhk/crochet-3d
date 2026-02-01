@@ -128,4 +128,39 @@ describe('PhysicsPanel', () => {
         expect(panel.panel.querySelector('#physics-status').textContent).toBe('Settled');
         expect(settleBtn.disabled).toBe(false);
     });
+
+    describe('WCAG Contrast Compliance', () => {
+        it('should use accessible contrast for slider value displays', () => {
+            // Get the style element added by PhysicsPanel
+            const styles = Array.from(document.querySelectorAll('style'));
+            const physicsStyle = styles.find(s => s.textContent.includes('.physics-panel'));
+            expect(physicsStyle).not.toBeNull();
+
+            const styleContent = physicsStyle.textContent;
+
+            // Verify .slider-group span uses #757575 instead of #999
+            expect(styleContent).toContain('.slider-group span');
+            expect(styleContent).toContain('color: #757575');
+
+            // Should not contain the old low-contrast color
+            const spanStyleMatch = styleContent.match(/\.slider-group span\s*\{[^}]*color:\s*#999/);
+            expect(spanStyleMatch).toBeNull();
+        });
+
+        it('should use accessible contrast for physics stats', () => {
+            const styles = Array.from(document.querySelectorAll('style'));
+            const physicsStyle = styles.find(s => s.textContent.includes('.physics-panel'));
+            expect(physicsStyle).not.toBeNull();
+
+            const styleContent = physicsStyle.textContent;
+
+            // Verify .physics-stats uses #757575 instead of #999
+            expect(styleContent).toContain('.physics-stats');
+            expect(styleContent).toContain('color: #757575');
+
+            // Should not contain the old low-contrast color
+            const statsStyleMatch = styleContent.match(/\.physics-stats\s*\{[^}]*color:\s*#999/);
+            expect(statsStyleMatch).toBeNull();
+        });
+    });
 });
