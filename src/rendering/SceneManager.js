@@ -155,7 +155,7 @@ export class SceneManager {
     }
 
     /**
-     * Create orbit controls
+     * Create orbit controls with touch support
      */
     createControls() {
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -167,6 +167,21 @@ export class SceneManager {
         this.controls.maxPolarAngle = Math.PI * SceneConstants.MAX_POLAR_ANGLE_RATIO;
         const target = SceneConstants.DEFAULT_CAMERA_TARGET;
         this.controls.target.set(target.x, target.y, target.z);
+
+        // Touch-specific settings (OrbitControls has built-in touch support)
+        // - One finger: rotate
+        // - Two finger pinch: zoom
+        // - Two finger pan: pan
+        // These are enabled by default, but we ensure they're active
+        this.controls.enableRotate = true;
+        this.controls.enableZoom = true;
+        this.controls.enablePan = true;
+
+        // Touch zoom/rotate speed adjustments for better mobile experience
+        this.controls.rotateSpeed = 1.0;
+        this.controls.zoomSpeed = 1.0;
+        this.controls.panSpeed = 1.0;
+
         this.controls.update();
 
         this.controls.addEventListener('start', () => {
