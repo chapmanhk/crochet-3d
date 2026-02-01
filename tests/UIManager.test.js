@@ -1204,6 +1204,36 @@ describe('UIManager - Keyboard Navigation & Accessibility', () => {
             expect(styleContent).toContain('min-width: 44px');
         });
 
+        it('should ensure all interactive buttons meet 44px minimum on mobile', () => {
+            const style = document.querySelector('style');
+            const styleContent = style.textContent;
+
+            const mobileMediaQuery = styleContent.match(/@media \(max-width: 640px\) \{([^}]*\{[^}]*\})*[^}]*\}/s);
+            expect(mobileMediaQuery).toBeTruthy();
+            const mobileContent = mobileMediaQuery ? mobileMediaQuery[0] : '';
+
+            // All interactive buttons should have min-height: 44px for WCAG compliance
+            expect(mobileContent).toMatch(/\.stitch-btn\s*\{[^}]*min-height:\s*44px/);
+            expect(mobileContent).toMatch(/\.toolbar-btn\s*\{[^}]*min-height:\s*44px/);
+            expect(mobileContent).toMatch(/\.row-nav-btn,[\s\S]*?min-height:\s*44px/);
+            expect(mobileContent).toMatch(/\.row-goto-row button[^}]*min-height:\s*44px/);
+        });
+
+        it('should ensure all interactive buttons meet 44px minimum on tablet', () => {
+            const style = document.querySelector('style');
+            const styleContent = style.textContent;
+
+            const tabletMediaQuery = styleContent.match(/@media \(max-width: 1024px\) \{([^}]*\{[^}]*\})*[^}]*\}/s);
+            expect(tabletMediaQuery).toBeTruthy();
+            const tabletContent = tabletMediaQuery ? tabletMediaQuery[0] : '';
+
+            // All interactive buttons should have min-height: 44px for touch devices
+            expect(tabletContent).toMatch(/\.stitch-btn\s*\{[^}]*min-height:\s*44px/);
+            expect(tabletContent).toMatch(/\.toolbar-btn\s*\{[^}]*min-height:\s*44px/);
+            expect(tabletContent).toMatch(/\.row-nav-btn,[\s\S]*?min-height:\s*44px/);
+            expect(tabletContent).toMatch(/\.row-goto-row button[^}]*min-height:\s*44px/);
+        });
+
         it('should define panel-toggle styles', () => {
             const style = document.querySelector('style');
             const styleContent = style.textContent;

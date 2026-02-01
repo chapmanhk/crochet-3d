@@ -169,10 +169,11 @@ and attachment/interaction. Each task appears once.
   - **Symptoms:** Only mouse events registered (mousemove, click). Touch interactions don't work on tablets/phones.
   - **Fix:** Add touch event handlers (`touchstart`, `touchmove`, `touchend`) alongside mouse handlers. Implement pinch-to-zoom, two-finger pan for 3D canvas.
   - **Status:** Fixed - Added touch event handlers (touchstart, touchmove, touchend) to RaycastManager (RaycastManager.js:38-40, 215-375). Single-touch enables hover detection and tap-to-select (300ms threshold). Multi-touch (2+ fingers) skips interaction detection and delegates to OrbitControls for pinch-to-zoom and two-finger pan. Touch events are throttled like mouse events (50ms default) for performance. SceneManager's OrbitControls has built-in touch support enabled (SceneManager.js:171-183). Added updateTouchPosition() method and proper cleanup in dispose(). Added 11 comprehensive tests for touch events including single-touch, multi-touch, throttling, tap detection, and cleanup (RaycastManager.test.js:158-497). All 29 tests passing.
-- [ ] **Bug: Buttons too small for touch targets**
+- [x] **Bug: Buttons too small for touch targets**
   - **Location:** UIManager.js:580 (stitch buttons)
   - **Symptoms:** Stitch buttons use 6-8px padding, well below WCAG minimum 44x44px touch target size.
   - **Fix:** On mobile breakpoint, increase button padding to ensure 44x44px minimum. Example: `.stitch-btn { min-width: 44px; min-height: 44px; }` on mobile.
+  - **Status:** Fixed - All interactive buttons now meet WCAG 2.1 Level AA minimum touch target size of 44x44px. Tablet (max-width: 1024px) breakpoint: Added min-height: 44px for .stitch-btn, .toolbar-btn, .row-nav-btn, .view-mode-btn, .template-btn, .info-action-btn, and .row-goto-row button (UIManager.js:717-732). Mobile (max-width: 640px) breakpoint: Updated .toolbar-btn from 36px to 44px min-height and added .row-goto-row button to touch target list (UIManager.js:860-870). Added comprehensive tests to verify all interactive buttons meet 44px minimum on both tablet and mobile breakpoints (UIManager.test.js:1207-1235). All 113 tests passing.
 - [ ] **Bug: Fixed panel widths break on narrow screens**
   - **Location:** UIManager.js:113-479
   - **Symptoms:** `.stitch-palette { width: 180px }` and `.info-panel { width: 200px }` fixed widths cause horizontal overflow on small devices.
