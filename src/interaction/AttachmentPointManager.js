@@ -107,6 +107,39 @@ export class AttachmentPointManager {
             emissiveIntensity: 0.6
         });
 
+        // Ghost materials for start/end of foundation chain (distinct colors)
+        this.chainStartGhostMaterial = new THREE.MeshStandardMaterial({
+            color: AttachmentConstants.CHAIN_START_GHOST_COLOR,
+            transparent: true,
+            opacity: AttachmentConstants.GHOST_OPACITY,
+            emissive: AttachmentConstants.CHAIN_START_GHOST_COLOR,
+            emissiveIntensity: AttachmentConstants.GHOST_EMISSIVE_INTENSITY
+        });
+
+        this.chainStartGhostHoverMaterial = new THREE.MeshStandardMaterial({
+            color: AttachmentConstants.CHAIN_START_GHOST_HOVER_COLOR,
+            transparent: true,
+            opacity: AttachmentConstants.HOVER_OPACITY,
+            emissive: AttachmentConstants.CHAIN_START_GHOST_HOVER_COLOR,
+            emissiveIntensity: AttachmentConstants.HOVER_EMISSIVE_INTENSITY
+        });
+
+        this.chainEndGhostMaterial = new THREE.MeshStandardMaterial({
+            color: AttachmentConstants.CHAIN_END_GHOST_COLOR,
+            transparent: true,
+            opacity: AttachmentConstants.GHOST_OPACITY,
+            emissive: AttachmentConstants.CHAIN_END_GHOST_COLOR,
+            emissiveIntensity: AttachmentConstants.GHOST_EMISSIVE_INTENSITY
+        });
+
+        this.chainEndGhostHoverMaterial = new THREE.MeshStandardMaterial({
+            color: AttachmentConstants.CHAIN_END_GHOST_HOVER_COLOR,
+            transparent: true,
+            opacity: AttachmentConstants.HOVER_OPACITY,
+            emissive: AttachmentConstants.CHAIN_END_GHOST_HOVER_COLOR,
+            emissiveIntensity: AttachmentConstants.HOVER_EMISSIVE_INTENSITY
+        });
+
         // Currently hovered point
         this.hoveredPoint = null;
 
@@ -166,6 +199,12 @@ export class AttachmentPointManager {
     updateAttachmentPoints() {
         this.clearPoints();
         this.clearMarkers();
+
+        // Cache foundation row for start/end detection in createPointMesh
+        const hasFoundation = typeof this.pattern.hasFoundationChain === 'function'
+            ? this.pattern.hasFoundationChain()
+            : false;
+        this._foundationRow = hasFoundation ? this.pattern.graph.getRowSorted(0) : [];
 
         const useChainSpaces = Boolean(this.pattern.currentWorkIntoSpace);
         const attachPoints = useChainSpaces
@@ -250,6 +289,91 @@ export class AttachmentPointManager {
 
         this.markerMeshes.push(mesh);
         this.group.add(mesh);
+
+        // Add text label sprite above markers for start/end
+        const labelMap = {
+            start: 'START',
+            end: 'END',
+            working: 'NEXT'
+        };
+        const label = labelMap[type];
+        if (label) {
+            const colorMap = {
+                start: '#00BFA5',
+                end: '#2196F3',
+                working: '#FFD600'
+            };
+            const sprite = this.createTextSprite(label, colorMap[type] || '#FFFFFF');
+            sprite.position.set(
+                stitch.position.x,
+                stitch.position.y + stitch.height + 0.7,
+                stitch.position.z
+            );
+            sprite.userData.markerType = type;
+            sprite.userData.stitch = stitch;
+            this.markerMeshes.push(sprite);
+            this.group.add(sprite);
+        }
+    }
+
+    /**
+     * Create a text sprite for labeling markers
+     */
+    createTextSprite(text, color = '#FFFFFF') {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 256;
+        canvas.height = 128;
+
+        // Guard against missing canvas API (e.g. in test environments)
+        if (!ctx || typeof ctx.measureText !== 'function') {
+            const material = new THREE.SpriteMaterial({ transparent: true, opacity: 0 });
+            return new THREE.Sprite(material);
+        }
+
+        // Draw rounded background
+        const padding = 12;
+        ctx.font = 'bold 48px Arial, sans-serif';
+        const metrics = ctx.measureText(text);
+        const textWidth = metrics.width;
+        const bgWidth = textWidth + padding * 2;
+        const bgHeight = 60;
+        const bgX = (canvas.width - bgWidth) / 2;
+        const bgY = (canvas.height - bgHeight) / 2;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.beginPath();
+        const r = 10;
+        ctx.moveTo(bgX + r, bgY);
+        ctx.lineTo(bgX + bgWidth - r, bgY);
+        ctx.quadraticCurveTo(bgX + bgWidth, bgY, bgX + bgWidth, bgY + r);
+        ctx.lineTo(bgX + bgWidth, bgY + bgHeight - r);
+        ctx.quadraticCurveTo(bgX + bgWidth, bgY + bgHeight, bgX + bgWidth - r, bgY + bgHeight);
+        ctx.lineTo(bgX + r, bgY + bgHeight);
+        ctx.quadraticCurveTo(bgX, bgY + bgHeight, bgX, bgY + bgHeight - r);
+        ctx.lineTo(bgX, bgY + r);
+        ctx.quadraticCurveTo(bgX, bgY, bgX + r, bgY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Draw text
+        ctx.fillStyle = color;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+
+        const material = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            depthTest: false
+        });
+
+        const sprite = new THREE.Sprite(material);
+        sprite.scale.set(1.0, 0.5, 1);
+        return sprite;
     }
 
     /**
@@ -293,9 +417,12 @@ export class AttachmentPointManager {
         this.markerMeshes.forEach(mesh => {
             const stitch = mesh.userData.stitch;
             if (!stitch?.position) return;
+            // Sprites (labels) sit higher than sphere markers
+            const isSprite = mesh.isSprite;
+            const yOffset = isSprite ? stitch.height + 0.7 : stitch.height + 0.3;
             mesh.position.set(
                 stitch.position.x,
-                stitch.position.y + stitch.height + 0.3,
+                stitch.position.y + yOffset,
                 stitch.position.z
             );
         });
@@ -307,7 +434,12 @@ export class AttachmentPointManager {
     clearMarkers() {
         this.markerMeshes.forEach(mesh => {
             this.group.remove(mesh);
-            mesh.geometry.dispose();
+            if (mesh.isSprite) {
+                mesh.material.map?.dispose();
+                mesh.material.dispose();
+            } else {
+                mesh.geometry.dispose();
+            }
         });
         this.markerMeshes = [];
     }
@@ -361,7 +493,23 @@ export class AttachmentPointManager {
         const geometry = isChainSpace
             ? this.getChainSpaceGeometry()
             : this.getGeometry(this.previewStitchType);
-        const baseMaterial = isChainSpace ? this.chainSpaceMaterial : this.ghostMaterial;
+
+        // Determine if this ghost is at the start or end of the foundation chain
+        const foundationRow = this._foundationRow || [];
+        const isChainStart = foundationRow.length > 0 && point.stitch === foundationRow[0];
+        const isChainEnd = foundationRow.length > 0 && point.stitch === foundationRow[foundationRow.length - 1];
+
+        let baseMaterial;
+        if (isChainSpace) {
+            baseMaterial = this.chainSpaceMaterial;
+        } else if (isChainStart) {
+            baseMaterial = this.chainStartGhostMaterial;
+        } else if (isChainEnd) {
+            baseMaterial = this.chainEndGhostMaterial;
+        } else {
+            baseMaterial = this.ghostMaterial;
+        }
+
         // Use shared material instead of cloning - disposed in dispose() not clearPoints()
         const mesh = new THREE.Mesh(geometry, baseMaterial);
 
@@ -381,11 +529,17 @@ export class AttachmentPointManager {
         mesh.userData.index = index;
         mesh.userData.isAttachmentPoint = true;
         mesh.userData.isChainSpace = isChainSpace;
+        mesh.userData.isChainStart = isChainStart;
+        mesh.userData.isChainEnd = isChainEnd;
         mesh.userData.ariaLabel = isChainSpace
             ? 'Chain space attachment point'
-            : point.suggested
-                ? 'Suggested next stitch attachment point'
-                : 'Stitch attachment point';
+            : isChainStart
+                ? 'Chain start attachment point'
+                : isChainEnd
+                    ? 'Chain end attachment point (start working here)'
+                    : point.suggested
+                        ? 'Suggested next stitch attachment point'
+                        : 'Stitch attachment point';
 
         // Scale down slightly for ghost effect
         const baseScale = point.suggested
@@ -490,10 +644,13 @@ export class AttachmentPointManager {
 
         // Reset previous hover - reuse base material instead of cloning
         if (this.hoveredPoint) {
-            // Use appropriate base material based on whether it's a new row indicator
+            // Use appropriate base material based on point type
             const baseMaterial = this.hoveredPoint.userData.isNewRowIndicator
                 ? this.newRowMaterial
-                : (this.hoveredPoint.userData.isChainSpace ? this.chainSpaceMaterial : this.ghostMaterial);
+                : this.hoveredPoint.userData.isChainSpace ? this.chainSpaceMaterial
+                : this.hoveredPoint.userData.isChainStart ? this.chainStartGhostMaterial
+                : this.hoveredPoint.userData.isChainEnd ? this.chainEndGhostMaterial
+                : this.ghostMaterial;
             this.hoveredPoint.material = baseMaterial;
             const baseScale = this.hoveredPoint.userData.baseScale ?? AttachmentConstants.GHOST_SCALE;
             this.hoveredPoint.scale.setScalar(baseScale);
@@ -502,10 +659,13 @@ export class AttachmentPointManager {
 
         if (intersects.length > 0) {
             const mesh = intersects[0].object;
-            // Use appropriate hover material based on whether it's a new row indicator
+            // Use appropriate hover material based on point type
             const hoverMat = mesh.userData.isNewRowIndicator
                 ? this.newRowHoverMaterial
-                : (mesh.userData.isChainSpace ? this.chainSpaceHoverMaterial : this.hoverMaterial);
+                : mesh.userData.isChainSpace ? this.chainSpaceHoverMaterial
+                : mesh.userData.isChainStart ? this.chainStartGhostHoverMaterial
+                : mesh.userData.isChainEnd ? this.chainEndGhostHoverMaterial
+                : this.hoverMaterial;
             mesh.material = hoverMat;
             mesh.scale.setScalar(AttachmentConstants.HOVER_SCALE);
             this.hoveredPoint = mesh;
@@ -689,6 +849,16 @@ export class AttachmentPointManager {
         this.chainStartMaterial.dispose();
         this.chainEndMaterial.dispose();
         this.workingPositionMaterial.dispose();
+        this.chainStartGhostMaterial.dispose();
+        this.chainStartGhostHoverMaterial.dispose();
+        this.chainEndGhostMaterial.dispose();
+        this.chainEndGhostHoverMaterial.dispose();
+
+        // Dispose label sprites
+        this._labelSprites?.forEach(sprite => {
+            sprite.material.map?.dispose();
+            sprite.material.dispose();
+        });
 
         this.sceneManager.scene.remove(this.group);
     }
