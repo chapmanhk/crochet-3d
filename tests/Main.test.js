@@ -5,16 +5,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EventBus } from '../src/utils/EventBus.js';
 
-const createMockClass = (methods = []) => {
-    return class {
-        constructor() {
-            methods.forEach((name) => {
-                this[name] = vi.fn();
-            });
-        }
-    };
-};
-
 vi.mock('../src/core/Pattern.js', () => ({
     Pattern: class MockPattern {
         constructor() {
@@ -22,9 +12,9 @@ vi.mock('../src/core/Pattern.js', () => ({
                 getAllNodes: () => [],
                 size: 0
             };
-            this.metadata = { name: '', author: '' };
+            this.graphListeners = {};
+            this.setupGraphListeners = vi.fn();
         }
-        removeStitch() {}
         dispose() {}
     }
 }));
@@ -44,46 +34,24 @@ vi.mock('../src/rendering/SceneManager.js', () => ({
 }));
 
 vi.mock('../src/rendering/StitchRenderer.js', () => ({
-    StitchRenderer: createMockClass(['renderPattern', 'dispose'])
-}));
-
-vi.mock('../src/interaction/RaycastManager.js', () => ({
-    RaycastManager: createMockClass(['dispose'])
-}));
-
-vi.mock('../src/interaction/AttachmentPointManager.js', () => ({
-    AttachmentPointManager: createMockClass(['dispose'])
-}));
-
-vi.mock('../src/physics/PhysicsEngine.js', () => ({
-    PhysicsEngine: class MockPhysicsEngine {
+    StitchRenderer: class MockStitchRenderer {
         constructor() {
-            this.settle = vi.fn();
+            this.renderPattern = vi.fn();
             this.dispose = vi.fn();
         }
     }
 }));
 
 vi.mock('../src/ui/UIManager.js', () => ({
-    UIManager: createMockClass(['dispose'])
-}));
-
-vi.mock('../src/ui/PhysicsPanel.js', () => ({
-    PhysicsPanel: createMockClass(['dispose'])
-}));
-
-vi.mock('../src/ui/Modal.js', () => ({
-    showAlert: vi.fn(() => Promise.resolve())
-}));
-
-vi.mock('../src/utils/PatternSchema.js', () => ({
-    validatePatternData: vi.fn(() => ({ valid: true, errors: [], warnings: [] })),
-    formatValidationResult: vi.fn(() => '')
+    UIManager: class MockUIManager {
+        constructor() {
+            this.dispose = vi.fn();
+        }
+    }
 }));
 
 describe('main entry', () => {
     beforeEach(() => {
-        EventBus.clear();
         document.body.innerHTML = '';
         delete window.crochetApp;
         vi.resetModules();

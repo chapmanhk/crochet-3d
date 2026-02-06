@@ -1,5 +1,5 @@
 /**
- * Tests for StitchNode class
+ * Tests for StitchNode class (simplified)
  *
  * Verifies:
  * - Node creation and initialization
@@ -29,14 +29,14 @@ describe('StitchNode', () => {
         });
 
         it('should create a node with custom options', () => {
-            const node = new StitchNode(StitchType.DOUBLE_CROCHET, {
+            const node = new StitchNode(StitchType.SINGLE_CROCHET, {
                 row: 2,
                 column: 5,
                 color: 0xFF0000,
                 position: { x: 1, y: 2, z: 3 }
             });
 
-            expect(node.type).toBe(StitchType.DOUBLE_CROCHET);
+            expect(node.type).toBe(StitchType.SINGLE_CROCHET);
             expect(node.row).toBe(2);
             expect(node.column).toBe(5);
             expect(node.color).toBe(0xFF0000);
@@ -67,28 +67,31 @@ describe('StitchNode', () => {
             expect(node.connections.above).toEqual([]);
             expect(node.connections.left).toBeNull();
             expect(node.connections.right).toBeNull();
-            expect(node.connections.space).toBeNull();
         });
 
-        it('should initialize empty modifiers', () => {
+        it('should default isTurningChain to false', () => {
             const node = new StitchNode(StitchType.CHAIN);
-            expect(node.modifiers).toEqual([]);
+            expect(node.isTurningChain).toBe(false);
         });
 
-        it('should initialize with default selection state', () => {
-            const node = new StitchNode(StitchType.CHAIN);
-
-            expect(node.isSelected).toBe(false);
-            expect(node.isHighlighted).toBe(false);
+        it('should accept isTurningChain option', () => {
+            const node = new StitchNode(StitchType.CHAIN, { isTurningChain: true });
+            expect(node.isTurningChain).toBe(true);
         });
 
-        it('should store creation timestamp', () => {
-            const before = Date.now();
+        it('should use default color from definition', () => {
             const node = new StitchNode(StitchType.CHAIN);
-            const after = Date.now();
+            expect(node.color).toBe(0x8B4513);
+        });
 
-            expect(node.createdAt).toBeGreaterThanOrEqual(before);
-            expect(node.createdAt).toBeLessThanOrEqual(after);
+        it('should override color with custom value', () => {
+            const node = new StitchNode(StitchType.CHAIN, { color: 0xFF0000 });
+            expect(node.color).toBe(0xFF0000);
+        });
+
+        it('should initialize mesh as null', () => {
+            const node = new StitchNode(StitchType.CHAIN);
+            expect(node.mesh).toBeNull();
         });
     });
 
@@ -96,38 +99,25 @@ describe('StitchNode', () => {
         it('should return correct abbreviation', () => {
             const chain = new StitchNode(StitchType.CHAIN);
             const sc = new StitchNode(StitchType.SINGLE_CROCHET);
-            const dc = new StitchNode(StitchType.DOUBLE_CROCHET);
 
             expect(chain.abbreviation).toBe('ch');
             expect(sc.abbreviation).toBe('sc');
-            expect(dc.abbreviation).toBe('dc');
         });
 
-        it('should return correct name (abbreviation by default)', () => {
+        it('should return correct name', () => {
             const chain = new StitchNode(StitchType.CHAIN);
             const sc = new StitchNode(StitchType.SINGLE_CROCHET);
 
-            // name now returns display name (abbreviation)
-            expect(chain.name).toBe('ch');
-            expect(sc.name).toBe('sc');
-        });
-
-        it('should return correct base name', () => {
-            const chain = new StitchNode(StitchType.CHAIN);
-            const sc = new StitchNode(StitchType.SINGLE_CROCHET);
-
-            expect(chain.baseName).toBe('Chain');
-            expect(sc.baseName).toBe('Single Crochet');
+            expect(chain.name).toBe('Chain');
+            expect(sc.name).toBe('Single Crochet');
         });
 
         it('should return correct height', () => {
             const chain = new StitchNode(StitchType.CHAIN);
             const sc = new StitchNode(StitchType.SINGLE_CROCHET);
-            const dc = new StitchNode(StitchType.DOUBLE_CROCHET);
 
             expect(chain.height).toBe(0.5);
             expect(sc.height).toBe(1.0);
-            expect(dc.height).toBe(2.0);
         });
 
         it('should return correct width', () => {
@@ -137,6 +127,23 @@ describe('StitchNode', () => {
             expect(chain.width).toBe(0.6);
             expect(sc.width).toBe(0.7);
         });
+
+        it('should return effective connections', () => {
+            const node = new StitchNode(StitchType.SINGLE_CROCHET);
+            const connections = node.effectiveConnections;
+
+            expect(connections.connectionsIn).toBe(1);
+            expect(connections.connectionsOut).toBe(1);
+        });
+
+        it('should return available connections above', () => {
+            const node = new StitchNode(StitchType.CHAIN);
+            expect(node.availableConnectionsAbove).toBe(1);
+
+            const upper = new StitchNode(StitchType.SINGLE_CROCHET);
+            upper.connectBelow(node);
+            expect(node.availableConnectionsAbove).toBe(0);
+        });
     });
 
     describe('connections', () => {
@@ -145,7 +152,7 @@ describe('StitchNode', () => {
         beforeEach(() => {
             nodeA = new StitchNode(StitchType.CHAIN);
             nodeB = new StitchNode(StitchType.SINGLE_CROCHET);
-            nodeC = new StitchNode(StitchType.DOUBLE_CROCHET);
+            nodeC = new StitchNode(StitchType.SINGLE_CROCHET);
         });
 
         describe('connectBelow', () => {
@@ -182,42 +189,8 @@ describe('StitchNode', () => {
             });
         });
 
-        describe('connectAbove', () => {
-            it('should connect two nodes vertically (inverse)', () => {
-                nodeA.connectAbove(nodeB);
-
-                expect(nodeA.connections.above).toContain(nodeB);
-                expect(nodeB.connections.below).toContain(nodeA);
-            });
-
-            it('should return true on success', () => {
-                expect(nodeA.connectAbove(nodeB)).toBe(true);
-            });
-
-            it('should return false for null', () => {
-                expect(nodeA.connectAbove(null)).toBe(false);
-            });
-        });
-
-        describe('connectLeft', () => {
-            it('should connect two nodes horizontally', () => {
-                nodeB.connectLeft(nodeA);
-
-                expect(nodeB.connections.left).toBe(nodeA);
-                expect(nodeA.connections.right).toBe(nodeB);
-            });
-
-            it('should return true on success', () => {
-                expect(nodeB.connectLeft(nodeA)).toBe(true);
-            });
-
-            it('should return false for null', () => {
-                expect(nodeB.connectLeft(null)).toBe(false);
-            });
-        });
-
         describe('connectRight', () => {
-            it('should connect two nodes horizontally (inverse)', () => {
+            it('should connect two nodes horizontally', () => {
                 nodeA.connectRight(nodeB);
 
                 expect(nodeA.connections.right).toBe(nodeB);
@@ -233,38 +206,11 @@ describe('StitchNode', () => {
             });
         });
 
-        describe('disconnect', () => {
-            it('should disconnect vertical connections', () => {
-                nodeB.connectBelow(nodeA);
-                nodeB.disconnect(nodeA);
-
-                expect(nodeB.connections.below).not.toContain(nodeA);
-                expect(nodeA.connections.above).not.toContain(nodeB);
-            });
-
-            it('should disconnect horizontal connections', () => {
-                nodeA.connectRight(nodeB);
-                nodeA.disconnect(nodeB);
-
-                expect(nodeA.connections.right).toBeNull();
-                expect(nodeB.connections.left).toBeNull();
-            });
-
-            it('should handle disconnecting non-connected nodes', () => {
-                expect(() => nodeA.disconnect(nodeB)).not.toThrow();
-            });
-
-            it('should handle null input', () => {
-                expect(() => nodeA.disconnect(null)).not.toThrow();
-            });
-        });
-
         describe('disconnectAll', () => {
             it('should remove all connections', () => {
                 nodeA.connectRight(nodeB);
                 nodeB.connectRight(nodeC);
                 nodeB.connectBelow(nodeA);
-                nodeC.connectBelow(nodeA);
 
                 nodeB.disconnectAll();
 
@@ -283,87 +229,24 @@ describe('StitchNode', () => {
                 expect(nodeA.connections.right).toBeNull();
                 expect(nodeC.connections.left).toBeNull();
             });
-        });
 
-        describe('getAllConnections', () => {
-            it('should return all connected nodes', () => {
-                nodeA.connectRight(nodeB);
-                nodeB.connectRight(nodeC);
+            it('should update vertical connected nodes', () => {
                 nodeB.connectBelow(nodeA);
+                nodeB.disconnectAll();
 
-                const connections = nodeB.getAllConnections();
-
-                expect(connections).toContain(nodeA);
-                expect(connections).toContain(nodeC);
-                expect(connections).toHaveLength(3); // below, left, right
-            });
-
-            it('should return empty array for unconnected node', () => {
-                expect(nodeA.getAllConnections()).toEqual([]);
-            });
-        });
-
-        describe('isConnectedTo', () => {
-            it('should return true for connected nodes', () => {
-                nodeA.connectRight(nodeB);
-
-                expect(nodeA.isConnectedTo(nodeB)).toBe(true);
-                expect(nodeB.isConnectedTo(nodeA)).toBe(true);
-            });
-
-            it('should return false for unconnected nodes', () => {
-                expect(nodeA.isConnectedTo(nodeB)).toBe(false);
+                expect(nodeA.connections.above).not.toContain(nodeB);
             });
         });
     });
 
-    describe('position and state', () => {
-        it('should update position with setPosition', () => {
+    describe('setPosition', () => {
+        it('should update position', () => {
             const node = new StitchNode(StitchType.CHAIN);
             node.setPosition(5, 10, 15);
 
             expect(node.position.x).toBe(5);
             expect(node.position.y).toBe(10);
             expect(node.position.z).toBe(15);
-        });
-
-        it('should set selection state', () => {
-            const node = new StitchNode(StitchType.CHAIN);
-
-            node.setSelected(true);
-            expect(node.isSelected).toBe(true);
-
-            node.setSelected(false);
-            expect(node.isSelected).toBe(false);
-        });
-
-        it('should set highlight state', () => {
-            const node = new StitchNode(StitchType.CHAIN);
-
-            node.setHighlighted(true);
-            expect(node.isHighlighted).toBe(true);
-
-            node.setHighlighted(false);
-            expect(node.isHighlighted).toBe(false);
-        });
-    });
-
-    describe('type and color changes', () => {
-        it('should change stitch type', () => {
-            const node = new StitchNode(StitchType.CHAIN);
-            node.changeType(StitchType.SINGLE_CROCHET);
-
-            expect(node.type).toBe(StitchType.SINGLE_CROCHET);
-            expect(node.definition).toBeDefined();
-            expect(node.baseName).toBe('Single Crochet');
-            expect(node.name).toBe('sc');  // Display name is abbreviation
-        });
-
-        it('should change yarn color', () => {
-            const node = new StitchNode(StitchType.CHAIN);
-            node.changeColor(0x00FF00);
-
-            expect(node.color).toBe(0x00FF00);
         });
     });
 
@@ -387,12 +270,18 @@ describe('StitchNode', () => {
             expect(json.position).toEqual({ x: 1, y: 2, z: 3 });
         });
 
+        it('should serialize isTurningChain flag', () => {
+            const node = new StitchNode(StitchType.CHAIN, { isTurningChain: true });
+            const json = node.toJSON();
+            expect(json.isTurningChain).toBe(true);
+        });
+
         it('should serialize connections as IDs', () => {
             const nodeA = new StitchNode(StitchType.CHAIN, { id: 'node_a' });
             const nodeB = new StitchNode(StitchType.SINGLE_CROCHET, { id: 'node_b' });
-            const nodeC = new StitchNode(StitchType.DOUBLE_CROCHET, { id: 'node_c' });
+            const nodeC = new StitchNode(StitchType.CHAIN, { id: 'node_c' });
 
-            nodeB.connectLeft(nodeA);
+            nodeA.connectRight(nodeB);
             nodeB.connectRight(nodeC);
             nodeB.connectBelow(nodeA);
 
@@ -406,34 +295,46 @@ describe('StitchNode', () => {
         it('should deserialize from JSON', () => {
             const data = {
                 id: 'restored_id',
-                type: StitchType.DOUBLE_CROCHET,
+                type: StitchType.SINGLE_CROCHET,
                 row: 3,
                 column: 4,
                 color: 0x0000FF,
-                position: { x: 5, y: 6, z: 7 },
-                metadata: { custom: 'data' }
+                position: { x: 5, y: 6, z: 7 }
             };
 
             const node = StitchNode.fromJSON(data);
 
             expect(node.id).toBe('restored_id');
-            expect(node.type).toBe(StitchType.DOUBLE_CROCHET);
+            expect(node.type).toBe(StitchType.SINGLE_CROCHET);
             expect(node.row).toBe(3);
             expect(node.column).toBe(4);
             expect(node.color).toBe(0x0000FF);
             expect(node.position.x).toBe(5);
             expect(node.position.y).toBe(6);
             expect(node.position.z).toBe(7);
-            expect(node.metadata.custom).toBe('data');
+        });
+
+        it('should restore isTurningChain from JSON', () => {
+            const data = {
+                id: 'tc_1',
+                type: StitchType.CHAIN,
+                row: 1,
+                column: 0,
+                color: 0x8B4513,
+                position: { x: 0, y: 0, z: 0 },
+                isTurningChain: true
+            };
+
+            const node = StitchNode.fromJSON(data);
+            expect(node.isTurningChain).toBe(true);
         });
 
         it('should preserve data through serialize/deserialize cycle', () => {
-            const original = new StitchNode(StitchType.HALF_DOUBLE_CROCHET, {
+            const original = new StitchNode(StitchType.SINGLE_CROCHET, {
                 row: 5,
                 column: 10,
                 color: 0x123456,
-                position: { x: 1.5, y: 2.5, z: 3.5 },
-                metadata: { note: 'test' }
+                position: { x: 1.5, y: 2.5, z: 3.5 }
             });
 
             const json = original.toJSON();

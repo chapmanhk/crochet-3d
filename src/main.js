@@ -1,198 +1,57 @@
 /**
- * Crochet 3D Pattern Designer
+ * Crochet 3D Pattern Designer - Simplified
  *
- * Main application entry point
- * Initializes all modules and starts the application
+ * Just chains and single crochet, one after the other.
  */
 
 import { Pattern } from './core/Pattern.js';
 import { SceneManager } from './rendering/SceneManager.js';
 import { StitchRenderer } from './rendering/StitchRenderer.js';
-import { RaycastManager } from './interaction/RaycastManager.js';
-import { AttachmentPointManager } from './interaction/AttachmentPointManager.js';
-import { PhysicsEngine } from './physics/PhysicsEngine.js';
 import { UIManager } from './ui/UIManager.js';
-import { PhysicsPanel } from './ui/PhysicsPanel.js';
 import { EventBus, Events } from './utils/EventBus.js';
-import { showAlert } from './ui/Modal.js';
-import { validatePatternData, formatValidationResult } from './utils/PatternSchema.js';
 import { SceneConstants } from './utils/Constants.js';
-
-/**
- * Global error handler to catch unhandled errors
- * Prevents application crashes and logs errors for debugging
- */
-function setupGlobalErrorHandlers() {
-    // Handle uncaught errors
-    window.addEventListener('error', (event) => {
-        console.error('Uncaught error:', event.error || event.message);
-        // Prevent the error from bubbling up
-        event.preventDefault();
-    });
-
-    // Handle unhandled promise rejections
-    window.addEventListener('unhandledrejection', (event) => {
-        console.error('Unhandled promise rejection:', event.reason);
-        // Prevent the rejection from throwing
-        event.preventDefault();
-    });
-
-    // Handle WebGL context loss gracefully
-    window.addEventListener('webglcontextlost', (event) => {
-        console.error('WebGL context lost. The 3D view may need to be refreshed.');
-        event.preventDefault();
-    });
-
-    // Handle WebGL context restoration
-    window.addEventListener('webglcontextrestored', () => {
-        console.log('WebGL context restored.');
-    });
-}
 
 class CrochetApp {
     constructor() {
-        // Core modules
         this.pattern = null;
         this.sceneManager = null;
         this.stitchRenderer = null;
-        this.raycastManager = null;
-        this.attachmentManager = null;
-        this.physicsEngine = null;
         this.uiManager = null;
-        this.physicsPanel = null;
 
-        // Camera follow state
         this.cameraFollowTarget = null;
         this.cameraFollowActive = false;
 
-        // Initialize
         this.init();
     }
 
-    /**
-     * Initialize the application
-     * Wrapped in try-catch for graceful error handling
-     */
     init() {
         try {
-            console.log('Initializing Crochet 3D Pattern Designer...');
-
-            // Create pattern manager
             this.pattern = new Pattern();
-
-            // Create 3D scene
             this.sceneManager = new SceneManager(document.body);
-
-            // Create stitch renderer
             this.stitchRenderer = new StitchRenderer(this.sceneManager);
+            this.uiManager = new UIManager(this.pattern);
 
-            // Create interaction manager
-            // Create attachment point manager for click-to-add functionality
-            this.attachmentManager = new AttachmentPointManager(this.sceneManager, this.pattern);
-
-            // Create interaction manager
-            this.raycastManager = new RaycastManager(this.sceneManager, this.stitchRenderer);
-
-            // Create physics engine for fabric simulation
-            this.physicsEngine = new PhysicsEngine(this.pattern, this.sceneManager);
-
-            // Create UI
-            this.uiManager = new UIManager(this.pattern, this.sceneManager);
-
-            // Create physics control panel
-            this.physicsPanel = new PhysicsPanel(this.physicsEngine);
-
-            // Setup application-level event handlers
             this.setupEventHandlers();
             this.setupCameraFollow();
-
-            // Start rendering
             this.sceneManager.start();
 
-            console.log('Crochet 3D Pattern Designer ready!');
-            console.log('Keyboard shortcuts:');
-            console.log('  C - Chain stitch');
-            console.log('  S - Single crochet');
-            console.log('  D - Double crochet');
-            console.log('  H - Half double crochet');
-            console.log('  T - Triple crochet');
-            console.log('  I - Increase');
-            console.log('  X - Decrease');
-            console.log('  M - Magic ring');
-            console.log('  L - Slip stitch');
-            console.log('  N - New row');
-            console.log('  Enter - Add stitch');
-            console.log('  Ctrl+Z - Undo');
-            console.log('  Ctrl+Y - Redo');
-            console.log('');
-            console.log('Physics: Use the panel in bottom-left to simulate fabric drape');
+            console.log('Crochet 3D ready! Press C for chain, S to add SC, N for new row.');
         } catch (err) {
-            console.error('Failed to initialize application:', err);
-            // Show user-friendly error message
-            // Use textContent to prevent XSS from error messages
-            const errorContainer = document.createElement('div');
-            errorContainer.style.cssText = 'padding: 40px; text-align: center; font-family: sans-serif;';
-
-            const heading = document.createElement('h1');
-            heading.style.color = '#d32f2f';
-            heading.textContent = 'Initialization Error';
-
-            const message1 = document.createElement('p');
-            message1.textContent = 'Sorry, the application failed to start.';
-
-            const message2 = document.createElement('p');
-            message2.style.color = '#666';
-            message2.textContent = `Error: ${err.message}`;
-
-            const message3 = document.createElement('p');
-            message3.textContent = 'Please try refreshing the page. If the problem persists, check that your browser supports WebGL.';
-
-            errorContainer.appendChild(heading);
-            errorContainer.appendChild(message1);
-            errorContainer.appendChild(message2);
-            errorContainer.appendChild(message3);
-
+            console.error('Failed to initialize:', err);
+            const msg = document.createElement('p');
+            msg.style.cssText = 'padding: 40px; text-align: center; font-family: sans-serif;';
+            msg.textContent = `Failed to start: ${err.message}`;
             document.body.innerHTML = '';
-            document.body.appendChild(errorContainer);
+            document.body.appendChild(msg);
         }
     }
 
-    /**
-     * Setup application event handlers
-     */
     setupEventHandlers() {
-        // Handle stitch deletion
-        EventBus.on('selection:delete', ({ nodes }) => {
-            nodes.forEach(node => {
-                this.pattern.removeStitch(node);
-            });
-        });
-
-        // Update attachment points when pattern loads
-        EventBus.on(Events.PATTERN_LOADED, () => {
-            // Initial attachment points update is handled by AttachmentPointManager
-        });
-
-        // Auto-follow camera when stitches are added
-        EventBus.on(Events.STITCH_ADDED, () => {
-            this.updateCameraTarget();
-            this.physicsEngine.settle();
-        });
-
-        // Auto-follow camera when rows are added
-        EventBus.on(Events.ROW_ADDED, () => {
-            this.updateCameraTarget();
-            this.physicsEngine.settle();
-        });
-
-        EventBus.on(Events.PATTERN_LOADED, () => {
-            this.updateCameraTarget();
-        });
+        EventBus.on(Events.STITCH_ADDED, () => this.updateCameraTarget());
+        EventBus.on(Events.ROW_ADDED, () => this.updateCameraTarget());
+        EventBus.on(Events.PATTERN_LOADED, () => this.updateCameraTarget());
     }
 
-    /**
-     * Setup smooth camera follow behavior
-     */
     setupCameraFollow() {
         const currentTarget = this.sceneManager.controls.target;
         this.cameraFollowTarget = {
@@ -204,45 +63,25 @@ class CrochetApp {
         this.sceneManager.onUpdate(() => this.applyCameraFollow());
     }
 
-    /**
-     * Update camera target to follow the pattern as it grows
-     * Smoothly adjusts the camera to keep the work area visible
-     */
     updateCameraTarget() {
         const bounds = this.calculatePatternBounds();
-
-        // Only update if we have valid bounds
         if (bounds.height > 0 || bounds.width > 0) {
             const targetX = bounds.centerX;
             const targetY = bounds.centerY + SceneConstants.CAMERA_FOLLOW_Y_OFFSET;
-            const targetZ = 0;
 
             if (!this.cameraFollowTarget) {
-                this.cameraFollowTarget = { x: targetX, y: targetY, z: targetZ };
+                this.cameraFollowTarget = { x: targetX, y: targetY, z: 0 };
                 this.cameraFollowActive = true;
-                return;
-            }
-
-            const dx = targetX - this.cameraFollowTarget.x;
-            const dy = targetY - this.cameraFollowTarget.y;
-            const dz = targetZ - this.cameraFollowTarget.z;
-            const minDelta = SceneConstants.CAMERA_FOLLOW_MIN_DELTA;
-            if (Math.abs(dx) < minDelta &&
-                Math.abs(dy) < minDelta &&
-                Math.abs(dz) < minDelta) {
                 return;
             }
 
             this.cameraFollowTarget.x = targetX;
             this.cameraFollowTarget.y = targetY;
-            this.cameraFollowTarget.z = targetZ;
+            this.cameraFollowTarget.z = 0;
             this.cameraFollowActive = true;
         }
     }
 
-    /**
-     * Apply smooth camera follow toward the target each frame
-     */
     applyCameraFollow() {
         if (!this.cameraFollowActive || !this.cameraFollowTarget) return;
 
@@ -258,8 +97,7 @@ class CrochetApp {
         const dz = this.cameraFollowTarget.z - currentTarget.z;
 
         const minDelta = SceneConstants.CAMERA_FOLLOW_MIN_DELTA;
-        const distSq = dx * dx + dy * dy + dz * dz;
-        if (distSq < minDelta * minDelta) return;
+        if (dx * dx + dy * dy + dz * dz < minDelta * minDelta) return;
 
         const lerpFactor = SceneConstants.CAMERA_FOLLOW_LERP;
         currentTarget.x += dx * lerpFactor;
@@ -269,41 +107,17 @@ class CrochetApp {
         this.sceneManager.controls.update();
     }
 
-    /**
-     * Create a demo pattern to start with
-     */
-    createDemoPattern() {
-        // Start with a foundation chain of 10
-        this.pattern.startWithChain(10);
-
-        // Center the camera on the pattern
-        const bounds = this.calculatePatternBounds();
-        this.sceneManager.lookAt(bounds.centerX, bounds.centerY, 0);
-    }
-
-    /**
-     * Calculate the bounding box of the current pattern
-     * With safety checks for empty or invalid patterns
-     * @returns {Object} Bounding box with centerX, centerY, width, height
-     */
     calculatePatternBounds() {
         const defaultBounds = { centerX: 0, centerY: 0, width: 0, height: 0 };
-
-        if (!this.pattern?.graph) {
-            return defaultBounds;
-        }
+        if (!this.pattern?.graph) return defaultBounds;
 
         const nodes = this.pattern.graph.getAllNodes();
-
-        if (!nodes || nodes.length === 0) {
-            return defaultBounds;
-        }
+        if (!nodes || nodes.length === 0) return defaultBounds;
 
         let minX = Infinity, maxX = -Infinity;
         let minY = Infinity, maxY = -Infinity;
 
         nodes.forEach(node => {
-            // Safety check for valid position
             if (node?.position) {
                 const x = Number.isFinite(node.position.x) ? node.position.x : 0;
                 const y = Number.isFinite(node.position.y) ? node.position.y : 0;
@@ -314,7 +128,6 @@ class CrochetApp {
             }
         });
 
-        // Check for valid bounds
         if (!Number.isFinite(minX) || !Number.isFinite(maxX) ||
             !Number.isFinite(minY) || !Number.isFinite(maxY)) {
             return defaultBounds;
@@ -328,113 +141,19 @@ class CrochetApp {
         };
     }
 
-    /**
-     * Save pattern to file
-     */
-    savePattern() {
-        const data = this.pattern.toJSON();
-        const json = JSON.stringify(data, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${this.pattern.metadata.name || 'pattern'}.json`;
-        a.click();
-
-        URL.revokeObjectURL(url);
-    }
-
-    /**
-     * Load pattern from file
-     */
-    loadPattern(file) {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const data = JSON.parse(e.target.result);
-
-                // Validate the pattern data before loading
-                const validation = validatePatternData(data);
-                if (!validation.valid) {
-                    const errorMsg = 'Invalid pattern file:\n\n' + formatValidationResult(validation);
-                    console.error('Pattern validation failed:', validation.errors);
-                    await showAlert(errorMsg, 'Validation Error');
-                    return;
-                }
-
-                // Show warnings if any
-                if (validation.warnings.length > 0) {
-                    console.warn('Pattern loaded with warnings:', validation.warnings);
-                }
-
-                // Create new pattern from JSON
-                const newPattern = Pattern.fromJSON(data);
-
-                // Dispose old managers that hold pattern references
-                this.physicsPanel.dispose();
-                this.physicsEngine.dispose();
-                this.uiManager.dispose();
-                this.attachmentManager.dispose();
-
-                // Dispose old pattern to clean up its graph listeners
-                if (this.pattern && typeof this.pattern.dispose === 'function') {
-                    this.pattern.dispose();
-                }
-
-                // Update pattern reference
-                this.pattern = newPattern;
-
-                // Recreate managers with new pattern
-                this.attachmentManager = new AttachmentPointManager(this.sceneManager, this.pattern);
-                this.physicsEngine = new PhysicsEngine(this.pattern, this.sceneManager);
-                this.uiManager = new UIManager(this.pattern, this.sceneManager);
-                this.physicsPanel = new PhysicsPanel(this.physicsEngine);
-
-                // Re-render
-                this.stitchRenderer.renderPattern(this.pattern);
-
-                // Emit pattern loaded event
-                EventBus.emit(Events.PATTERN_LOADED, { pattern: this.pattern });
-
-                console.log('Pattern loaded successfully');
-            } catch (err) {
-                console.error('Failed to load pattern:', err);
-                showAlert('Failed to load pattern file. Please check the file format.', 'Load Error');
-            }
-        };
-        reader.readAsText(file);
-    }
-
-    /**
-     * Dispose of all resources
-     */
     dispose() {
-        this.physicsPanel.dispose();
-        this.physicsEngine.dispose();
         this.uiManager.dispose();
-        this.attachmentManager.dispose();
-        this.raycastManager.dispose();
         this.stitchRenderer.dispose();
         this.sceneManager.dispose();
-
-        // Dispose pattern to clean up graph listeners
-        if (this.pattern && typeof this.pattern.dispose === 'function') {
-            this.pattern.dispose();
-        }
+        if (this.pattern) this.pattern.dispose();
     }
 }
 
-// Setup global error handlers before starting the app
-setupGlobalErrorHandlers();
-
-// Start the application
 let app;
 try {
     app = new CrochetApp();
 } catch (err) {
-    console.error('Critical error creating application:', err);
+    console.error('Critical error:', err);
 }
 
-// Expose to window for debugging
 window.crochetApp = app;
