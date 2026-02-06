@@ -333,6 +333,35 @@ vi.mock('three', () => ({
         }
         dispose() {}
     },
+    SpriteMaterial: class MockSpriteMaterial {
+        constructor(opts) {
+            Object.assign(this, opts);
+        }
+        dispose() {}
+    },
+    Sprite: class MockSprite {
+        constructor(material) {
+            this.material = material;
+            this.isSprite = true;
+            this.position = new MockVector3();
+            this.scale = {
+                x: 1,
+                y: 1,
+                z: 1,
+                set: function(x, y, z) {
+                    this.x = x;
+                    this.y = y;
+                    this.z = z;
+                },
+                setScalar: function(s) {
+                    this.x = s;
+                    this.y = s;
+                    this.z = s;
+                }
+            };
+            this.userData = {};
+        }
+    },
     RepeatWrapping: 1000,
     SRGBColorSpace: 'srgb',
     PCFSoftShadowMap: 2,
@@ -355,16 +384,24 @@ const mockContext2D = {
     fillStyle: '',
     strokeStyle: '',
     lineWidth: 1,
+    font: '',
+    textAlign: '',
+    textBaseline: '',
     fillRect: vi.fn(),
+    fillText: vi.fn(),
     beginPath: vi.fn(),
     moveTo: vi.fn(),
     lineTo: vi.fn(),
+    quadraticCurveTo: vi.fn(),
+    closePath: vi.fn(),
+    fill: vi.fn(),
     stroke: vi.fn(),
     save: vi.fn(),
     restore: vi.fn(),
     translate: vi.fn(),
     rotate: vi.fn(),
     scale: vi.fn(),
+    measureText: (text) => ({ width: text.length * 20 }),
     createLinearGradient: () => ({
         addColorStop: vi.fn()
     }),

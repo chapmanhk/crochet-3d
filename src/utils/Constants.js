@@ -101,9 +101,9 @@ export const SceneConstants = {
     VIEW_SIDE_TARGET: { x: 0, y: 2, z: 0 },
 
     // Orbit controls
-    MIN_DISTANCE: 2,
-    MAX_DISTANCE: 50,
-    MAX_POLAR_ANGLE_RATIO: 0.9, // Multiplied by Math.PI
+    MIN_DISTANCE: 0.5,
+    MAX_DISTANCE: 200,
+    MAX_POLAR_ANGLE_RATIO: 0.95, // Multiplied by Math.PI
     DAMPING_FACTOR: 0.05,
 
     // Camera follow behavior
@@ -170,18 +170,24 @@ export const AttachmentConstants = {
     NEW_ROW_EMISSIVE_INTENSITY: 0.3,
     NEW_ROW_HOVER_COLOR: 0xFFB74D,
 
-    // Chain start marker (green - indicates beginning of foundation)
+    // Chain start marker (teal - indicates beginning of foundation)
     CHAIN_START_COLOR: 0x00BFA5,
-    CHAIN_START_SCALE: 0.4,
+    CHAIN_START_SCALE: 0.8,
 
     // Chain end marker (blue - indicates where to start working)
     CHAIN_END_COLOR: 0x2196F3,
-    CHAIN_END_SCALE: 0.4,
+    CHAIN_END_SCALE: 0.8,
+
+    // Ghost stitch colors for start/end of foundation chain
+    CHAIN_START_GHOST_COLOR: 0x00BFA5,
+    CHAIN_START_GHOST_HOVER_COLOR: 0x4DD0B8,
+    CHAIN_END_GHOST_COLOR: 0x2196F3,
+    CHAIN_END_GHOST_HOVER_COLOR: 0x64B5F6,
 
     // Working position marker (yellow - indicates current suggested position)
     WORKING_POSITION_COLOR: 0xFFEB3B,
-    WORKING_POSITION_SCALE: 0.35,
-    WORKING_POSITION_PULSE_SCALE: 0.45,
+    WORKING_POSITION_SCALE: 0.6,
+    WORKING_POSITION_PULSE_SCALE: 0.75,
 
     // Default sphere radius for unknown geometries
     DEFAULT_SPHERE_RADIUS: 0.2,
