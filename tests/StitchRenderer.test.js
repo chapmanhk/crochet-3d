@@ -32,25 +32,18 @@ describe('StitchRenderer', () => {
         const mesh = renderer.createMeshForNode(node);
 
         expect(mesh).toBeDefined();
-        expect(renderer.getMesh(node)).toBe(mesh);
+        expect(renderer.meshMap.get(node.id)).toBe(mesh);
         expect(node.mesh).toBe(mesh);
         expect(mesh.userData.node).toBe(node);
         expect(sceneManager.addStitchMesh).toHaveBeenCalledWith(mesh);
     });
 
-    it('updates selection visuals without errors', () => {
+    it('returns existing mesh if already created', () => {
         const node = new StitchNode(StitchType.SINGLE_CROCHET);
-        renderer.createMeshForNode(node);
+        const mesh1 = renderer.createMeshForNode(node);
+        const mesh2 = renderer.createMeshForNode(node);
 
-        node.setSelected(true);
-        renderer.updateSelectionVisual(node);
-        const mesh = renderer.getMesh(node);
-        expect(mesh.material).toBeDefined();
-
-        node.setSelected(false);
-        node.setHighlighted(true);
-        renderer.updateSelectionVisual(node);
-        expect(mesh.material).toBeDefined();
+        expect(mesh1).toBe(mesh2);
     });
 
     it('rebuilds connection meshes for linked nodes', () => {
@@ -85,12 +78,56 @@ describe('StitchRenderer', () => {
         };
 
         renderer.rebuildConnectionMeshes();
-        renderer.updateConnectionMeshes();
 
         const mesh = Array.from(renderer.connectionMeshes.values())[0];
         expect(mesh.position.x).toBe(1);
         expect(mesh.position.y).toBe(0);
         expect(mesh.position.z).toBe(0);
         expect(mesh.scale.y).toBe(2);
+    });
+
+    it('clears all meshes', () => {
+        const node = new StitchNode(StitchType.CHAIN);
+        renderer.createMeshForNode(node);
+
+        renderer.clearAllMeshes();
+
+        expect(renderer.meshMap.size).toBe(0);
+        expect(sceneManager.removeStitchMesh).toHaveBeenCalled();
+    });
+
+    it('removes mesh for specific node', () => {
+        const node = new StitchNode(StitchType.CHAIN);
+        renderer.createMeshForNode(node);
+
+        renderer.removeMeshForNode(node);
+
+        expect(renderer.meshMap.has(node.id)).toBe(false);
+        expect(sceneManager.removeStitchMesh).toHaveBeenCalled();
+    });
+
+    it('renders all nodes from a pattern', () => {
+        const nodeA = new StitchNode(StitchType.CHAIN);
+        const nodeB = new StitchNode(StitchType.SINGLE_CROCHET);
+
+        const mockPattern = {
+            graph: {
+                getAllNodes: () => [nodeA, nodeB]
+            }
+        };
+
+        renderer.renderPattern(mockPattern);
+
+        expect(renderer.meshMap.size).toBe(2);
+    });
+
+    it('disposes all resources', () => {
+        const node = new StitchNode(StitchType.CHAIN);
+        renderer.createMeshForNode(node);
+
+        renderer.dispose();
+
+        expect(renderer.meshMap.size).toBe(0);
+        expect(renderer.geometryCache.size).toBe(0);
     });
 });

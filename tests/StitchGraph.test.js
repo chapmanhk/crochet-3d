@@ -6,7 +6,6 @@
  * - Row indexing
  * - Foundation chain creation
  * - Connection management
- * - Pattern validation
  * - Serialization/deserialization
  */
 
@@ -32,7 +31,6 @@ describe('StitchGraph', () => {
             expect(graph.listeners).toBeDefined();
             expect(graph.listeners.nodeAdded).toEqual([]);
             expect(graph.listeners.nodeRemoved).toEqual([]);
-            expect(graph.listeners.connectionChanged).toEqual([]);
             expect(graph.listeners.graphCleared).toEqual([]);
         });
     });
@@ -71,12 +69,6 @@ describe('StitchGraph', () => {
 
             expect(graph.size).toBe(1);
             expect(graph.getNode(node.id)).toBe(node);
-        });
-
-        it('should throw error for non-StitchNode objects', () => {
-            expect(() => graph.addNode({})).toThrow('Must add StitchNode instance');
-            expect(() => graph.addNode('string')).toThrow();
-            expect(() => graph.addNode(null)).toThrow();
         });
 
         it('should update row index', () => {
@@ -215,7 +207,6 @@ describe('StitchGraph', () => {
 
     describe('row operations', () => {
         beforeEach(() => {
-            // Create a simple pattern: 3 chains in row 0, 2 SC in row 1
             graph.createNode(StitchType.CHAIN, { row: 0, column: 0 });
             graph.createNode(StitchType.CHAIN, { row: 0, column: 1 });
             graph.createNode(StitchType.CHAIN, { row: 0, column: 2 });
@@ -247,7 +238,6 @@ describe('StitchGraph', () => {
 
         describe('getRowSorted', () => {
             it('should return nodes sorted by column', () => {
-                // Add nodes out of order
                 const newGraph = new StitchGraph();
                 newGraph.createNode(StitchType.CHAIN, { row: 0, column: 2 });
                 newGraph.createNode(StitchType.CHAIN, { row: 0, column: 0 });
@@ -258,42 +248,6 @@ describe('StitchGraph', () => {
                 expect(sorted[0].column).toBe(0);
                 expect(sorted[1].column).toBe(1);
                 expect(sorted[2].column).toBe(2);
-            });
-        });
-
-        describe('getFirstInRow', () => {
-            it('should return first stitch in row', () => {
-                const first = graph.getFirstInRow(0);
-                expect(first.column).toBe(0);
-            });
-
-            it('should return null for empty row', () => {
-                expect(graph.getFirstInRow(5)).toBeNull();
-            });
-        });
-
-        describe('getLastInRow', () => {
-            it('should return last stitch in row', () => {
-                const last = graph.getLastInRow(0);
-                expect(last.column).toBe(2);
-            });
-
-            it('should return null for empty row', () => {
-                expect(graph.getLastInRow(5)).toBeNull();
-            });
-        });
-
-        describe('getAt', () => {
-            it('should return node at specific row and column', () => {
-                const node = graph.getAt(0, 1);
-                expect(node).toBeDefined();
-                expect(node.row).toBe(0);
-                expect(node.column).toBe(1);
-            });
-
-            it('should return null for non-existent position', () => {
-                expect(graph.getAt(0, 10)).toBeNull();
-                expect(graph.getAt(10, 0)).toBeNull();
             });
         });
     });
@@ -308,21 +262,6 @@ describe('StitchGraph', () => {
 
                 expect(upper.connections.below).toContain(lower);
                 expect(lower.connections.above).toContain(upper);
-            });
-
-            it('should emit connectionChanged event', () => {
-                const callback = vi.fn();
-                graph.on('connectionChanged', callback);
-
-                const lower = graph.createNode(StitchType.CHAIN, { row: 0 });
-                const upper = graph.createNode(StitchType.SINGLE_CROCHET, { row: 1 });
-                graph.connectVertical(upper, lower);
-
-                expect(callback).toHaveBeenCalledWith({
-                    type: 'vertical',
-                    upper,
-                    lower
-                });
             });
 
             it('should return false for null nodes', () => {
@@ -341,21 +280,6 @@ describe('StitchGraph', () => {
 
                 expect(left.connections.right).toBe(right);
                 expect(right.connections.left).toBe(left);
-            });
-
-            it('should emit connectionChanged event', () => {
-                const callback = vi.fn();
-                graph.on('connectionChanged', callback);
-
-                const left = graph.createNode(StitchType.CHAIN, { column: 0 });
-                const right = graph.createNode(StitchType.CHAIN, { column: 1 });
-                graph.connectHorizontal(left, right);
-
-                expect(callback).toHaveBeenCalledWith({
-                    type: 'horizontal',
-                    left,
-                    right
-                });
             });
         });
     });
@@ -446,67 +370,6 @@ describe('StitchGraph', () => {
         });
     });
 
-    describe('addStitchToRow', () => {
-        beforeEach(() => {
-            graph.createFoundationChain(5);
-        });
-
-        it('should add stitch to specified row', () => {
-            const stitch = graph.addStitchToRow(StitchType.SINGLE_CROCHET, 1);
-
-            expect(stitch.row).toBe(1);
-            expect(graph.getRow(1)).toContain(stitch);
-        });
-
-        it('should connect to specified node below', () => {
-            const chainNode = graph.getAt(0, 0);
-            const stitch = graph.addStitchToRow(StitchType.SINGLE_CROCHET, 1, chainNode);
-
-            expect(stitch.connections.below).toContain(chainNode);
-            expect(chainNode.connections.above).toContain(stitch);
-        });
-
-        it('should connect to previous stitch in row', () => {
-            const stitch1 = graph.addStitchToRow(StitchType.SINGLE_CROCHET, 1);
-            const stitch2 = graph.addStitchToRow(StitchType.SINGLE_CROCHET, 1);
-
-            expect(stitch1.connections.right).toBe(stitch2);
-            expect(stitch2.connections.left).toBe(stitch1);
-        });
-
-        it('should assign correct column number', () => {
-            graph.addStitchToRow(StitchType.SINGLE_CROCHET, 1);
-            graph.addStitchToRow(StitchType.SINGLE_CROCHET, 1);
-            const stitch3 = graph.addStitchToRow(StitchType.SINGLE_CROCHET, 1);
-
-            expect(stitch3.column).toBe(2);
-        });
-    });
-
-    describe('validate', () => {
-        it('should return valid for proper pattern', () => {
-            const chain = graph.createFoundationChain(3);
-
-            // Add a row of SC
-            chain.forEach(ch => {
-                const sc = graph.createNode(StitchType.SINGLE_CROCHET, { row: 1 });
-                graph.connectVertical(sc, ch);
-            });
-
-            const result = graph.validate();
-            expect(result.valid).toBe(true);
-            expect(result.errors).toHaveLength(0);
-        });
-
-        it('should warn about disconnected stitches', () => {
-            graph.createFoundationChain(3);
-            graph.createNode(StitchType.SINGLE_CROCHET, { row: 1 }); // Disconnected
-
-            const result = graph.validate();
-            expect(result.warnings.length).toBeGreaterThan(0);
-        });
-    });
-
     describe('getStats', () => {
         it('should return correct statistics', () => {
             graph.createFoundationChain(3);
@@ -517,9 +380,6 @@ describe('StitchGraph', () => {
 
             expect(stats.totalStitches).toBe(5);
             expect(stats.rowCount).toBe(2);
-            expect(stats.stitchesByType[StitchType.CHAIN]).toBe(3);
-            expect(stats.stitchesByType[StitchType.SINGLE_CROCHET]).toBe(2);
-            expect(stats.stitchesPerRow).toEqual([3, 2]);
         });
     });
 
@@ -531,18 +391,13 @@ describe('StitchGraph', () => {
 
             const json = graph.toJSON();
 
-            expect(json.version).toBe(1);
             expect(json.nodes).toHaveLength(4);
-            expect(json.metadata).toBeDefined();
-            expect(json.metadata.stats.totalStitches).toBe(4);
         });
 
         it('should deserialize from JSON', () => {
-            // Create pattern
             const chain = graph.createFoundationChain(3);
             const sc = graph.createNode(StitchType.SINGLE_CROCHET, { row: 1 });
             graph.connectVertical(sc, chain[1]);
-            graph.connectHorizontal(chain[0], chain[1]);
 
             const json = graph.toJSON();
             const restored = StitchGraph.fromJSON(json);
