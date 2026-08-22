@@ -40,5 +40,6 @@ Skills auto-load when the agent detects a matching task from the `description` f
 
 ```bash
 npm run test:run
+npm run test:e2e
 npm run build
 ```

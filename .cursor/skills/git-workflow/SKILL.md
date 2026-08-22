@@ -35,6 +35,7 @@ chore: add Cursor agents and skills
 
 ```bash
 npm run test:run
+npm run test:e2e
 npm run build
 git diff   # review changes
 ```

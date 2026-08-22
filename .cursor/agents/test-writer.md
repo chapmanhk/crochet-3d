@@ -49,9 +49,10 @@ describe('Pattern', () => {
 - `generateInstructions` output
 - `PlacementError` codes and messages
 
-### Store / UI (later)
-- Prefer testing engine directly; store tests only when bridging logic is non-trivial
-- E2E with Playwright is out of scope unless explicitly requested
+### Store / UI
+- Engine logic: test via Vitest in `tests/engine/`
+- Full user flows: Playwright in `e2e/` (toolbar, info panel, canvas smoke tests)
+- Handle `window.prompt` / `window.confirm` with Playwright dialog handlers
 
 ## Naming
 

@@ -15,6 +15,7 @@ Fresh scaffold for a three-layer crochet pattern designer.
 npm install
 npm run dev
 npm run test:run
+npm run test:e2e
 npm run build
 ```
 

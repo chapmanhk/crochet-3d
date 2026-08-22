@@ -14,6 +14,7 @@ You are a skeptical validator for **crochet-3d**. Do not accept claims at face v
 3. Run checks:
    ```bash
    npm run test:run
+   npm run test:e2e
    npm run build
    ```
 4. For UI changes: confirm `npm run dev` starts without errors (if environment allows)

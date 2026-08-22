@@ -1,27 +1,23 @@
 ---
 name: testing
-description: Vitest testing conventions for crochet-3d. Use when writing engine tests, running test suites, or verifying placement logic.
+description: Vitest and Playwright testing conventions for crochet-3d. Use when writing engine tests, E2E flows, or running test suites.
 ---
 
 # Testing Standards
 
 ## Framework
 
-- **Vitest** for all tests
-- Config: `vitest.config.ts`
-- Engine tests run in `node` environment (no jsdom required)
+- **Vitest** — engine unit tests (`vitest.config.ts`, `node` environment)
+- **Playwright** — browser E2E tests (`playwright.config.ts`, `e2e/`)
 
 ## File organization
 
 ```
 tests/
-  engine/
-    Pattern.test.ts
-    layout.test.ts
-    instructions.test.ts
+  engine/           # Vitest unit tests
+e2e/                # Playwright browser tests
+  app.spec.ts
 ```
-
-Mirror `src/engine/` structure. Name files `<Module>.test.ts`.
 
 ## Conventions
 
@@ -52,13 +48,14 @@ describe('Pattern', () => {
 | `src/engine/` | **Yes** | Unit tests in `tests/engine/` |
 | `src/store/` | Rarely | Only non-trivial bridge logic |
 | `src/scene/` | Later | Mock Three.js if needed |
-| `src/app/` | Later | Playwright E2E when requested |
+| `src/app/` | **Yes** | Playwright E2E in `e2e/` |
 
 ## Commands
 
 ```bash
 npm test              # vitest watch mode
 npm run test:run      # single run (CI / pre-commit)
+npm run test:e2e      # Playwright browser tests
 npm run build         # includes tsc --noEmit
 ```
 
