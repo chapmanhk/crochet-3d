@@ -59,6 +59,15 @@ describe('Pattern', () => {
     expect(pattern.getCurrentRow()).toBe(2);
   });
 
+  it('rejects starting a new row before the current row is complete', () => {
+    const pattern = new Pattern();
+    pattern.addFoundationChain(3);
+    pattern.startNewRow();
+    pattern.addSingleCrochet();
+
+    expect(() => pattern.startNewRow()).toThrow(PlacementError);
+  });
+
   it('resets the pattern', () => {
     const pattern = new Pattern();
     pattern.addFoundationChain(2);

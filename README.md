@@ -15,6 +15,7 @@ Fresh scaffold for a three-layer crochet pattern designer.
 npm install
 npm run dev
 npm run test:run
+npm run test:e2e
 npm run build
 ```
 
@@ -30,3 +31,7 @@ npm run build
 - `src/engine` must not import from React, Three.js, or Zustand
 - Scene updates from engine snapshots via diff-based mesh sync
 - Physics/drape is intentionally deferred
+
+## Cursor agents & skills
+
+See [`.cursor/README.md`](.cursor/README.md) for project agents (code review, tests, engine specialist) and skills (architecture, UI/UX, testing).

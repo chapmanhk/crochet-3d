@@ -7,6 +7,8 @@ import { layoutPosition } from './layout';
 const MIN_CHAIN_LENGTH = 1;
 const MAX_CHAIN_LENGTH = 500;
 
+export { MIN_CHAIN_LENGTH, MAX_CHAIN_LENGTH };
+
 export class Pattern {
   private readonly graph = new StitchGraph();
   private currentRow = 0;
@@ -98,11 +100,18 @@ export class Pattern {
       return this.currentRow;
     }
 
-    const previousRowStitches = this.graph.getByRow(this.currentRow);
-    if (previousRowStitches.length === 0) {
+    const currentRowStitches = this.graph.getByRow(this.currentRow);
+    if (currentRowStitches.length === 0) {
       throw new PlacementError(
         'CANNOT_START_ROW',
         'Current row has no stitches. Add stitches before starting a new row.',
+      );
+    }
+
+    if (currentRowStitches.length < this.foundationChainLength) {
+      throw new PlacementError(
+        'CANNOT_START_ROW',
+        `Complete row ${this.currentRow} before starting a new row (${currentRowStitches.length}/${this.foundationChainLength} stitches).`,
       );
     }
 

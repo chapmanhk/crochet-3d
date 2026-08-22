@@ -16,6 +16,7 @@ interface PatternState {
   addSingleCrochet: () => void;
   startNewRow: () => void;
   resetPattern: () => void;
+  setLastError: (message: string) => void;
   clearError: () => void;
 }
 
@@ -34,6 +35,10 @@ function syncState(): Pick<
   };
 }
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof PlacementError ? error.message : fallback;
+}
+
 export const usePatternStore = create<PatternState>((set) => ({
   ...syncState(),
   lastError: null,
@@ -43,12 +48,7 @@ export const usePatternStore = create<PatternState>((set) => ({
       pattern.addFoundationChain(length);
       set({ ...syncState(), lastError: null });
     } catch (error) {
-      set({
-        lastError:
-          error instanceof PlacementError
-            ? error.message
-            : 'Failed to add foundation chain.',
-      });
+      set({ lastError: getErrorMessage(error, 'Failed to add foundation chain.') });
     }
   },
 
@@ -57,12 +57,7 @@ export const usePatternStore = create<PatternState>((set) => ({
       pattern.addSingleCrochet();
       set({ ...syncState(), lastError: null });
     } catch (error) {
-      set({
-        lastError:
-          error instanceof PlacementError
-            ? error.message
-            : 'Failed to add single crochet.',
-      });
+      set({ lastError: getErrorMessage(error, 'Failed to add single crochet.') });
     }
   },
 
@@ -71,18 +66,17 @@ export const usePatternStore = create<PatternState>((set) => ({
       pattern.startNewRow();
       set({ ...syncState(), lastError: null });
     } catch (error) {
-      set({
-        lastError:
-          error instanceof PlacementError
-            ? error.message
-            : 'Failed to start new row.',
-      });
+      set({ lastError: getErrorMessage(error, 'Failed to start new row.') });
     }
   },
 
   resetPattern: () => {
     pattern.reset();
     set({ ...syncState(), lastError: null });
+  },
+
+  setLastError: (message: string) => {
+    set({ lastError: message });
   },
 
   clearError: () => {

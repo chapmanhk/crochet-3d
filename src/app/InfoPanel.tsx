@@ -40,8 +40,8 @@ export function InfoPanel() {
         <p className="muted">Start with a foundation chain.</p>
       ) : (
         <ol className="instructions">
-          {instructions.map((line) => (
-            <li key={line}>{line}</li>
+          {instructions.map((line, index) => (
+            <li key={`${index}-${line}`}>{line}</li>
           ))}
         </ol>
       )}
