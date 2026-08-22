@@ -10,7 +10,10 @@ interface PatternState {
   stitches: StitchNode[];
   currentRow: number;
   foundationChainLength: number;
+  currentRowStitchCount: number;
   instructions: string[];
+  canAddSingleCrochet: boolean;
+  canStartNewRow: boolean;
   lastError: string | null;
   addFoundationChain: (length: number) => boolean;
   addSingleCrochet: () => boolean;
@@ -23,14 +26,23 @@ const pattern = new Pattern();
 
 function syncState(): Pick<
   PatternState,
-  'stitches' | 'currentRow' | 'foundationChainLength' | 'instructions'
+  | 'stitches'
+  | 'currentRow'
+  | 'foundationChainLength'
+  | 'currentRowStitchCount'
+  | 'instructions'
+  | 'canAddSingleCrochet'
+  | 'canStartNewRow'
 > {
   const snapshot = pattern.getSnapshot();
   return {
     stitches: snapshot.stitches,
     currentRow: snapshot.currentRow,
     foundationChainLength: snapshot.foundationChainLength,
+    currentRowStitchCount: pattern.getRowStitchCount(snapshot.currentRow),
     instructions: generateInstructions(snapshot.stitches),
+    canAddSingleCrochet: pattern.canAddSingleCrochet(),
+    canStartNewRow: pattern.canStartNewRow(),
   };
 }
 

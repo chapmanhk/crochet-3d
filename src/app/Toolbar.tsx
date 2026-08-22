@@ -1,6 +1,16 @@
 import { useState } from 'react';
 import { usePatternStore } from '@store/patternStore';
 import { ChainLengthDialog } from './ChainLengthDialog';
+import { ConfirmDialog } from './ConfirmDialog';
+import {
+  CONFIRM_DIALOG_COPY,
+  type ConfirmAction,
+} from './confirmDialogCopy';
+import {
+  getAddScDisabledReason,
+  getNewRowDisabledReason,
+  getResetDisabledReason,
+} from './toolbarState';
 
 export function Toolbar() {
   const addFoundationChain = usePatternStore((state) => state.addFoundationChain);
@@ -12,22 +22,42 @@ export function Toolbar() {
   const foundationChainLength = usePatternStore(
     (state) => state.foundationChainLength,
   );
+  const currentRow = usePatternStore((state) => state.currentRow);
+  const currentRowStitchCount = usePatternStore(
+    (state) => state.currentRowStitchCount,
+  );
+  const canAddSingleCrochet = usePatternStore(
+    (state) => state.canAddSingleCrochet,
+  );
+  const canStartNewRow = usePatternStore((state) => state.canStartNewRow);
   const stitches = usePatternStore((state) => state.stitches);
   const [chainDialogOpen, setChainDialogOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+
+  const toolbarState = {
+    foundationChainLength,
+    currentRow,
+    currentRowStitchCount,
+    canAddSingleCrochet,
+    canStartNewRow,
+  };
+
+  const addScDisabledReason = getAddScDisabledReason(toolbarState);
+  const newRowDisabledReason = getNewRowDisabledReason(toolbarState);
+  const resetDisabledReason = getResetDisabledReason(stitches.length);
+
+  const openChainDialog = () => {
+    clearError();
+    setChainDialogOpen(true);
+  };
 
   const handleNewChain = () => {
     if (foundationChainLength > 0) {
-      const confirmed = window.confirm(
-        'Reset the current pattern and start a new chain?',
-      );
-      if (!confirmed) {
-        return;
-      }
-      resetPattern();
+      setConfirmAction('new-chain');
+      return;
     }
 
-    clearError();
-    setChainDialogOpen(true);
+    openChainDialog();
   };
 
   const handleChainSubmit = (length: number): boolean => {
@@ -41,15 +71,26 @@ export function Toolbar() {
 
   const handleReset = () => {
     if (stitches.length === 0) {
-      resetPattern();
       return;
     }
 
-    const confirmed = window.confirm('Reset the current pattern?');
-    if (confirmed) {
+    setConfirmAction('reset');
+  };
+
+  const handleConfirm = () => {
+    if (confirmAction === 'reset') {
       resetPattern();
     }
+
+    if (confirmAction === 'new-chain') {
+      resetPattern();
+      openChainDialog();
+    }
+
+    setConfirmAction(null);
   };
+
+  const confirmCopy = confirmAction ? CONFIRM_DIALOG_COPY[confirmAction] : null;
 
   return (
     <>
@@ -57,13 +98,31 @@ export function Toolbar() {
         <button type="button" className="btn primary" onClick={handleNewChain}>
           New Chain
         </button>
-        <button type="button" className="btn" onClick={addSingleCrochet}>
+        <button
+          type="button"
+          className="btn"
+          disabled={Boolean(addScDisabledReason)}
+          title={addScDisabledReason ?? undefined}
+          onClick={addSingleCrochet}
+        >
           Add SC
         </button>
-        <button type="button" className="btn" onClick={startNewRow}>
+        <button
+          type="button"
+          className="btn"
+          disabled={Boolean(newRowDisabledReason)}
+          title={newRowDisabledReason ?? undefined}
+          onClick={startNewRow}
+        >
           New Row
         </button>
-        <button type="button" className="btn subtle" onClick={handleReset}>
+        <button
+          type="button"
+          className="btn subtle"
+          disabled={Boolean(resetDisabledReason)}
+          title={resetDisabledReason ?? undefined}
+          onClick={handleReset}
+        >
           Reset
         </button>
       </div>
@@ -74,6 +133,17 @@ export function Toolbar() {
         onClose={() => setChainDialogOpen(false)}
         onSubmit={handleChainSubmit}
       />
+
+      {confirmCopy ? (
+        <ConfirmDialog
+          open
+          title={confirmCopy.title}
+          description={confirmCopy.description}
+          confirmLabel={confirmCopy.confirmLabel}
+          onConfirm={handleConfirm}
+          onCancel={() => setConfirmAction(null)}
+        />
+      ) : null}
     </>
   );
 }

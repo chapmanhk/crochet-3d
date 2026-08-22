@@ -56,7 +56,7 @@ describe('Pattern', () => {
 ### Store / UI
 - Engine logic: test via Vitest in `tests/engine/`
 - Full user flows: Playwright in `e2e/` (toolbar, info panel, canvas smoke tests)
-- Handle `window.prompt` / `window.confirm` with Playwright dialog handlers
+- Use `ConfirmDialog` helpers in Playwright for reset and new-chain flows
 
 ## Naming
 

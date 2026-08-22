@@ -5,7 +5,6 @@ import { SceneStitchRenderer } from './SceneStitchRenderer';
 export function CrochetScene() {
   return (
     <Canvas
-      id="main-canvas"
       camera={{ position: [4, 4, 8], fov: 45 }}
       style={{ width: '100%', height: '100%' }}
     >
