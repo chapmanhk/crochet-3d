@@ -93,14 +93,12 @@ Performance and realism for larger patterns.
 
 ## Engineering backlog (not user-facing)
 
-Tracked by the `tech-debt` agent; fix opportunistically or in dedicated passes.
-
-| Item | Severity | Agent |
-|------|----------|-------|
-| Unify engine `can*` and `throw` validation paths | Medium | `tech-debt` / `engine-specialist` |
-| Shared geometry disposal on HMR remount | Low | `tech-debt` |
-| Cucumber step definitions | Low | Deferred — Playwright is executable proof |
-| Store tests that only mirror engine | Low | `test-writer` |
+| Item | Status | Notes |
+|------|--------|-------|
+| Unify engine `can*` and `throw` validation paths | **Done** | `validate*` private methods in `Pattern.ts` |
+| Shared geometry disposal on HMR remount | **Done** | Per-instance geometries disposed in `StitchRenderer.dispose()` |
+| Cucumber step definitions | Deferred | Playwright is executable proof |
+| Store tests that only mirror engine | **Done** | Store tests focus on bridge behavior (`lastError`, sync, flags) |
 
 ---
 
@@ -150,4 +148,5 @@ When pulling an item from this roadmap into development:
 
 | Date | Change |
 |------|--------|
+| 2026-08-22 | Engineering backlog items completed (validation unify, geometry dispose, store tests) |
 | 2026-08-22 | Initial roadmap consolidated from MVP, skills, and agent passes |
