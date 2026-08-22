@@ -1,6 +1,6 @@
 ---
 name: testing
-description: Vitest and Playwright testing conventions for crochet-3d. Use when writing engine tests, E2E flows, or running test suites.
+description: Vitest, Playwright, and Gherkin behavior spec conventions for crochet-3d. Use when writing engine tests, E2E flows, mapping specs to tests, or running test suites.
 ---
 
 # Testing Standards
@@ -13,11 +13,20 @@ description: Vitest and Playwright testing conventions for crochet-3d. Use when 
 ## File organization
 
 ```
+specs/              # Gherkin behavior specs (review before coding)
 tests/
-  engine/           # Vitest unit tests
-e2e/                # Playwright browser tests
-  app.spec.ts
+  engine/           # Vitest unit tests (@engine scenarios)
+e2e/                # Playwright browser tests (@e2e scenarios)
 ```
+
+## Spec-first workflow
+
+1. Write or update `specs/*.feature` (use `behavior-spec-author` agent)
+2. User reviews scenarios
+3. Implement code
+4. Map `@e2e` scenarios to Playwright; `@engine` scenarios to Vitest
+
+See `.cursor/skills/behavior-specs/SKILL.md` for Gherkin conventions.
 
 ## Conventions
 

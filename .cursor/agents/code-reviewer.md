@@ -37,7 +37,8 @@ You are a senior/staff engineer reviewing changes to **crochet-3d**, a three-lay
 
 ### Testing
 - Engine changes have Vitest tests in `tests/engine/`
-- Tests are independent and describe behavior, not implementation
+- User-facing behavior has Gherkin specs in `specs/` and Playwright tests in `e2e/`
+- Specs should exist before implementation for new features
 
 ### Accessibility (UI changes)
 - Interactive controls meet 44×44px touch targets
