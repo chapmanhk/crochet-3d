@@ -1,0 +1,32 @@
+# Crochet 3D
+
+Fresh scaffold for a three-layer crochet pattern designer.
+
+## Stack
+
+- **Engine** (`src/engine`): pure TypeScript crochet graph, placement rules, layout, instructions
+- **Scene** (`src/scene`): React Three Fiber shell + imperative stitch renderer
+- **App** (`src/app`): React UI
+- **Store** (`src/store`): Zustand bridge between UI and engine
+
+## Scripts
+
+```bash
+npm install
+npm run dev
+npm run test:run
+npm run build
+```
+
+## MVP flow
+
+1. Click **New Chain** and enter a foundation length
+2. Click **New Row** to move to row 1
+3. Click **Add SC** to place single crochet stitches across the row
+4. Repeat **New Row** / **Add SC** for additional rows
+
+## Architecture rules
+
+- `src/engine` must not import from React, Three.js, or Zustand
+- Scene updates from engine snapshots via diff-based mesh sync
+- Physics/drape is intentionally deferred
