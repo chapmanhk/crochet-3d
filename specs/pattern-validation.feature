@@ -29,6 +29,11 @@ Feature: Pattern validation
     Given I have no pattern
     Then the "Reset" control should be disabled
 
+  Scenario: Disabled toolbar buttons expose reasons to assistive technology
+    Given I have no pattern
+    Then the "Add SC" control should be disabled
+    And the "Add SC" control should have an accessible disabled reason
+
   @engine
   Scenario: Cannot start a new row with no stitches on the current row
     Given I have a foundation chain of 3

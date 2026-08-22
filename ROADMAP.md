@@ -82,7 +82,7 @@ Performance and realism for larger patterns.
 
 | Priority | Feature | Why | Notes |
 |----------|---------|-----|-------|
-| P0 | **Instanced stitch meshes** | One mesh per stitch does not scale | Scene layer only |
+| P0 | **Instanced stitch meshes** | Row-level yarn helps; instancing still needed at scale | Scene layer only |
 | P1 | **Three.js code splitting** | Bundle currently >500 kB | Build config |
 | P2 | **Rapier drape preview** | Optional physics preview | Separate preview layer; not in engine |
 | P3 | **Stitch-level selection description** | Screen reader detail for canvas | `aria-live` + panel sync |
@@ -96,7 +96,9 @@ Performance and realism for larger patterns.
 | Item | Status | Notes |
 |------|--------|-------|
 | Unify engine `can*` and `throw` validation paths | **Done** | `validate*` private methods in `Pattern.ts` |
-| Shared geometry disposal on HMR remount | **Done** | Per-instance geometries disposed in `StitchRenderer.dispose()` |
+| Shared geometry disposal on HMR remount | **Done** | Per-segment dispose on row change; full dispose on unmount/HMR |
+| Row-level yarn path rendering | **Done** | Continuous tube per row + join segments |
+| Per-row geometry fingerprinting | **Done** | `StitchRenderer` skips rebuild when row fingerprint unchanged |
 | Cucumber step definitions | Deferred | Playwright is executable proof |
 | Store tests that only mirror engine | **Done** | Store tests focus on bridge behavior (`lastError`, sync, flags) |
 

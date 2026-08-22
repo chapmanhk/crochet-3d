@@ -38,6 +38,13 @@ test.describe('App shell', () => {
 
     await expect(page.locator('#main-canvas')).toBeFocused();
   });
+
+  test('Foundation chain shows next-step guidance', async ({ page }) => {
+    await page.goto('/');
+
+    await createFoundationChain(page, 3);
+    await expect(infoPanel(page).getByText('Choose New Row to begin the first working row.')).toBeVisible();
+  });
 });
 
 test.describe('Foundation chain', () => {
@@ -51,6 +58,8 @@ test.describe('Foundation chain', () => {
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('3');
     await expect(panel.locator('dt:text("Foundation") + dd')).toHaveText('3');
     await expect(panel.getByText('Foundation: ch 3')).toBeVisible();
+    await expect(panel.getByText('Choose New Row to begin the first working row.')).toBeVisible();
+    await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('—');
   });
 
   test('Chain length dialog opens with a default of 10', async ({ page }) => {
@@ -233,11 +242,13 @@ test.describe('Single crochet rows', () => {
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('4');
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('1/3');
     await expect(panel.getByText('Row 1: sc in each st across (1 sc)')).toBeVisible();
+    await expect(panel.getByText('Place 2 more single crochet stitches on row 1.')).toBeVisible();
 
     await completeRow(page, 2);
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('6');
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('3/3');
     await expect(panel.getByText('Row 1: sc in each st across (3 sc)')).toBeVisible();
+    await expect(panel.getByText('Row 1 is complete. Choose New Row to continue.')).toBeVisible();
   });
 
   test('Work a second row after completing the first', async ({ page }) => {

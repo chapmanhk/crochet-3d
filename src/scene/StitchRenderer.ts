@@ -1,67 +1,82 @@
 import * as THREE from 'three';
 import type { StitchNode } from '@engine/index';
-import { StitchType } from '@engine/index';
-
-const YARN_COLOR = 0x8b4513;
-
-function createStitchGeometries(): Record<StitchType, THREE.BufferGeometry> {
-  return {
-    [StitchType.CHAIN]: new THREE.TorusGeometry(0.25, 0.08, 12, 24),
-    [StitchType.SINGLE_CROCHET]: new THREE.CylinderGeometry(0.18, 0.18, 0.5, 16),
-  };
-}
+import {
+  buildYarnSegmentGeometry,
+  getYarnSegmentManifests,
+} from './stitchGeometry';
+import {
+  createOutlinedStitch,
+  createStitchFillMaterial,
+  createStitchOutlineMaterial,
+  disposeOutlinedStitch,
+} from './stitchMaterials';
 
 export class StitchRenderer {
   readonly group = new THREE.Group();
-  private readonly geometries = createStitchGeometries();
-  private readonly meshes = new Map<string, THREE.Mesh>();
-  private readonly material = new THREE.MeshStandardMaterial({
-    color: YARN_COLOR,
-    roughness: 0.85,
-    metalness: 0.05,
-  });
+  private readonly segments = new Map<string, THREE.Group>();
+  private readonly fingerprints = new Map<string, string>();
+  private readonly fillMaterial = createStitchFillMaterial();
+  private readonly outlineMaterial = createStitchOutlineMaterial();
 
   sync(stitches: StitchNode[]): void {
-    const incomingIds = new Set(stitches.map((stitch) => stitch.id));
+    const manifests = getYarnSegmentManifests(stitches);
+    const incomingKeys = new Set(manifests.map((manifest) => manifest.key));
 
-    for (const id of this.meshes.keys()) {
-      if (!incomingIds.has(id)) {
-        const mesh = this.meshes.get(id);
-        if (mesh) {
-          this.group.remove(mesh);
-        }
-        this.meshes.delete(id);
+    for (const key of this.segments.keys()) {
+      if (!incomingKeys.has(key)) {
+        this.removeSegment(key);
       }
     }
 
-    for (const stitch of stitches) {
-      let mesh = this.meshes.get(stitch.id);
-      if (!mesh) {
-        mesh = this.createMesh(stitch);
-        this.meshes.set(stitch.id, mesh);
-        this.group.add(mesh);
+    for (const manifest of manifests) {
+      if (this.fingerprints.get(manifest.key) === manifest.fingerprint) {
+        continue;
       }
 
-      mesh.position.set(stitch.position.x, stitch.position.y, stitch.position.z);
+      const geometry = buildYarnSegmentGeometry(manifest.key, stitches);
+      if (!geometry) {
+        this.removeSegment(manifest.key);
+        continue;
+      }
+
+      this.upsertSegment(manifest.key, geometry);
+      this.fingerprints.set(manifest.key, manifest.fingerprint);
     }
   }
 
   dispose(): void {
-    for (const mesh of this.meshes.values()) {
-      this.group.remove(mesh);
+    for (const key of [...this.segments.keys()]) {
+      this.removeSegment(key);
     }
-    this.meshes.clear();
-    this.material.dispose();
-    for (const geometry of Object.values(this.geometries)) {
-      geometry.dispose();
-    }
+    this.fillMaterial.dispose();
+    this.outlineMaterial.dispose();
   }
 
-  private createMesh(stitch: StitchNode): THREE.Mesh {
-    const mesh = new THREE.Mesh(this.geometries[stitch.type], this.material);
-    if (stitch.type === StitchType.CHAIN) {
-      mesh.rotation.x = Math.PI / 2;
+  private upsertSegment(key: string, geometry: THREE.BufferGeometry): void {
+    const existing = this.segments.get(key);
+    if (existing) {
+      this.group.remove(existing);
+      disposeOutlinedStitch(existing);
     }
-    return mesh;
+
+    const segmentGroup = createOutlinedStitch(
+      geometry,
+      this.fillMaterial,
+      this.outlineMaterial,
+    );
+    this.segments.set(key, segmentGroup);
+    this.group.add(segmentGroup);
+  }
+
+  private removeSegment(key: string): void {
+    const segmentGroup = this.segments.get(key);
+    if (!segmentGroup) {
+      return;
+    }
+
+    this.group.remove(segmentGroup);
+    disposeOutlinedStitch(segmentGroup);
+    this.segments.delete(key);
+    this.fingerprints.delete(key);
   }
 }

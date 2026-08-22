@@ -42,7 +42,7 @@ See [`ROADMAP.md`](ROADMAP.md) for product phases, priorities, and how deferred 
 ## Architecture rules
 
 - `src/engine` must not import from React, Three.js, or Zustand
-- Scene updates from engine snapshots via diff-based mesh sync
+- Scene updates from engine snapshots via row-level yarn segment sync
 - Physics/drape is intentionally deferred
 
 ## Cursor agents & skills

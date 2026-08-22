@@ -14,6 +14,8 @@ Feature: Foundation chain
     And the stitch count should be 3
     And the foundation length should be 3
     And the instructions should include "Foundation: ch 3"
+    And I should see next-step guidance to choose "New Row"
+    And the row progress should be "—"
 
   Scenario: Chain length dialog opens with a default of 10
     Given I have no pattern

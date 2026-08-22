@@ -23,3 +23,7 @@ Feature: App shell
     Given I am using the crochet pattern designer
     When I activate the skip to 3D canvas link
     Then the 3D canvas region should be focused
+
+  Scenario: Foundation chain shows next-step guidance
+    Given I have a foundation chain of 3
+    Then I should see next-step guidance to choose "New Row"
