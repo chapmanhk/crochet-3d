@@ -17,3 +17,10 @@ Feature: App shell
     Given I have no pattern
     Then the pattern status should be "No pattern"
     And I should see guidance to "Start with a foundation chain."
+    And I should see next-step guidance to choose "New Chain"
+
+  @e2e
+  Scenario: Skip link focuses the 3D canvas region
+    Given I am using the crochet pattern designer
+    When I activate the skip to 3D canvas link
+    Then the 3D canvas region should be focused

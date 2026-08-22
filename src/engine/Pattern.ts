@@ -135,6 +135,37 @@ export class Pattern {
     return this.graph.getByRow(row).length;
   }
 
+  canAddSingleCrochet(): boolean {
+    if (this.foundationChainLength === 0 || this.currentRow === 0) {
+      return false;
+    }
+
+    const rowStitches = this.graph.getByRow(this.currentRow);
+    if (rowStitches.length >= this.foundationChainLength) {
+      return false;
+    }
+
+    const attachTarget = this.graph.getByRow(this.currentRow - 1)[rowStitches.length];
+    return Boolean(attachTarget);
+  }
+
+  canStartNewRow(): boolean {
+    if (this.foundationChainLength === 0) {
+      return false;
+    }
+
+    if (this.currentRow === 0) {
+      return true;
+    }
+
+    const currentRowStitches = this.graph.getByRow(this.currentRow);
+    if (currentRowStitches.length === 0) {
+      return false;
+    }
+
+    return currentRowStitches.length >= this.foundationChainLength;
+  }
+
   getSnapshot(): PatternSnapshot {
     return {
       stitches: this.getStitches(),

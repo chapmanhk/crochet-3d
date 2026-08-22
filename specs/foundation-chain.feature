@@ -39,6 +39,23 @@ Feature: Foundation chain
     Then the chain length should be 11
 
   @e2e
+  Scenario: Chain length can be adjusted with arrow keys
+    Given I have no pattern
+    When I open the new chain dialog
+    And I press Arrow Down in the chain length field
+    Then the chain length should be 9
+    When I press Arrow Up twice in the chain length field
+    Then the chain length should be 11
+
+  @e2e
+  Scenario: Enter submits a valid chain length
+    Given I have no pattern
+    When I open the new chain dialog
+    And I enter 4 in the chain length field
+    And I press Enter in the chain length field
+    Then the foundation length should be 4
+
+  @e2e
   Scenario: Stepper buttons disable at min and max bounds
     Given I have no pattern
     When I open the new chain dialog
@@ -48,12 +65,51 @@ Feature: Foundation chain
     Then the increase chain length control should be disabled
 
   @e2e
+  Scenario: Empty chain length shows an error in the dialog
+    Given I have no pattern
+    When I open the new chain dialog
+    And I clear the chain length field
+    And I choose "Create chain"
+    Then I should see an error "Enter a chain length."
+
+  @e2e
   Scenario: Out-of-range chain length shows an error in the dialog
     Given I have no pattern
     When I open the new chain dialog
     And I enter 501 in the chain length field
     And I choose "Create chain"
     Then I should see an error "Chain length must be between 1 and 500."
+
+  @e2e
+  Scenario: Cancel closes the chain dialog without creating a chain
+    Given I have no pattern
+    When I open the new chain dialog
+    And I choose "Cancel"
+    Then the stitch count should be 0
+
+  @e2e
+  Scenario: Escape closes the chain dialog without creating a chain
+    Given I have no pattern
+    When I open the new chain dialog
+    And I press Escape
+    Then the stitch count should be 0
+
+  @e2e
+  Scenario: Declining New Chain reset keeps the existing pattern
+    Given I have a foundation chain of 3
+    When I choose "New Chain"
+    And I choose "Cancel" in the confirmation dialog
+    Then the stitch count should be 3
+
+  @e2e
+  Scenario: Confirming New Chain reset replaces the pattern
+    Given I have a foundation chain of 3
+    When I choose "New Chain"
+    And I confirm starting a new foundation chain
+    And I enter 5 in the chain length field
+    And I choose "Create chain"
+    Then the stitch count should be 5
+    And the foundation length should be 5
 
   @engine
   Scenario: Chain length must be within allowed bounds

@@ -7,17 +7,27 @@ Feature: Pattern validation
   Background:
     Given I am using the crochet pattern designer
 
-  Scenario: Cannot add single crochet without a foundation chain
+  Scenario: Add SC is disabled without a foundation chain
     Given I have no pattern
-    When I choose "Add SC"
-    Then I should see an error "Add a foundation chain before placing single crochet stitches."
+    Then the "Add SC" control should be disabled
 
-  Scenario: Cannot start a new row before the current row is complete
+  Scenario: New Row is disabled without a foundation chain
+    Given I have no pattern
+    Then the "New Row" control should be disabled
+
+  Scenario: Add SC is disabled on the foundation row
+    Given I have a foundation chain of 3
+    Then the "Add SC" control should be disabled
+
+  Scenario: New Row is disabled while the current row is incomplete
     Given I have a foundation chain of 3
     And I am on row 1
     And I have placed 1 single crochet stitch on the current row
-    When I choose "New Row"
-    Then I should see an error "Complete row 1 before starting a new row"
+    Then the "New Row" control should be disabled
+
+  Scenario: Reset is disabled with no pattern
+    Given I have no pattern
+    Then the "Reset" control should be disabled
 
   @engine
   Scenario: Cannot start a new row with no stitches on the current row

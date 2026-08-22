@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { MAX_CHAIN_LENGTH, MIN_CHAIN_LENGTH } from '@engine/index';
+import { useDialogFocusTrap } from './dialogUtils';
 
 export const DEFAULT_CHAIN_LENGTH = 10;
 
@@ -23,12 +24,6 @@ function clampLength(length: number): number {
   return Math.min(MAX_CHAIN_LENGTH, Math.max(MIN_CHAIN_LENGTH, length));
 }
 
-function getFocusableElements(container: HTMLElement): HTMLElement[] {
-  return [...container.querySelectorAll<HTMLElement>(
-    'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
-  )];
-}
-
 export function ChainLengthDialog({
   open,
   serverError = null,
@@ -37,7 +32,7 @@ export function ChainLengthDialog({
 }: ChainLengthDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
-  const labelId = useId();
+  const inputId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState(String(DEFAULT_CHAIN_LENGTH));
@@ -49,6 +44,8 @@ export function ChainLengthDialog({
   const canIncrease = stepBase < MAX_CHAIN_LENGTH;
   const displayError = localError ?? serverError;
 
+  useDialogFocusTrap(open, dialogRef, onClose);
+
   useEffect(() => {
     if (!open) {
       return;
@@ -56,52 +53,9 @@ export function ChainLengthDialog({
 
     setValue(String(DEFAULT_CHAIN_LENGTH));
     setLocalError(null);
-    document.body.style.overflow = 'hidden';
     inputRef.current?.focus();
     inputRef.current?.select();
-
-    return () => {
-      document.body.style.overflow = '';
-    };
   }, [open]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-
-      if (event.key !== 'Tab' || !dialogRef.current) {
-        return;
-      }
-
-      const focusable = getFocusableElements(dialogRef.current);
-      if (focusable.length === 0) {
-        return;
-      }
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const active = document.activeElement;
-
-      if (event.shiftKey && active === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose]);
 
   if (!open) {
     return null;
@@ -144,7 +98,7 @@ export function ChainLengthDialog({
   };
 
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
+    <div className="dialog-backdrop">
       <div
         ref={dialogRef}
         className="dialog panel"
@@ -152,7 +106,6 @@ export function ChainLengthDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        onClick={(event) => event.stopPropagation()}
       >
         <h2 id={titleId}>Foundation chain</h2>
         <p id={descriptionId} className="muted">
@@ -160,12 +113,8 @@ export function ChainLengthDialog({
         </p>
 
         <div className="dialog-field">
-          <span id={labelId}>Chain length</span>
-          <div
-            className="chain-stepper"
-            role="group"
-            aria-labelledby={labelId}
-          >
+          <label htmlFor={inputId}>Chain length</label>
+          <div className="chain-stepper" role="group" aria-labelledby={inputId}>
             <button
               type="button"
               className="btn stepper-btn"
@@ -177,7 +126,7 @@ export function ChainLengthDialog({
             </button>
             <input
               ref={inputRef}
-              id="chain-length-input"
+              id={inputId}
               className="dialog-input stepper-input"
               type="text"
               inputMode="numeric"

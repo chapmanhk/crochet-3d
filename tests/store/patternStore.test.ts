@@ -110,23 +110,23 @@ describe('patternStore', () => {
     expect(usePatternStore.getState().currentRow).toBe(1);
   });
 
-  it('syncs state after successful single crochet and new row', () => {
+  it('syncs action availability flags with the engine', () => {
     const store = usePatternStore.getState();
     store.addFoundationChain(2);
-    store.startNewRow();
-    store.addSingleCrochet();
-    store.addSingleCrochet();
-    store.startNewRow();
-    store.addSingleCrochet();
 
-    const state = usePatternStore.getState();
-    expect(state.stitches).toHaveLength(5);
-    expect(state.currentRow).toBe(2);
-    expect(state.instructions).toEqual([
-      'Foundation: ch 2',
-      'Row 1: sc in each st across (2 sc)',
-      'Row 2: sc in each st across (1 sc)',
-    ]);
-    expect(state.lastError).toBeNull();
+    let state = usePatternStore.getState();
+    expect(state.canAddSingleCrochet).toBe(false);
+    expect(state.canStartNewRow).toBe(true);
+
+    store.startNewRow();
+    state = usePatternStore.getState();
+    expect(state.canAddSingleCrochet).toBe(true);
+    expect(state.canStartNewRow).toBe(false);
+
+    store.addSingleCrochet();
+    store.addSingleCrochet();
+    state = usePatternStore.getState();
+    expect(state.canAddSingleCrochet).toBe(false);
+    expect(state.canStartNewRow).toBe(true);
   });
 });
