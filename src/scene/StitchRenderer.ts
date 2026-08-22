@@ -1,50 +1,72 @@
 import * as THREE from 'three';
 import type { StitchNode } from '@engine/index';
-import { buildStitchGeometry, createYarnMaterial } from './stitchGeometry';
+import { buildStitchGeometry } from './stitchGeometry';
+import {
+  createOutlinedStitch,
+  createStitchFillMaterial,
+  createStitchOutlineMaterial,
+  disposeOutlinedStitch,
+} from './stitchMaterials';
 
 export class StitchRenderer {
   readonly group = new THREE.Group();
-  private readonly meshes = new Map<string, THREE.Mesh>();
-  private readonly material = createYarnMaterial();
+  private readonly stitches = new Map<string, THREE.Group>();
+  private readonly fillMaterial = createStitchFillMaterial();
+  private readonly outlineMaterial = createStitchOutlineMaterial();
 
   sync(stitches: StitchNode[]): void {
     const stitchById = new Map(stitches.map((stitch) => [stitch.id, stitch]));
     const incomingIds = new Set(stitches.map((stitch) => stitch.id));
 
-    for (const id of this.meshes.keys()) {
+    for (const id of this.stitches.keys()) {
       if (!incomingIds.has(id)) {
-        const mesh = this.meshes.get(id);
-        if (mesh) {
-          this.group.remove(mesh);
-          mesh.geometry.dispose();
-        }
-        this.meshes.delete(id);
+        this.removeStitch(id);
       }
     }
 
     for (const stitch of stitches) {
-      const geometry = buildStitchGeometry(stitch, stitches, stitchById);
-      let mesh = this.meshes.get(stitch.id);
-
-      if (!mesh) {
-        mesh = new THREE.Mesh(geometry, this.material);
-        this.meshes.set(stitch.id, mesh);
-        this.group.add(mesh);
-      } else {
-        mesh.geometry.dispose();
-        mesh.geometry = geometry;
-      }
-
-      mesh.position.set(stitch.position.x, stitch.position.y, stitch.position.z);
+      this.upsertStitch(stitch, stitches, stitchById);
     }
   }
 
   dispose(): void {
-    for (const mesh of this.meshes.values()) {
-      this.group.remove(mesh);
-      mesh.geometry.dispose();
+    for (const id of [...this.stitches.keys()]) {
+      this.removeStitch(id);
     }
-    this.meshes.clear();
-    this.material.dispose();
+    this.fillMaterial.dispose();
+    this.outlineMaterial.dispose();
+  }
+
+  private upsertStitch(
+    stitch: StitchNode,
+    stitches: StitchNode[],
+    stitchById: Map<string, StitchNode>,
+  ): void {
+    const existing = this.stitches.get(stitch.id);
+    if (existing) {
+      this.group.remove(existing);
+      disposeOutlinedStitch(existing);
+    }
+
+    const geometry = buildStitchGeometry(stitch, stitches, stitchById);
+    const stitchGroup = createOutlinedStitch(
+      geometry,
+      this.fillMaterial,
+      this.outlineMaterial,
+    );
+    stitchGroup.position.set(stitch.position.x, stitch.position.y, stitch.position.z);
+    this.stitches.set(stitch.id, stitchGroup);
+    this.group.add(stitchGroup);
+  }
+
+  private removeStitch(id: string): void {
+    const stitchGroup = this.stitches.get(id);
+    if (!stitchGroup) {
+      return;
+    }
+
+    this.group.remove(stitchGroup);
+    disposeOutlinedStitch(stitchGroup);
+    this.stitches.delete(id);
   }
 }
