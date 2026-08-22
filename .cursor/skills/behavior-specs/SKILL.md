@@ -60,7 +60,8 @@ Use consistent wording across features:
 | Foundation exists | `Given I have a foundation chain of <n>` |
 | On row | `And I am on row <n>` |
 | SC count | `And I have placed <n> single crochet stitches on the current row` |
-| Click action | `When I choose "New Chain" and enter <n>` |
+| Click action | `When I choose "New Chain" and enter <n> in the chain length dialog` |
+| Open chain dialog | `When I open the new chain dialog` |
 | Button click | `When I choose "<button>"` |
 | Status | `Then the pattern status should be "<text>"` |
 | Stitch count | `And the stitch count should be <n>` |

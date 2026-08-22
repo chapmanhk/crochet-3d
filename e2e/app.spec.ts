@@ -4,11 +4,15 @@ function infoPanel(page: Page) {
   return page.getByRole('complementary', { name: 'Pattern information' });
 }
 
-async function acceptNextPrompt(page: Page, value: string) {
-  page.once('dialog', async (dialog) => {
-    expect(dialog.type()).toBe('prompt');
-    await dialog.accept(value);
-  });
+function chainDialog(page: Page) {
+  return page.getByRole('dialog', { name: 'Foundation chain' });
+}
+
+async function createFoundationChain(page: Page, length: number) {
+  await page.getByRole('button', { name: 'New Chain' }).click();
+  const dialog = chainDialog(page);
+  await dialog.getByLabel('Chain length').fill(String(length));
+  await dialog.getByRole('button', { name: 'Create chain' }).click();
 }
 
 async function acceptNextConfirm(page: Page) {
@@ -32,8 +36,7 @@ test.describe('crochet-3d app', () => {
   test('completes MVP flow: chain, new row, add single crochet', async ({ page }) => {
     await page.goto('/');
 
-    await acceptNextPrompt(page, '3');
-    await page.getByRole('button', { name: 'New Chain' }).click();
+    await createFoundationChain(page, 3);
 
     const panel = infoPanel(page);
     await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Foundation');
@@ -63,14 +66,28 @@ test.describe('crochet-3d app', () => {
     await expect(alert).toContainText('Add a foundation chain before placing single crochet stitches.');
   });
 
-  test('shows error for invalid chain length input', async ({ page }) => {
+  test('chain length dialog accepts numbers only', async ({ page }) => {
     await page.goto('/');
 
-    await acceptNextPrompt(page, 'abc');
     await page.getByRole('button', { name: 'New Chain' }).click();
+    const dialog = chainDialog(page);
+    const input = dialog.getByLabel('Chain length');
 
-    const alert = page.getByRole('alert');
-    await expect(alert).toContainText('Enter a whole number for chain length.');
+    await input.fill('abc123def');
+    await expect(input).toHaveValue('123');
+  });
+
+  test('shows error for out-of-range chain length in dialog', async ({ page }) => {
+    await page.goto('/');
+
+    await page.getByRole('button', { name: 'New Chain' }).click();
+    const dialog = chainDialog(page);
+    await dialog.getByLabel('Chain length').fill('501');
+    await dialog.getByRole('button', { name: 'Create chain' }).click();
+
+    await expect(dialog.getByRole('alert')).toContainText(
+      'Chain length must be between 1 and 500.',
+    );
   });
 
   test('shows error when starting a new row before the current row is complete', async ({
@@ -78,8 +95,7 @@ test.describe('crochet-3d app', () => {
   }) => {
     await page.goto('/');
 
-    await acceptNextPrompt(page, '3');
-    await page.getByRole('button', { name: 'New Chain' }).click();
+    await createFoundationChain(page, 3);
     await page.getByRole('button', { name: 'New Row' }).click();
     await page.getByRole('button', { name: 'Add SC' }).click();
     await page.getByRole('button', { name: 'New Row' }).click();
@@ -91,8 +107,7 @@ test.describe('crochet-3d app', () => {
   test('reset clears the pattern', async ({ page }) => {
     await page.goto('/');
 
-    await acceptNextPrompt(page, '2');
-    await page.getByRole('button', { name: 'New Chain' }).click();
+    await createFoundationChain(page, 2);
 
     const panel = infoPanel(page);
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('2');
