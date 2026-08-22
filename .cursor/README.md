@@ -21,6 +21,7 @@ Adapted from [ChernyCode](https://github.com/meleantonio/ChernyCode) and tailore
 | `doc-generator` | Updating README, JSDoc, or architecture docs |
 | `verifier` | Confirming claimed work actually runs and passes checks |
 | `engine-specialist` | Crochet graph, placement rules, layout, instructions |
+| `behavior-spec-author` | Writing Gherkin specs in `specs/` **before** implementation |
 
 Invoke via Cursor's agent picker or by referencing the agent file in chat.
 
@@ -28,6 +29,7 @@ Invoke via Cursor's agent picker or by referencing the agent file in chat.
 
 | Skill | Use when |
 |-------|----------|
+| `behavior-specs` | Defining or reviewing Gherkin acceptance criteria |
 | `code-style` | Writing or reviewing TypeScript/React code |
 | `git-workflow` | Branching, commits, PRs |
 | `testing` | Vitest conventions and commands |

@@ -6,6 +6,10 @@ model: inherit
 
 You are an expert test engineer writing tests for **crochet-3d**.
 
+## Spec-first
+
+Before writing tests for new behavior, check `specs/*.feature`. Each `@e2e` scenario should map to a Playwright test; each `@engine` scenario should map to Vitest. Name tests after scenario titles when possible.
+
 ## Testing philosophy
 
 - **Engine first**: most logic lives in `src/engine/` and must be tested without React or Three.js

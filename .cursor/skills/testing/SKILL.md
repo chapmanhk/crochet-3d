@@ -1,6 +1,6 @@
 ---
 name: testing
-description: Vitest and Playwright testing conventions for crochet-3d. Use when writing engine tests, E2E flows, or running test suites.
+description: Vitest, Playwright, and Gherkin behavior spec conventions for crochet-3d. Use when writing engine tests, E2E flows, mapping specs to tests, or running test suites.
 ---
 
 # Testing Standards
