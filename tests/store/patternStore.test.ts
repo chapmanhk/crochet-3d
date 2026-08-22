@@ -78,4 +78,55 @@ describe('patternStore', () => {
     store.clearError();
     expect(usePatternStore.getState().lastError).toBeNull();
   });
+
+  it('returns false for invalid foundation chain lengths', () => {
+    const store = usePatternStore.getState();
+
+    expect(store.addFoundationChain(0)).toBe(false);
+    expect(usePatternStore.getState().lastError).toContain(
+      'Chain length must be between 1 and 500.',
+    );
+    expect(usePatternStore.getState().stitches).toHaveLength(0);
+  });
+
+  it('returns false when single crochet is added on the foundation row', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(3);
+
+    expect(store.addSingleCrochet()).toBe(false);
+    expect(usePatternStore.getState().lastError).toMatch(/row 1 or later/i);
+    expect(usePatternStore.getState().stitches).toHaveLength(3);
+  });
+
+  it('returns false when starting a new row with no stitches on the current row', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(3);
+    store.startNewRow();
+
+    expect(store.startNewRow()).toBe(false);
+    expect(usePatternStore.getState().lastError).toContain(
+      'Current row has no stitches',
+    );
+    expect(usePatternStore.getState().currentRow).toBe(1);
+  });
+
+  it('syncs state after successful single crochet and new row', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(2);
+    store.startNewRow();
+    store.addSingleCrochet();
+    store.addSingleCrochet();
+    store.startNewRow();
+    store.addSingleCrochet();
+
+    const state = usePatternStore.getState();
+    expect(state.stitches).toHaveLength(5);
+    expect(state.currentRow).toBe(2);
+    expect(state.instructions).toEqual([
+      'Foundation: ch 2',
+      'Row 1: sc in each st across (2 sc)',
+      'Row 2: sc in each st across (1 sc)',
+    ]);
+    expect(state.lastError).toBeNull();
+  });
 });

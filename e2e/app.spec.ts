@@ -30,6 +30,13 @@ async function acceptNextConfirm(page: Page) {
   });
 }
 
+async function dismissNextConfirm(page: Page) {
+  page.once('dialog', async (dialog) => {
+    expect(dialog.type()).toBe('confirm');
+    await dialog.dismiss();
+  });
+}
+
 test.describe('App shell', () => {
   test('loads toolbar, info panel, and 3D canvas', async ({ page }) => {
     await page.goto('/');
@@ -70,6 +77,9 @@ test.describe('Foundation chain', () => {
 
     await expect(input).toHaveValue('10');
     await expect(input).toBeFocused();
+    await expect
+      .poll(async () => input.evaluate((element) => element.selectionStart === 0 && element.selectionEnd === 2))
+      .toBe(true);
   });
 
   test('dialog accepts numbers only', async ({ page }) => {
@@ -110,6 +120,32 @@ test.describe('Foundation chain', () => {
 
     await chainLengthInput(page).fill('500');
     await expect(increase).toBeDisabled();
+  });
+
+  test('arrow keys adjust the chain length', async ({ page }) => {
+    await page.goto('/');
+
+    await openChainDialog(page);
+    const input = chainLengthInput(page);
+
+    await input.press('ArrowDown');
+    await expect(input).toHaveValue('9');
+
+    await input.press('ArrowUp');
+    await input.press('ArrowUp');
+    await expect(input).toHaveValue('11');
+  });
+
+  test('Enter submits a valid chain length', async ({ page }) => {
+    await page.goto('/');
+
+    await openChainDialog(page);
+    const input = chainLengthInput(page);
+    await input.fill('4');
+    await input.press('Enter');
+
+    await expect(chainDialog(page)).toBeHidden();
+    await expect(infoPanel(page).locator('dt:text("Foundation") + dd')).toHaveText('4');
   });
 
   test('shows error for out-of-range chain length', async ({ page }) => {
@@ -156,9 +192,43 @@ test.describe('Foundation chain', () => {
     await expect(chainDialog(page)).toBeHidden();
     await expect(infoPanel(page).locator('dt:text("Stitches") + dd')).toHaveText('0');
   });
+
+  test('declining New Chain reset keeps the existing pattern', async ({ page }) => {
+    await page.goto('/');
+
+    await createFoundationChain(page, 3);
+    await dismissNextConfirm(page);
+    await page.getByRole('button', { name: 'New Chain' }).click();
+
+    await expect(chainDialog(page)).toBeHidden();
+    await expect(infoPanel(page).locator('dt:text("Stitches") + dd')).toHaveText('3');
+  });
+
+  test('confirming New Chain reset replaces the pattern', async ({ page }) => {
+    await page.goto('/');
+
+    await createFoundationChain(page, 3);
+    await acceptNextConfirm(page);
+    await page.getByRole('button', { name: 'New Chain' }).click();
+    await chainLengthInput(page).fill('5');
+    await chainDialog(page).getByRole('button', { name: 'Create chain' }).click();
+
+    const panel = infoPanel(page);
+    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('5');
+    await expect(panel.locator('dt:text("Foundation") + dd')).toHaveText('5');
+  });
 });
 
 test.describe('Single crochet rows', () => {
+  test('starts the first working row after foundation', async ({ page }) => {
+    await page.goto('/');
+
+    await createFoundationChain(page, 3);
+    await page.getByRole('button', { name: 'New Row' }).click();
+
+    await expect(infoPanel(page).locator('dt:text("Status") + dd')).toHaveText('Row 1');
+  });
+
   test('completes MVP flow across a foundation row', async ({ page }) => {
     await page.goto('/');
 
@@ -202,6 +272,17 @@ test.describe('Pattern validation', () => {
     const alert = page.getByRole('alert');
     await expect(alert).toContainText('Complete row 1 before starting a new row');
   });
+
+  test('dismisses validation errors from the info panel', async ({ page }) => {
+    await page.goto('/');
+
+    await page.getByRole('button', { name: 'Add SC' }).click();
+
+    const alert = page.getByRole('alert');
+    await expect(alert).toBeVisible();
+    await alert.getByRole('button', { name: 'Dismiss' }).click();
+    await expect(alert).toBeHidden();
+  });
 });
 
 test.describe('Reset pattern', () => {
@@ -217,5 +298,18 @@ test.describe('Reset pattern', () => {
     await page.getByRole('button', { name: 'Reset' }).click();
     await expect(panel.locator('dt:text("Status") + dd')).toHaveText('No pattern');
     await expect(panel.getByText('Start with a foundation chain.')).toBeVisible();
+  });
+
+  test('declining reset keeps the existing pattern', async ({ page }) => {
+    await page.goto('/');
+
+    await createFoundationChain(page, 2);
+
+    const panel = infoPanel(page);
+    await dismissNextConfirm(page);
+    await page.getByRole('button', { name: 'Reset' }).click();
+
+    await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Foundation');
+    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('2');
   });
 });

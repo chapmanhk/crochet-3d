@@ -6,6 +6,7 @@ import {
   MAX_CHAIN_LENGTH,
   MIN_CHAIN_LENGTH,
 } from '@engine/index';
+import { resetIdCounter } from '@engine/StitchNode';
 
 function expectPlacementError(
   action: () => void,
@@ -64,7 +65,14 @@ describe('Pattern', () => {
     const pattern = new Pattern();
     pattern.addFoundationChain(3);
 
-    expectPlacementError(() => pattern.addSingleCrochet(), 'NO_TARGET_STITCH');
+    try {
+      pattern.addSingleCrochet();
+      expect.unreachable('Expected PlacementError to be thrown');
+    } catch (error) {
+      expect(error).toBeInstanceOf(PlacementError);
+      expect((error as PlacementError).code).toBe('NO_TARGET_STITCH');
+      expect((error as PlacementError).message).toMatch(/row 1 or later/i);
+    }
   });
 
   it('adds single crochet on row 1 after starting a new row', () => {
@@ -165,5 +173,43 @@ describe('Pattern', () => {
     expect(pattern.getStitches()).toHaveLength(0);
     expect(pattern.getFoundationChainLength()).toBe(0);
     expect(pattern.getCurrentRow()).toBe(0);
+  });
+
+  it('reports stitch counts per row', () => {
+    const pattern = new Pattern();
+    pattern.addFoundationChain(3);
+    pattern.startNewRow();
+    pattern.addSingleCrochet();
+    pattern.addSingleCrochet();
+
+    expect(pattern.getRowStitchCount(0)).toBe(3);
+    expect(pattern.getRowStitchCount(1)).toBe(2);
+    expect(pattern.getRowStitchCount(2)).toBe(0);
+  });
+
+  it('attaches row 2 single crochet to row 1 stitches', () => {
+    const pattern = new Pattern();
+    pattern.addFoundationChain(2);
+    pattern.startNewRow();
+    const rowOne = [pattern.addSingleCrochet(), pattern.addSingleCrochet()];
+    pattern.startNewRow();
+
+    const rowTwoFirst = pattern.addSingleCrochet();
+    expect(rowTwoFirst.attachToId).toBe(rowOne[0].id);
+    expect(rowTwoFirst.row).toBe(2);
+  });
+
+  it('restarts stitch ids after reset', () => {
+    resetIdCounter();
+    const pattern = new Pattern();
+    pattern.addFoundationChain(1);
+    const firstId = pattern.getStitches()[0]?.id;
+
+    pattern.reset();
+    pattern.addFoundationChain(1);
+    const secondId = pattern.getStitches()[0]?.id;
+
+    expect(firstId).toBe('stitch-1');
+    expect(secondId).toBe('stitch-1');
   });
 });
