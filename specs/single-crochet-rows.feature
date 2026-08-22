@@ -19,11 +19,13 @@ Feature: Single crochet rows
     Then the stitch count should be 4
     And the row progress should be "1/3"
     And the instructions should include "Row 1: sc in each st across (1 sc)"
+    And I should see next-step guidance to "Place 2 more single crochet stitches on row 1."
     When I choose "Add SC"
     And I choose "Add SC"
     Then the stitch count should be 6
     And the row progress should be "3/3"
     And the instructions should include "Row 1: sc in each st across (3 sc)"
+    And I should see next-step guidance to "Row 1 is complete. Choose New Row to continue."
 
   Scenario: Work a second row after completing the first
     Given I am on row 1

@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import type { StitchNode } from '@engine/index';
-import { buildYarnSegments } from './stitchGeometry';
+import {
+  buildYarnSegmentGeometry,
+  getYarnSegmentManifests,
+} from './stitchGeometry';
 import {
   createOutlinedStitch,
   createStitchFillMaterial,
@@ -11,12 +14,13 @@ import {
 export class StitchRenderer {
   readonly group = new THREE.Group();
   private readonly segments = new Map<string, THREE.Group>();
+  private readonly fingerprints = new Map<string, string>();
   private readonly fillMaterial = createStitchFillMaterial();
   private readonly outlineMaterial = createStitchOutlineMaterial();
 
   sync(stitches: StitchNode[]): void {
-    const yarnSegments = buildYarnSegments(stitches);
-    const incomingKeys = new Set(yarnSegments.map((segment) => segment.key));
+    const manifests = getYarnSegmentManifests(stitches);
+    const incomingKeys = new Set(manifests.map((manifest) => manifest.key));
 
     for (const key of this.segments.keys()) {
       if (!incomingKeys.has(key)) {
@@ -24,8 +28,19 @@ export class StitchRenderer {
       }
     }
 
-    for (const segment of yarnSegments) {
-      this.upsertSegment(segment.key, segment.geometry);
+    for (const manifest of manifests) {
+      if (this.fingerprints.get(manifest.key) === manifest.fingerprint) {
+        continue;
+      }
+
+      const geometry = buildYarnSegmentGeometry(manifest.key, stitches);
+      if (!geometry) {
+        this.removeSegment(manifest.key);
+        continue;
+      }
+
+      this.upsertSegment(manifest.key, geometry);
+      this.fingerprints.set(manifest.key, manifest.fingerprint);
     }
   }
 
@@ -62,5 +77,6 @@ export class StitchRenderer {
     this.group.remove(segmentGroup);
     disposeOutlinedStitch(segmentGroup);
     this.segments.delete(key);
+    this.fingerprints.delete(key);
   }
 }

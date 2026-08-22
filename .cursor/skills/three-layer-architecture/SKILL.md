@@ -34,7 +34,7 @@ src/
 ### Scene (`src/scene/`)
 
 - R3F `Canvas` for camera, lights, controls
-- `StitchRenderer` (imperative) syncs meshes by stitch ID diff
+- `StitchRenderer` (imperative) syncs row-level yarn segments with fingerprint caching
 - Reads stitch positions from engine snapshots — never invents placement
 - No crochet placement rules
 

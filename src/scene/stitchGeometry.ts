@@ -1,48 +1,93 @@
 import * as THREE from 'three';
 import type { StitchNode, Vec3 } from '@engine/index';
-import { StitchDefinitions, StitchType } from '@engine/index';
-import { STITCH_SPACING } from '@engine/layout';
+import {
+  groupStitchesByRow,
+  ROW_HEIGHT,
+  StitchDefinitions,
+  StitchType,
+  STITCH_SPACING,
+} from '@engine/index';
 
+// Visual tuning — derived from engine layout, not placement rules.
 const YARN_RADIUS = 0.068;
 const TUBE_RADIAL = 8;
+const TUBE_SEGMENTS_MIN = 24;
+const TUBE_SEGMENTS_MAX = 192;
+const TUBE_SEGMENTS_PER_POINT = 8;
+
+const CHAIN_CROWN_Z = 0.13;
+const CHAIN_LOOP_SPAN_SCALE = 0.34;
+const SC_HEIGHT = ROW_HEIGHT * 0.17;
+const SC_V_HALF_WIDTH = 0.04;
+const SC_TOP_Z = 0.06;
+const SC_HOOK_Y_LIFT = 0.02;
+const SC_ROW_EXIT_X = 0.12;
+const SC_ROW_EXIT_Y = 0.14;
+const SC_ROW_EXIT_Z = 0.08;
+
+export interface YarnSegmentManifest {
+  key: string;
+  fingerprint: string;
+}
 
 export interface YarnSegment {
   key: string;
   geometry: THREE.BufferGeometry;
 }
 
-function vec(position: Vec3): THREE.Vector3 {
-  return new THREE.Vector3(position.x, position.y, position.z);
-}
-
 function midpoint(a: Vec3, b: Vec3): THREE.Vector3 {
   return new THREE.Vector3((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
 }
 
-function createTube(points: THREE.Vector3[], segments?: number): THREE.TubeGeometry {
+function stitchFingerprint(stitch: StitchNode): string {
+  const { x, y, z } = stitch.position;
+  return `${stitch.id}:${stitch.column}:${stitch.attachToId ?? ''}:${x},${y},${z}`;
+}
+
+function dedupePoints(points: THREE.Vector3[], epsilon = 1e-4): THREE.Vector3[] {
+  if (points.length === 0) {
+    return points;
+  }
+
+  const deduped = [points[0]!];
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = deduped[deduped.length - 1]!;
+    const current = points[index]!;
+    if (previous.distanceTo(current) > epsilon) {
+      deduped.push(current);
+    }
+  }
+
+  return deduped;
+}
+
+function createTube(points: THREE.Vector3[]): THREE.TubeGeometry {
   const curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.42);
-  const tubularSegments = segments ?? Math.max(24, points.length * 10);
+  const tubularSegments = Math.min(
+    TUBE_SEGMENTS_MAX,
+    Math.max(TUBE_SEGMENTS_MIN, points.length * TUBE_SEGMENTS_PER_POINT),
+  );
   return new THREE.TubeGeometry(curve, tubularSegments, YARN_RADIUS, TUBE_RADIAL, false);
 }
 
 function chainLoopCrown(position: Vec3): THREE.Vector3 {
-  return new THREE.Vector3(position.x, position.y, position.z + 0.13);
+  return new THREE.Vector3(position.x, position.y, position.z + CHAIN_CROWN_Z);
 }
 
-function groupStitchesByRow(stitches: StitchNode[]): Map<number, StitchNode[]> {
-  const byRow = new Map<number, StitchNode[]>();
-
-  for (const stitch of stitches) {
-    const rowStitches = byRow.get(stitch.row) ?? [];
-    rowStitches.push(stitch);
-    byRow.set(stitch.row, rowStitches);
+function hookPointForStitch(
+  stitch: StitchNode,
+  role: 'attach' | 'rowExit',
+): THREE.Vector3 {
+  if (stitch.type === StitchType.CHAIN) {
+    return chainLoopCrown(stitch.position);
   }
 
-  for (const rowStitches of byRow.values()) {
-    rowStitches.sort((left, right) => left.column - right.column);
-  }
-
-  return byRow;
+  const xOffset = role === 'rowExit' ? SC_ROW_EXIT_X : 0;
+  return new THREE.Vector3(
+    stitch.position.x + xOffset,
+    stitch.position.y + SC_ROW_EXIT_Y,
+    stitch.position.z + SC_ROW_EXIT_Z,
+  );
 }
 
 function buildFoundationYarnPath(chainStitches: StitchNode[]): THREE.Vector3[] {
@@ -50,7 +95,8 @@ function buildFoundationYarnPath(chainStitches: StitchNode[]): THREE.Vector3[] {
     return [];
   }
 
-  const span = STITCH_SPACING * StitchDefinitions[StitchType.CHAIN].width * 0.34;
+  const span =
+    STITCH_SPACING * StitchDefinitions[StitchType.CHAIN].width * CHAIN_LOOP_SPAN_SCALE;
   const points: THREE.Vector3[] = [];
   const first = chainStitches[0]!.position;
   const last = chainStitches[chainStitches.length - 1]!.position;
@@ -77,13 +123,13 @@ function buildFoundationYarnPath(chainStitches: StitchNode[]): THREE.Vector3[] {
       new THREE.Vector3(leftAnchor.x, leftAnchor.y, leftAnchor.z),
       new THREE.Vector3(
         (leftAnchor.x + crown.x) / 2,
-        position.y + 0.025,
+        position.y + SC_HOOK_Y_LIFT,
         (leftAnchor.z + crown.z) / 2,
       ),
       crown,
       new THREE.Vector3(
         (rightAnchor.x + crown.x) / 2,
-        position.y + 0.025,
+        position.y + SC_HOOK_Y_LIFT,
         (rightAnchor.z + crown.z) / 2,
       ),
       new THREE.Vector3(rightAnchor.x, rightAnchor.y, rightAnchor.z),
@@ -91,68 +137,58 @@ function buildFoundationYarnPath(chainStitches: StitchNode[]): THREE.Vector3[] {
   }
 
   points.push(new THREE.Vector3(last.x + span * 1.1, last.y, last.z + 0.02));
-  return points;
-}
-
-function hookPointForParent(parent: StitchNode): THREE.Vector3 {
-  if (parent.type === StitchType.CHAIN) {
-    return chainLoopCrown(parent.position);
-  }
-
-  return new THREE.Vector3(
-    parent.position.x,
-    parent.position.y + 0.14,
-    parent.position.z + 0.08,
-  );
+  return dedupePoints(points);
 }
 
 function buildWorkingRowYarnPath(
   rowStitches: StitchNode[],
   stitchById: Map<string, StitchNode>,
-): THREE.Vector3[] {
+): THREE.Vector3[] | null {
   if (rowStitches.length === 0) {
-    return [];
+    return null;
   }
 
   const points: THREE.Vector3[] = [];
-  const vHalfWidth = 0.04;
-  const stitchHeight = 0.13;
 
   for (let index = 0; index < rowStitches.length; index += 1) {
     const stitch = rowStitches[index]!;
     const parent = stitchById.get(stitch.attachToId ?? '');
     if (!parent) {
-      continue;
+      return null;
     }
 
     const position = stitch.position;
-    const hook = hookPointForParent(parent);
+    const hook = hookPointForStitch(parent, 'attach');
     const leftTop = new THREE.Vector3(
-      position.x - vHalfWidth,
-      position.y + stitchHeight,
-      position.z + 0.06,
+      position.x - SC_V_HALF_WIDTH,
+      position.y + SC_HEIGHT,
+      position.z + SC_TOP_Z,
     );
     const rightTop = new THREE.Vector3(
-      position.x + vHalfWidth,
-      position.y + stitchHeight,
-      position.z + 0.06,
+      position.x + SC_V_HALF_WIDTH,
+      position.y + SC_HEIGHT,
+      position.z + SC_TOP_Z,
     );
     const crown = new THREE.Vector3(
       position.x,
-      position.y + stitchHeight + 0.018,
-      position.z + 0.075,
+      position.y + SC_HEIGHT + 0.018,
+      position.z + SC_TOP_Z + 0.015,
     );
 
     if (index === 0) {
       points.push(
-        new THREE.Vector3(position.x - 0.18, position.y + stitchHeight * 0.45, position.z + 0.03),
+        new THREE.Vector3(
+          position.x - 0.18,
+          position.y + SC_HEIGHT * 0.45,
+          position.z + 0.03,
+        ),
       );
     } else {
       const previous = rowStitches[index - 1]!;
       points.push(
         new THREE.Vector3(
           (previous.position.x + position.x) / 2,
-          previous.position.y + stitchHeight + 0.02,
+          previous.position.y + SC_HEIGHT + 0.02,
           (previous.position.z + position.z) / 2 + 0.07,
         ),
       );
@@ -176,7 +212,7 @@ function buildWorkingRowYarnPath(
       points.push(
         new THREE.Vector3(
           (position.x + next.position.x) / 2,
-          position.y + stitchHeight + 0.02,
+          position.y + SC_HEIGHT + 0.02,
           (position.z + next.position.z) / 2 + 0.07,
         ),
       );
@@ -185,10 +221,10 @@ function buildWorkingRowYarnPath(
 
   const last = rowStitches[rowStitches.length - 1]!.position;
   points.push(
-    new THREE.Vector3(last.x + 0.16, last.y + stitchHeight + 0.02, last.z + 0.075),
+    new THREE.Vector3(last.x + 0.16, last.y + SC_HEIGHT + 0.02, last.z + SC_TOP_Z + 0.015),
   );
 
-  return points;
+  return dedupePoints(points);
 }
 
 function buildRowJoinPath(
@@ -200,24 +236,22 @@ function buildRowJoinPath(
     return null;
   }
 
-  const lowerSorted = [...lowerRow].sort((left, right) => left.column - right.column);
-  const upperSorted = [...upperRow].sort((left, right) => left.column - right.column);
-  const lowerEnd = lowerSorted[lowerSorted.length - 1]!;
-  const upperStart = upperSorted[0]!;
+  const lowerEnd = lowerRow[lowerRow.length - 1]!;
+  const upperStart = upperRow[0]!;
 
-  const lowerExit =
-    lowerEnd.type === StitchType.CHAIN
-      ? chainLoopCrown(lowerEnd.position)
-      : new THREE.Vector3(
-          lowerEnd.position.x + 0.12,
-          lowerEnd.position.y + 0.14,
-          lowerEnd.position.z + 0.08,
-        );
+  const lowerExit = hookPointForStitch(
+    lowerEnd,
+    lowerEnd.type === StitchType.CHAIN ? 'attach' : 'rowExit',
+  );
 
   const upperParent = stitchById.get(upperStart.attachToId ?? '');
   const upperEntry = upperParent
-    ? hookPointForParent(upperParent)
-    : vec(upperStart.position);
+    ? hookPointForStitch(upperParent, 'attach')
+    : new THREE.Vector3(
+        upperStart.position.x,
+        upperStart.position.y,
+        upperStart.position.z,
+      );
 
   const turn = new THREE.Vector3(
     (lowerExit.x + upperEntry.x) / 2 + 0.08,
@@ -228,7 +262,17 @@ function buildRowJoinPath(
   return [lowerExit, turn, upperEntry];
 }
 
-export function buildYarnSegments(stitches: StitchNode[]): YarnSegment[] {
+function rowFingerprint(rowNumber: number, rowStitches: StitchNode[]): string {
+  return `row:${rowNumber}:${rowStitches.map(stitchFingerprint).join(';')}`;
+}
+
+function joinFingerprint(lowerRow: StitchNode[], upperRow: StitchNode[]): string {
+  const lowerEnd = lowerRow[lowerRow.length - 1]!;
+  const upperStart = upperRow[0]!;
+  return `join:${lowerEnd.id}->${upperStart.id}`;
+}
+
+export function getYarnSegmentManifests(stitches: StitchNode[]): YarnSegmentManifest[] {
   if (stitches.length === 0) {
     return [];
   }
@@ -236,22 +280,21 @@ export function buildYarnSegments(stitches: StitchNode[]): YarnSegment[] {
   const stitchById = new Map(stitches.map((stitch) => [stitch.id, stitch]));
   const byRow = groupStitchesByRow(stitches);
   const rowNumbers = [...byRow.keys()].sort((left, right) => left - right);
-  const segments: YarnSegment[] = [];
+  const manifests: YarnSegmentManifest[] = [];
 
   for (const rowNumber of rowNumbers) {
     const rowStitches = byRow.get(rowNumber)!;
-    const isFoundation = rowStitches[0]?.type === StitchType.CHAIN;
-    const points = isFoundation
-      ? buildFoundationYarnPath(rowStitches)
-      : buildWorkingRowYarnPath(rowStitches, stitchById);
+    const canRenderRow =
+      rowNumber === 0 ||
+      buildWorkingRowYarnPath(rowStitches, stitchById) !== null;
 
-    if (points.length < 2) {
+    if (!canRenderRow) {
       continue;
     }
 
-    segments.push({
+    manifests.push({
       key: `row-${rowNumber}`,
-      geometry: createTube(points),
+      fingerprint: rowFingerprint(rowNumber, rowStitches),
     });
   }
 
@@ -264,11 +307,70 @@ export function buildYarnSegments(stitches: StitchNode[]): YarnSegment[] {
       continue;
     }
 
-    segments.push({
+    manifests.push({
       key: `join-${rowNumbers[index]}`,
-      geometry: createTube(joinPoints, 18),
+      fingerprint: joinFingerprint(lowerRow, upperRow),
     });
   }
 
-  return segments;
+  return manifests;
+}
+
+export function buildYarnSegmentGeometry(
+  key: string,
+  stitches: StitchNode[],
+): THREE.BufferGeometry | null {
+  const stitchById = new Map(stitches.map((stitch) => [stitch.id, stitch]));
+  const byRow = groupStitchesByRow(stitches);
+  const rowNumbers = [...byRow.keys()].sort((left, right) => left - right);
+
+  if (key.startsWith('row-')) {
+    const rowNumber = Number.parseInt(key.slice(4), 10);
+    const rowStitches = byRow.get(rowNumber);
+    if (!rowStitches) {
+      return null;
+    }
+
+    const points =
+      rowNumber === 0
+        ? buildFoundationYarnPath(rowStitches)
+        : buildWorkingRowYarnPath(rowStitches, stitchById);
+
+    if (!points || points.length < 2) {
+      return null;
+    }
+
+    return createTube(points);
+  }
+
+  if (key.startsWith('join-')) {
+    const rowNumber = Number.parseInt(key.slice(5), 10);
+    const lowerIndex = rowNumbers.indexOf(rowNumber);
+    if (lowerIndex <= 0) {
+      return null;
+    }
+
+    const lowerRow = byRow.get(rowNumbers[lowerIndex - 1]!)!;
+    const upperRow = byRow.get(rowNumber)!;
+    const joinPoints = buildRowJoinPath(lowerRow, upperRow, stitchById);
+
+    if (!joinPoints || joinPoints.length < 2) {
+      return null;
+    }
+
+    return createTube(joinPoints);
+  }
+
+  return null;
+}
+
+export function buildYarnSegments(stitches: StitchNode[]): YarnSegment[] {
+  return getYarnSegmentManifests(stitches).flatMap((manifest) => {
+    const geometry = buildYarnSegmentGeometry(manifest.key, stitches);
+    if (!geometry) {
+      return [];
+    }
+
+    return [{ key: manifest.key, geometry }];
+  });
 }

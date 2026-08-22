@@ -31,7 +31,6 @@ export function CrochetScene() {
       style={{ width: '100%', height: '100%' }}
     >
       <color attach="background" args={['#f7f0e6']} />
-      <ambientLight intensity={1} />
       <gridHelper args={[20, 20, '#ddd4c8', '#ebe4da']} position={[0, -0.01, 0]} />
       <SceneControls />
       <SceneStitchRenderer />

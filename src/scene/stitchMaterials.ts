@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export const STITCH_COLORS = {
+const STITCH_COLORS = {
   fill: 0xd98952,
   outline: 0x5c3d2e,
 } as const;
@@ -41,8 +41,17 @@ export function createOutlinedStitch(
 }
 
 export function disposeOutlinedStitch(group: THREE.Group): void {
+  let geometry: THREE.BufferGeometry | null = null;
+
   for (const child of group.children) {
-    const mesh = child as THREE.Mesh;
-    mesh.geometry.dispose();
+    if (!(child instanceof THREE.Mesh)) {
+      continue;
+    }
+
+    if (!geometry) {
+      geometry = child.geometry;
+    }
   }
+
+  geometry?.dispose();
 }

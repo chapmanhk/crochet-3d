@@ -69,6 +69,11 @@ Use consistent wording across features:
 | Status | `Then the pattern status should be "<text>"` |
 | Stitch count | `And the stitch count should be <n>` |
 | Instructions | `And the instructions should include "<text>"` |
+| Next-step guidance | `And I should see next-step guidance to choose "New Chain"` |
+| Next-step (exact) | `And I should see next-step guidance to "<exact text>"` |
+| Row progress | `And the row progress should be "<text>"` |
+| Disabled control | `Then the "<button>" control should be disabled` |
+| Accessible disabled reason | `And the "<button>" control should have an accessible disabled reason` |
 | Error | `Then I should see an error "<message>"` |
 
 ## Tags
