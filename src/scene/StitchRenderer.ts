@@ -4,13 +4,16 @@ import { StitchType } from '@engine/index';
 
 const YARN_COLOR = 0x8b4513;
 
-const STITCH_GEOMETRIES: Record<StitchType, THREE.BufferGeometry> = {
-  [StitchType.CHAIN]: new THREE.TorusGeometry(0.25, 0.08, 12, 24),
-  [StitchType.SINGLE_CROCHET]: new THREE.CylinderGeometry(0.18, 0.18, 0.5, 16),
-};
+function createStitchGeometries(): Record<StitchType, THREE.BufferGeometry> {
+  return {
+    [StitchType.CHAIN]: new THREE.TorusGeometry(0.25, 0.08, 12, 24),
+    [StitchType.SINGLE_CROCHET]: new THREE.CylinderGeometry(0.18, 0.18, 0.5, 16),
+  };
+}
 
 export class StitchRenderer {
   readonly group = new THREE.Group();
+  private readonly geometries = createStitchGeometries();
   private readonly meshes = new Map<string, THREE.Mesh>();
   private readonly material = new THREE.MeshStandardMaterial({
     color: YARN_COLOR,
@@ -49,10 +52,13 @@ export class StitchRenderer {
     }
     this.meshes.clear();
     this.material.dispose();
+    for (const geometry of Object.values(this.geometries)) {
+      geometry.dispose();
+    }
   }
 
   private createMesh(stitch: StitchNode): THREE.Mesh {
-    const mesh = new THREE.Mesh(STITCH_GEOMETRIES[stitch.type], this.material);
+    const mesh = new THREE.Mesh(this.geometries[stitch.type], this.material);
     if (stitch.type === StitchType.CHAIN) {
       mesh.rotation.x = Math.PI / 2;
     }

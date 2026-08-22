@@ -48,6 +48,16 @@ describe('toolbarState', () => {
         canStartNewRow: false,
       }),
     ).toContain('Complete row 1');
+
+    expect(
+      getNewRowDisabledReason({
+        foundationChainLength: 3,
+        currentRow: 2,
+        currentRowStitchCount: 0,
+        canAddSingleCrochet: false,
+        canStartNewRow: false,
+      }),
+    ).toContain('Place at least one single crochet stitch');
   });
 
   it('explains why Reset is unavailable', () => {

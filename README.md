@@ -19,6 +19,8 @@ npm run test:e2e
 npm run build
 ```
 
+CI runs the same test and build commands on every push and pull request to `main` (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+
 ## MVP flow
 
 1. Click **New Chain** and enter a foundation length
@@ -35,6 +37,8 @@ Behavior specs in [`specs/`](specs/) describe user-facing functionality in Gherk
 3. **Implement** — engine → store → scene → app
 4. **Verify** — `npm run test:run` + `npm run test:e2e`
 
+See [`ROADMAP.md`](ROADMAP.md) for product phases, priorities, and how deferred work is tracked.
+
 ## Architecture rules
 
 - `src/engine` must not import from React, Three.js, or Zustand
@@ -44,3 +48,7 @@ Behavior specs in [`specs/`](specs/) describe user-facing functionality in Gherk
 ## Cursor agents & skills
 
 See [`.cursor/README.md`](.cursor/README.md) for project agents (code review, tests, engine specialist) and skills (architecture, UI/UX, testing).
+
+## Roadmap
+
+Product phases and priorities: [`ROADMAP.md`](ROADMAP.md)

@@ -20,7 +20,15 @@ export class StitchGraph {
   }
 
   getByRow(row: number): StitchNode[] {
-    return this.getAll().filter((stitch) => stitch.row === row);
+    const rowStitches: StitchNode[] = [];
+
+    for (const stitch of this.stitches.values()) {
+      if (stitch.row === row) {
+        rowStitches.push(cloneStitchNode(stitch));
+      }
+    }
+
+    return rowStitches.sort((a, b) => a.column - b.column);
   }
 
   count(): number {

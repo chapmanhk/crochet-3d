@@ -1,4 +1,4 @@
-export { Pattern, MIN_CHAIN_LENGTH, MAX_CHAIN_LENGTH } from './Pattern';
+export { Pattern, MIN_CHAIN_LENGTH, MAX_CHAIN_LENGTH, formatChainLengthError } from './Pattern';
 export { StitchGraph } from './StitchGraph';
 export { createStitchNode, resetIdCounter } from './StitchNode';
 export { generateInstructions, getStitchLabel } from './instructions';

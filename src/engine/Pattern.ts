@@ -8,24 +8,19 @@ const MAX_CHAIN_LENGTH = 500;
 
 export { MIN_CHAIN_LENGTH, MAX_CHAIN_LENGTH };
 
+export function formatChainLengthError(): string {
+  return `Chain length must be between ${MIN_CHAIN_LENGTH} and ${MAX_CHAIN_LENGTH}.`;
+}
+
 export class Pattern {
   private readonly graph = new StitchGraph();
   private currentRow = 0;
   private foundationChainLength = 0;
 
   addFoundationChain(length: number): StitchNode[] {
-    if (length < MIN_CHAIN_LENGTH || length > MAX_CHAIN_LENGTH) {
-      throw new PlacementError(
-        'INVALID_CHAIN_LENGTH',
-        `Chain length must be between ${MIN_CHAIN_LENGTH} and ${MAX_CHAIN_LENGTH}.`,
-      );
-    }
-
-    if (this.graph.count() > 0) {
-      throw new PlacementError(
-        'FOUNDATION_EXISTS',
-        'Foundation chain already exists. Start a new pattern to reset.',
-      );
+    const error = this.validateFoundationChain(length);
+    if (error) {
+      throw error;
     }
 
     const stitches: StitchNode[] = [];
@@ -41,39 +36,14 @@ export class Pattern {
   }
 
   addSingleCrochet(): StitchNode {
-    if (this.foundationChainLength === 0) {
-      throw new PlacementError(
-        'NO_FOUNDATION',
-        'Add a foundation chain before placing single crochet stitches.',
-      );
+    const error = this.validateAddSingleCrochet();
+    if (error) {
+      throw error;
     }
 
     const rowStitches = this.graph.getByRow(this.currentRow);
-    const previousRow = this.graph.getByRow(this.currentRow - 1);
-
-    if (this.currentRow === 0) {
-      throw new PlacementError(
-        'NO_TARGET_STITCH',
-        'Single crochet must be worked into row 1 or later.',
-      );
-    }
-
-    if (rowStitches.length >= this.foundationChainLength) {
-      throw new PlacementError(
-        'ROW_FULL',
-        `Row ${this.currentRow} already has ${this.foundationChainLength} stitches.`,
-      );
-    }
-
     const column = rowStitches.length;
-    const attachTarget = previousRow[column];
-
-    if (!attachTarget) {
-      throw new PlacementError(
-        'NO_TARGET_STITCH',
-        `No stitch available to attach to in row ${this.currentRow - 1}, column ${column}.`,
-      );
-    }
+    const attachTarget = this.graph.getByRow(this.currentRow - 1)[column]!;
 
     const stitch = createStitchNode(
       StitchType.SINGLE_CROCHET,
@@ -87,31 +57,14 @@ export class Pattern {
   }
 
   startNewRow(): number {
-    if (this.foundationChainLength === 0) {
-      throw new PlacementError(
-        'CANNOT_START_ROW',
-        'Add a foundation chain before starting a new row.',
-      );
+    const error = this.validateStartNewRow();
+    if (error) {
+      throw error;
     }
 
     if (this.currentRow === 0) {
       this.currentRow = 1;
       return this.currentRow;
-    }
-
-    const currentRowStitches = this.graph.getByRow(this.currentRow);
-    if (currentRowStitches.length === 0) {
-      throw new PlacementError(
-        'CANNOT_START_ROW',
-        'Current row has no stitches. Add stitches before starting a new row.',
-      );
-    }
-
-    if (currentRowStitches.length < this.foundationChainLength) {
-      throw new PlacementError(
-        'CANNOT_START_ROW',
-        `Complete row ${this.currentRow} before starting a new row (${currentRowStitches.length}/${this.foundationChainLength} stitches).`,
-      );
     }
 
     this.currentRow += 1;
@@ -135,34 +88,11 @@ export class Pattern {
   }
 
   canAddSingleCrochet(): boolean {
-    if (this.foundationChainLength === 0 || this.currentRow === 0) {
-      return false;
-    }
-
-    const rowStitches = this.graph.getByRow(this.currentRow);
-    if (rowStitches.length >= this.foundationChainLength) {
-      return false;
-    }
-
-    const attachTarget = this.graph.getByRow(this.currentRow - 1)[rowStitches.length];
-    return Boolean(attachTarget);
+    return this.validateAddSingleCrochet() === null;
   }
 
   canStartNewRow(): boolean {
-    if (this.foundationChainLength === 0) {
-      return false;
-    }
-
-    if (this.currentRow === 0) {
-      return true;
-    }
-
-    const currentRowStitches = this.graph.getByRow(this.currentRow);
-    if (currentRowStitches.length === 0) {
-      return false;
-    }
-
-    return currentRowStitches.length >= this.foundationChainLength;
+    return this.validateStartNewRow() === null;
   }
 
   getSnapshot(): PatternSnapshot {
@@ -178,5 +108,85 @@ export class Pattern {
     this.currentRow = 0;
     this.foundationChainLength = 0;
     resetIdCounter();
+  }
+
+  private validateFoundationChain(length: number): PlacementError | null {
+    if (length < MIN_CHAIN_LENGTH || length > MAX_CHAIN_LENGTH) {
+      return new PlacementError('INVALID_CHAIN_LENGTH', formatChainLengthError());
+    }
+
+    if (this.graph.count() > 0) {
+      return new PlacementError(
+        'FOUNDATION_EXISTS',
+        'Foundation chain already exists. Start a new pattern to reset.',
+      );
+    }
+
+    return null;
+  }
+
+  private validateAddSingleCrochet(): PlacementError | null {
+    if (this.foundationChainLength === 0) {
+      return new PlacementError(
+        'NO_FOUNDATION',
+        'Add a foundation chain before placing single crochet stitches.',
+      );
+    }
+
+    if (this.currentRow === 0) {
+      return new PlacementError(
+        'NO_TARGET_STITCH',
+        'Single crochet must be worked into row 1 or later.',
+      );
+    }
+
+    const rowStitches = this.graph.getByRow(this.currentRow);
+    if (rowStitches.length >= this.foundationChainLength) {
+      return new PlacementError(
+        'ROW_FULL',
+        `Row ${this.currentRow} already has ${this.foundationChainLength} stitches.`,
+      );
+    }
+
+    const column = rowStitches.length;
+    const attachTarget = this.graph.getByRow(this.currentRow - 1)[column];
+    if (!attachTarget) {
+      return new PlacementError(
+        'NO_TARGET_STITCH',
+        `No stitch available to attach to in row ${this.currentRow - 1}, column ${column}.`,
+      );
+    }
+
+    return null;
+  }
+
+  private validateStartNewRow(): PlacementError | null {
+    if (this.foundationChainLength === 0) {
+      return new PlacementError(
+        'CANNOT_START_ROW',
+        'Add a foundation chain before starting a new row.',
+      );
+    }
+
+    if (this.currentRow === 0) {
+      return null;
+    }
+
+    const currentRowStitches = this.graph.getByRow(this.currentRow);
+    if (currentRowStitches.length === 0) {
+      return new PlacementError(
+        'CANNOT_START_ROW',
+        'Current row has no stitches. Add stitches before starting a new row.',
+      );
+    }
+
+    if (currentRowStitches.length < this.foundationChainLength) {
+      return new PlacementError(
+        'CANNOT_START_ROW',
+        `Complete row ${this.currentRow} before starting a new row (${currentRowStitches.length}/${this.foundationChainLength} stitches).`,
+      );
+    }
+
+    return null;
   }
 }

@@ -12,4 +12,14 @@ export default defineConfig({
       '@store': path.resolve(__dirname, 'src/store'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          three: ['three'],
+          r3f: ['@react-three/fiber', '@react-three/drei'],
+        },
+      },
+    },
+  },
 });

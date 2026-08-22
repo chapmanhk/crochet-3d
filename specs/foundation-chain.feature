@@ -15,21 +15,18 @@ Feature: Foundation chain
     And the foundation length should be 3
     And the instructions should include "Foundation: ch 3"
 
-  @e2e
   Scenario: Chain length dialog opens with a default of 10
     Given I have no pattern
     When I open the new chain dialog
     Then the chain length should be 10
     And the chain length field should be focused and selected
 
-  @e2e
   Scenario: Chain length can be typed directly
     Given I have no pattern
     When I open the new chain dialog
     And I try to enter "abc" in the chain length field
     Then the chain length field should contain only numbers
 
-  @e2e
   Scenario: Chain length can be adjusted with stepper buttons
     Given I have no pattern
     When I open the new chain dialog
@@ -38,7 +35,6 @@ Feature: Foundation chain
     When I increase the chain length twice
     Then the chain length should be 11
 
-  @e2e
   Scenario: Chain length can be adjusted with arrow keys
     Given I have no pattern
     When I open the new chain dialog
@@ -47,7 +43,6 @@ Feature: Foundation chain
     When I press Arrow Up twice in the chain length field
     Then the chain length should be 11
 
-  @e2e
   Scenario: Enter submits a valid chain length
     Given I have no pattern
     When I open the new chain dialog
@@ -55,7 +50,6 @@ Feature: Foundation chain
     And I press Enter in the chain length field
     Then the foundation length should be 4
 
-  @e2e
   Scenario: Stepper buttons disable at min and max bounds
     Given I have no pattern
     When I open the new chain dialog
@@ -64,7 +58,6 @@ Feature: Foundation chain
     When I set the chain length to 500
     Then the increase chain length control should be disabled
 
-  @e2e
   Scenario: Empty chain length shows an error in the dialog
     Given I have no pattern
     When I open the new chain dialog
@@ -72,7 +65,6 @@ Feature: Foundation chain
     And I choose "Create chain"
     Then I should see an error "Enter a chain length."
 
-  @e2e
   Scenario: Out-of-range chain length shows an error in the dialog
     Given I have no pattern
     When I open the new chain dialog
@@ -80,28 +72,24 @@ Feature: Foundation chain
     And I choose "Create chain"
     Then I should see an error "Chain length must be between 1 and 500."
 
-  @e2e
   Scenario: Cancel closes the chain dialog without creating a chain
     Given I have no pattern
     When I open the new chain dialog
     And I choose "Cancel"
     Then the stitch count should be 0
 
-  @e2e
   Scenario: Escape closes the chain dialog without creating a chain
     Given I have no pattern
     When I open the new chain dialog
     And I press Escape
     Then the stitch count should be 0
 
-  @e2e
   Scenario: Declining New Chain reset keeps the existing pattern
     Given I have a foundation chain of 3
     When I choose "New Chain"
     And I choose "Cancel" in the confirmation dialog
     Then the stitch count should be 3
 
-  @e2e
   Scenario: Confirming New Chain reset replaces the pattern
     Given I have a foundation chain of 3
     When I choose "New Chain"

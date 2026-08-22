@@ -5,6 +5,7 @@ import {
   StitchType,
   MAX_CHAIN_LENGTH,
   MIN_CHAIN_LENGTH,
+  formatChainLengthError,
 } from '@engine/index';
 import { resetIdCounter } from '@engine/StitchNode';
 
@@ -185,6 +186,29 @@ describe('Pattern', () => {
     expect(pattern.canStartNewRow()).toBe(true);
   });
 
+  it('keeps can* checks aligned with thrown placement errors', () => {
+    const pattern = new Pattern();
+
+    expect(pattern.canAddSingleCrochet()).toBe(false);
+    expectPlacementError(() => pattern.addSingleCrochet(), 'NO_FOUNDATION');
+
+    pattern.addFoundationChain(2);
+    expect(pattern.canAddSingleCrochet()).toBe(false);
+    expectPlacementError(() => pattern.addSingleCrochet(), 'NO_TARGET_STITCH');
+
+    pattern.startNewRow();
+    expect(pattern.canAddSingleCrochet()).toBe(true);
+    pattern.addSingleCrochet();
+    pattern.addSingleCrochet();
+    expect(pattern.canAddSingleCrochet()).toBe(false);
+    expectPlacementError(() => pattern.addSingleCrochet(), 'ROW_FULL');
+
+    expect(pattern.canStartNewRow()).toBe(true);
+    pattern.startNewRow();
+    expect(pattern.canStartNewRow()).toBe(false);
+    expectPlacementError(() => pattern.startNewRow(), 'CANNOT_START_ROW');
+  });
+
   it('exposes pattern state through getSnapshot', () => {
     const pattern = new Pattern();
     pattern.addFoundationChain(2);
@@ -245,5 +269,11 @@ describe('Pattern', () => {
 
     expect(firstId).toBe('stitch-1');
     expect(secondId).toBe('stitch-1');
+  });
+});
+
+describe('formatChainLengthError', () => {
+  it('formats out-of-range chain length message', () => {
+    expect(formatChainLengthError()).toBe('Chain length must be between 1 and 500.');
   });
 });

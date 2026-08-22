@@ -26,6 +26,7 @@ specs/
   single-crochet-rows.feature # Building rows with SC
   pattern-validation.feature  # Errors and guards
   reset-pattern.feature       # Clearing work
+  deferred.feature            # Roadmap items tagged @deferred
 ```
 
 One feature per user-facing capability. Split when a file exceeds ~8 scenarios.
