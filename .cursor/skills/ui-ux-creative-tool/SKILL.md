@@ -92,7 +92,7 @@ Use `PlacementError` messages from the engine; do not invent parallel copy in UI
 
 ## Interaction patterns (current MVP)
 
-1. **New Chain** — numeric-only dialog for length; confirm reset if pattern exists
+1. **New Chain** — hybrid stepper dialog (default 10, type or use −/+); confirm reset if pattern exists
 2. **New Row** — advance row (engine validates)
 3. **Add SC** — place next stitch in current row
 4. **Reset** — destructive; consider confirm dialog when pattern has work

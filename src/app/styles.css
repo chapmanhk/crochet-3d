@@ -188,6 +188,29 @@ button {
   font-weight: 500;
 }
 
+.chain-stepper {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  gap: 8px;
+  align-items: center;
+}
+
+.stepper-btn {
+  min-width: 44px;
+  padding: 10px 0;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.stepper-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.stepper-input {
+  text-align: center;
+}
+
 .dialog-input {
   min-height: 44px;
   padding: 10px 12px;

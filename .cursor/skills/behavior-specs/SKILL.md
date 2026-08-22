@@ -62,6 +62,8 @@ Use consistent wording across features:
 | SC count | `And I have placed <n> single crochet stitches on the current row` |
 | Click action | `When I choose "New Chain" and enter <n> in the chain length dialog` |
 | Open chain dialog | `When I open the new chain dialog` |
+| Set chain length | `When I set the chain length to <n>` |
+| Step chain length | `When I increase/decrease the chain length` |
 | Button click | `When I choose "<button>"` |
 | Status | `Then the pattern status should be "<text>"` |
 | Stitch count | `And the stitch count should be <n>` |

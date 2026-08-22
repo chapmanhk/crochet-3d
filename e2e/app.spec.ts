@@ -8,11 +8,19 @@ function chainDialog(page: Page) {
   return page.getByRole('dialog', { name: 'Foundation chain' });
 }
 
-async function createFoundationChain(page: Page, length: number) {
+function chainLengthInput(page: Page) {
+  return chainDialog(page).getByRole('spinbutton', { name: 'Chain length' });
+}
+
+async function openChainDialog(page: Page) {
   await page.getByRole('button', { name: 'New Chain' }).click();
-  const dialog = chainDialog(page);
-  await dialog.getByLabel('Chain length').fill(String(length));
-  await dialog.getByRole('button', { name: 'Create chain' }).click();
+  await expect(chainDialog(page)).toBeVisible();
+}
+
+async function createFoundationChain(page: Page, length: number) {
+  await openChainDialog(page);
+  await chainLengthInput(page).fill(String(length));
+  await chainDialog(page).getByRole('button', { name: 'Create chain' }).click();
 }
 
 async function acceptNextConfirm(page: Page) {
@@ -66,23 +74,62 @@ test.describe('crochet-3d app', () => {
     await expect(alert).toContainText('Add a foundation chain before placing single crochet stitches.');
   });
 
+  test('chain length dialog opens with default 10', async ({ page }) => {
+    await page.goto('/');
+
+    await openChainDialog(page);
+    const input = chainLengthInput(page);
+
+    await expect(input).toHaveValue('10');
+    await expect(input).toBeFocused();
+  });
+
   test('chain length dialog accepts numbers only', async ({ page }) => {
     await page.goto('/');
 
-    await page.getByRole('button', { name: 'New Chain' }).click();
-    const dialog = chainDialog(page);
-    const input = dialog.getByLabel('Chain length');
+    await openChainDialog(page);
+    const input = chainLengthInput(page);
 
     await input.fill('abc123def');
     await expect(input).toHaveValue('123');
   });
 
+  test('chain length stepper adjusts the value', async ({ page }) => {
+    await page.goto('/');
+
+    await openChainDialog(page);
+    const dialog = chainDialog(page);
+    const input = chainLengthInput(page);
+
+    await dialog.getByRole('button', { name: 'Decrease chain length' }).click();
+    await expect(input).toHaveValue('9');
+
+    await dialog.getByRole('button', { name: 'Increase chain length' }).click();
+    await dialog.getByRole('button', { name: 'Increase chain length' }).click();
+    await expect(input).toHaveValue('11');
+  });
+
+  test('chain length stepper disables at min and max', async ({ page }) => {
+    await page.goto('/');
+
+    await openChainDialog(page);
+    const dialog = chainDialog(page);
+    const decrease = dialog.getByRole('button', { name: 'Decrease chain length' });
+    const increase = dialog.getByRole('button', { name: 'Increase chain length' });
+
+    await chainLengthInput(page).fill('1');
+    await expect(decrease).toBeDisabled();
+
+    await chainLengthInput(page).fill('500');
+    await expect(increase).toBeDisabled();
+  });
+
   test('shows error for out-of-range chain length in dialog', async ({ page }) => {
     await page.goto('/');
 
-    await page.getByRole('button', { name: 'New Chain' }).click();
+    await openChainDialog(page);
     const dialog = chainDialog(page);
-    await dialog.getByLabel('Chain length').fill('501');
+    await chainLengthInput(page).fill('501');
     await dialog.getByRole('button', { name: 'Create chain' }).click();
 
     await expect(dialog.getByRole('alert')).toContainText(

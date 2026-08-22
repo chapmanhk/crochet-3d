@@ -16,11 +16,36 @@ Feature: Foundation chain
     And the instructions should include "Foundation: ch 3"
 
   @e2e
-  Scenario: Chain length dialog accepts numbers only
+  Scenario: Chain length dialog opens with a default of 10
+    Given I have no pattern
+    When I open the new chain dialog
+    Then the chain length should be 10
+    And the chain length field should be focused and selected
+
+  @e2e
+  Scenario: Chain length can be typed directly
     Given I have no pattern
     When I open the new chain dialog
     And I try to enter "abc" in the chain length field
     Then the chain length field should contain only numbers
+
+  @e2e
+  Scenario: Chain length can be adjusted with stepper buttons
+    Given I have no pattern
+    When I open the new chain dialog
+    And I decrease the chain length once
+    Then the chain length should be 9
+    When I increase the chain length twice
+    Then the chain length should be 11
+
+  @e2e
+  Scenario: Stepper buttons disable at min and max bounds
+    Given I have no pattern
+    When I open the new chain dialog
+    And I set the chain length to 1
+    Then the decrease chain length control should be disabled
+    When I set the chain length to 500
+    Then the increase chain length control should be disabled
 
   @e2e
   Scenario: Out-of-range chain length shows an error in the dialog
