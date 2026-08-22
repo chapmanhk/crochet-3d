@@ -7,6 +7,8 @@ export function Toolbar() {
   const addSingleCrochet = usePatternStore((state) => state.addSingleCrochet);
   const startNewRow = usePatternStore((state) => state.startNewRow);
   const resetPattern = usePatternStore((state) => state.resetPattern);
+  const clearError = usePatternStore((state) => state.clearError);
+  const lastError = usePatternStore((state) => state.lastError);
   const foundationChainLength = usePatternStore(
     (state) => state.foundationChainLength,
   );
@@ -24,12 +26,17 @@ export function Toolbar() {
       resetPattern();
     }
 
+    clearError();
     setChainDialogOpen(true);
   };
 
-  const handleChainSubmit = (length: number) => {
-    addFoundationChain(length);
-    setChainDialogOpen(false);
+  const handleChainSubmit = (length: number): boolean => {
+    clearError();
+    const success = addFoundationChain(length);
+    if (success) {
+      setChainDialogOpen(false);
+    }
+    return success;
   };
 
   const handleReset = () => {
@@ -63,6 +70,7 @@ export function Toolbar() {
 
       <ChainLengthDialog
         open={chainDialogOpen}
+        serverError={chainDialogOpen ? lastError : null}
         onClose={() => setChainDialogOpen(false)}
         onSubmit={handleChainSubmit}
       />

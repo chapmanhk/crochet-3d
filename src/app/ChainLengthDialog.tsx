@@ -5,8 +5,9 @@ export const DEFAULT_CHAIN_LENGTH = 10;
 
 interface ChainLengthDialogProps {
   open: boolean;
+  serverError?: string | null;
   onClose: () => void;
-  onSubmit: (length: number) => void;
+  onSubmit: (length: number) => boolean;
 }
 
 function parseLength(value: string): number | null {
@@ -22,22 +23,31 @@ function clampLength(length: number): number {
   return Math.min(MAX_CHAIN_LENGTH, Math.max(MIN_CHAIN_LENGTH, length));
 }
 
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  return [...container.querySelectorAll<HTMLElement>(
+    'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+  )];
+}
+
 export function ChainLengthDialog({
   open,
+  serverError = null,
   onClose,
   onSubmit,
 }: ChainLengthDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
   const labelId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState(String(DEFAULT_CHAIN_LENGTH));
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const numericValue = parseLength(value);
   const stepBase = numericValue ?? DEFAULT_CHAIN_LENGTH;
   const canDecrease = stepBase > MIN_CHAIN_LENGTH;
   const canIncrease = stepBase < MAX_CHAIN_LENGTH;
+  const displayError = localError ?? serverError;
 
   useEffect(() => {
     if (!open) {
@@ -45,10 +55,53 @@ export function ChainLengthDialog({
     }
 
     setValue(String(DEFAULT_CHAIN_LENGTH));
-    setError(null);
+    setLocalError(null);
+    document.body.style.overflow = 'hidden';
     inputRef.current?.focus();
     inputRef.current?.select();
+
+    return () => {
+      document.body.style.overflow = '';
+    };
   }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key !== 'Tab' || !dialogRef.current) {
+        return;
+      }
+
+      const focusable = getFocusableElements(dialogRef.current);
+      if (focusable.length === 0) {
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
 
   if (!open) {
     return null;
@@ -56,40 +109,44 @@ export function ChainLengthDialog({
 
   const handleChange = (raw: string) => {
     setValue(raw.replace(/\D/g, ''));
-    setError(null);
+    setLocalError(null);
   };
 
   const adjustLength = (delta: number) => {
     const next = clampLength(stepBase + delta);
     setValue(String(next));
-    setError(null);
+    setLocalError(null);
   };
 
   const handleSubmit = () => {
     if (!value) {
-      setError('Enter a chain length.');
+      setLocalError('Enter a chain length.');
       return;
     }
 
     const length = parseLength(value);
     if (length === null) {
-      setError('Enter a chain length.');
+      setLocalError('Enter a chain length.');
       return;
     }
 
     if (length < MIN_CHAIN_LENGTH || length > MAX_CHAIN_LENGTH) {
-      setError(
+      setLocalError(
         `Chain length must be between ${MIN_CHAIN_LENGTH} and ${MAX_CHAIN_LENGTH}.`,
       );
       return;
     }
 
-    onSubmit(length);
+    const success = onSubmit(length);
+    if (!success) {
+      setLocalError(null);
+    }
   };
 
   return (
     <div className="dialog-backdrop" onClick={onClose}>
       <div
+        ref={dialogRef}
         className="dialog panel"
         role="dialog"
         aria-modal="true"
@@ -138,10 +195,6 @@ export function ChainLengthDialog({
                   event.preventDefault();
                   handleSubmit();
                 }
-                if (event.key === 'Escape') {
-                  event.preventDefault();
-                  onClose();
-                }
                 if (event.key === 'ArrowUp') {
                   event.preventDefault();
                   if (canIncrease) {
@@ -172,9 +225,9 @@ export function ChainLengthDialog({
           Between {MIN_CHAIN_LENGTH} and {MAX_CHAIN_LENGTH} chains.
         </p>
 
-        {error ? (
+        {displayError ? (
           <p className="dialog-error" role="alert">
-            {error}
+            {displayError}
           </p>
         ) : null}
 

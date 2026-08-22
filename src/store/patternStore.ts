@@ -12,11 +12,10 @@ interface PatternState {
   foundationChainLength: number;
   instructions: string[];
   lastError: string | null;
-  addFoundationChain: (length: number) => void;
-  addSingleCrochet: () => void;
-  startNewRow: () => void;
+  addFoundationChain: (length: number) => boolean;
+  addSingleCrochet: () => boolean;
+  startNewRow: () => boolean;
   resetPattern: () => void;
-  setLastError: (message: string) => void;
   clearError: () => void;
 }
 
@@ -39,47 +38,64 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof PlacementError ? error.message : fallback;
 }
 
+function runPatternAction(
+  set: (partial: Partial<PatternState>) => void,
+  action: () => void,
+  fallback: string,
+): boolean {
+  try {
+    action();
+    set({ ...syncState(), lastError: null });
+    return true;
+  } catch (error) {
+    set({ lastError: getErrorMessage(error, fallback) });
+    return false;
+  }
+}
+
 export const usePatternStore = create<PatternState>((set) => ({
   ...syncState(),
   lastError: null,
 
-  addFoundationChain: (length: number) => {
-    try {
-      pattern.addFoundationChain(length);
-      set({ ...syncState(), lastError: null });
-    } catch (error) {
-      set({ lastError: getErrorMessage(error, 'Failed to add foundation chain.') });
-    }
-  },
+  addFoundationChain: (length: number) =>
+    runPatternAction(
+      set,
+      () => {
+        pattern.addFoundationChain(length);
+      },
+      'Failed to add foundation chain.',
+    ),
 
-  addSingleCrochet: () => {
-    try {
-      pattern.addSingleCrochet();
-      set({ ...syncState(), lastError: null });
-    } catch (error) {
-      set({ lastError: getErrorMessage(error, 'Failed to add single crochet.') });
-    }
-  },
+  addSingleCrochet: () =>
+    runPatternAction(
+      set,
+      () => {
+        pattern.addSingleCrochet();
+      },
+      'Failed to add single crochet.',
+    ),
 
-  startNewRow: () => {
-    try {
-      pattern.startNewRow();
-      set({ ...syncState(), lastError: null });
-    } catch (error) {
-      set({ lastError: getErrorMessage(error, 'Failed to start new row.') });
-    }
-  },
+  startNewRow: () =>
+    runPatternAction(
+      set,
+      () => {
+        pattern.startNewRow();
+      },
+      'Failed to start new row.',
+    ),
 
   resetPattern: () => {
     pattern.reset();
     set({ ...syncState(), lastError: null });
   },
 
-  setLastError: (message: string) => {
-    set({ lastError: message });
-  },
-
   clearError: () => {
     set({ lastError: null });
   },
 }));
+
+/** Test helper to reset the module-scoped pattern between store tests. */
+export function __resetPatternStoreForTests(): void {
+  pattern.reset();
+  usePatternStore.setState({ ...syncState(), lastError: null });
+}

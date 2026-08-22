@@ -68,6 +68,14 @@ describe('Pattern', () => {
     expect(() => pattern.startNewRow()).toThrow(PlacementError);
   });
 
+  it('rejects starting a new row when the current row has no stitches', () => {
+    const pattern = new Pattern();
+    pattern.addFoundationChain(3);
+    pattern.startNewRow();
+
+    expect(() => pattern.startNewRow()).toThrow(PlacementError);
+  });
+
   it('resets the pattern', () => {
     const pattern = new Pattern();
     pattern.addFoundationChain(2);
