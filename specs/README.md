@@ -18,11 +18,18 @@ Gherkin feature files describe **what crochet-3d should do** from a crocheter's 
 | `single-crochet-rows.feature` | New row, adding SC, instructions |
 | `pattern-validation.feature` | Input errors, placement guards |
 | `reset-pattern.feature` | Clearing the pattern |
+| `deferred.feature` | Roadmap items tagged `@deferred` (not yet implemented) |
 
 ## Tags
 
 - `@e2e` — proven by Playwright tests in `e2e/`
 - `@engine` — proven by Vitest tests in `tests/engine/`
+- `@deferred` — on the [product roadmap](../ROADMAP.md); no implementation until scheduled
+- `@wip` — specified and in active development
+
+## Roadmap
+
+Priorities and phases: [`ROADMAP.md`](../ROADMAP.md)
 
 ## Cursor
 

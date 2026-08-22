@@ -35,6 +35,8 @@ Behavior specs in [`specs/`](specs/) describe user-facing functionality in Gherk
 3. **Implement** — engine → store → scene → app
 4. **Verify** — `npm run test:run` + `npm run test:e2e`
 
+See [`ROADMAP.md`](ROADMAP.md) for product phases, priorities, and how deferred work is tracked.
+
 ## Architecture rules
 
 - `src/engine` must not import from React, Three.js, or Zustand
@@ -44,3 +46,7 @@ Behavior specs in [`specs/`](specs/) describe user-facing functionality in Gherk
 ## Cursor agents & skills
 
 See [`.cursor/README.md`](.cursor/README.md) for project agents (code review, tests, engine specialist) and skills (architecture, UI/UX, testing).
+
+## Roadmap
+
+Product phases and priorities: [`ROADMAP.md`](ROADMAP.md)

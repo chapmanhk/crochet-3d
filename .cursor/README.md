@@ -42,6 +42,10 @@ Invoke via Cursor's agent picker or by referencing the agent file in chat.
 
 Skills auto-load when the agent detects a matching task from the `description` frontmatter.
 
+## Product roadmap
+
+Phases, priorities, and deferred work: [`ROADMAP.md`](../ROADMAP.md) (repo root)
+
 ## Suggested workflow order
 
 For a feature branch nearing merge:
