@@ -22,6 +22,8 @@ Adapted from [ChernyCode](https://github.com/meleantonio/ChernyCode) and tailore
 | `verifier` | Confirming claimed work actually runs and passes checks |
 | `engine-specialist` | Crochet graph, placement rules, layout, instructions |
 | `behavior-spec-author` | Writing Gherkin specs in `specs/` **before** implementation |
+| `code-simplifier` | Readability pass after features — simplify without changing behavior |
+| `tech-debt` | Audit/fix duplication, dead code, layer leaks, spec/test drift |
 
 Invoke via Cursor's agent picker or by referencing the agent file in chat.
 

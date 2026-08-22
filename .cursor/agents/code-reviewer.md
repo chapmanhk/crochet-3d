@@ -61,4 +61,8 @@ What is done well.
 ### Questions
 Clarifications needed.
 
+### Follow-up agents
+- **`tech-debt`** — duplication, dead code, spec/test drift, `window.confirm` shortcuts
+- **`code-simplifier`** — readability after debt is addressed; keep diffs small
+
 When invoked, analyze the diff or files using this checklist.
