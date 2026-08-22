@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { StitchNode } from '@engine/index';
-import { buildStitchGeometry } from './stitchGeometry';
+import { buildYarnSegments } from './stitchGeometry';
 import {
   createOutlinedStitch,
   createStitchFillMaterial,
@@ -10,63 +10,57 @@ import {
 
 export class StitchRenderer {
   readonly group = new THREE.Group();
-  private readonly stitches = new Map<string, THREE.Group>();
+  private readonly segments = new Map<string, THREE.Group>();
   private readonly fillMaterial = createStitchFillMaterial();
   private readonly outlineMaterial = createStitchOutlineMaterial();
 
   sync(stitches: StitchNode[]): void {
-    const stitchById = new Map(stitches.map((stitch) => [stitch.id, stitch]));
-    const incomingIds = new Set(stitches.map((stitch) => stitch.id));
+    const yarnSegments = buildYarnSegments(stitches);
+    const incomingKeys = new Set(yarnSegments.map((segment) => segment.key));
 
-    for (const id of this.stitches.keys()) {
-      if (!incomingIds.has(id)) {
-        this.removeStitch(id);
+    for (const key of this.segments.keys()) {
+      if (!incomingKeys.has(key)) {
+        this.removeSegment(key);
       }
     }
 
-    for (const stitch of stitches) {
-      this.upsertStitch(stitch, stitches, stitchById);
+    for (const segment of yarnSegments) {
+      this.upsertSegment(segment.key, segment.geometry);
     }
   }
 
   dispose(): void {
-    for (const id of [...this.stitches.keys()]) {
-      this.removeStitch(id);
+    for (const key of [...this.segments.keys()]) {
+      this.removeSegment(key);
     }
     this.fillMaterial.dispose();
     this.outlineMaterial.dispose();
   }
 
-  private upsertStitch(
-    stitch: StitchNode,
-    stitches: StitchNode[],
-    stitchById: Map<string, StitchNode>,
-  ): void {
-    const existing = this.stitches.get(stitch.id);
+  private upsertSegment(key: string, geometry: THREE.BufferGeometry): void {
+    const existing = this.segments.get(key);
     if (existing) {
       this.group.remove(existing);
       disposeOutlinedStitch(existing);
     }
 
-    const geometry = buildStitchGeometry(stitch, stitches, stitchById);
-    const stitchGroup = createOutlinedStitch(
+    const segmentGroup = createOutlinedStitch(
       geometry,
       this.fillMaterial,
       this.outlineMaterial,
     );
-    stitchGroup.position.set(stitch.position.x, stitch.position.y, stitch.position.z);
-    this.stitches.set(stitch.id, stitchGroup);
-    this.group.add(stitchGroup);
+    this.segments.set(key, segmentGroup);
+    this.group.add(segmentGroup);
   }
 
-  private removeStitch(id: string): void {
-    const stitchGroup = this.stitches.get(id);
-    if (!stitchGroup) {
+  private removeSegment(key: string): void {
+    const segmentGroup = this.segments.get(key);
+    if (!segmentGroup) {
       return;
     }
 
-    this.group.remove(stitchGroup);
-    disposeOutlinedStitch(stitchGroup);
-    this.stitches.delete(id);
+    this.group.remove(segmentGroup);
+    disposeOutlinedStitch(segmentGroup);
+    this.segments.delete(key);
   }
 }
