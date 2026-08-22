@@ -30,7 +30,7 @@ async function acceptNextConfirm(page: Page) {
   });
 }
 
-test.describe('crochet-3d app', () => {
+test.describe('App shell', () => {
   test('loads toolbar, info panel, and 3D canvas', async ({ page }) => {
     await page.goto('/');
 
@@ -38,10 +38,19 @@ test.describe('crochet-3d app', () => {
     await expect(infoPanel(page)).toBeVisible();
     await expect(page.locator('#main-canvas')).toBeVisible();
     await expect(page.getByRole('button', { name: 'New Chain' })).toBeVisible();
-    await expect(page.getByText('Start with a foundation chain.')).toBeVisible();
   });
 
-  test('completes MVP flow: chain, new row, add single crochet', async ({ page }) => {
+  test('empty pattern shows guidance', async ({ page }) => {
+    await page.goto('/');
+
+    const panel = infoPanel(page);
+    await expect(panel.locator('dt:text("Status") + dd')).toHaveText('No pattern');
+    await expect(panel.getByText('Start with a foundation chain.')).toBeVisible();
+  });
+});
+
+test.describe('Foundation chain', () => {
+  test('creates a foundation chain', async ({ page }) => {
     await page.goto('/');
 
     await createFoundationChain(page, 3);
@@ -51,30 +60,9 @@ test.describe('crochet-3d app', () => {
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('3');
     await expect(panel.locator('dt:text("Foundation") + dd')).toHaveText('3');
     await expect(panel.getByText('Foundation: ch 3')).toBeVisible();
-
-    await page.getByRole('button', { name: 'New Row' }).click();
-    await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Row 1');
-
-    await page.getByRole('button', { name: 'Add SC' }).click();
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('4');
-    await expect(panel.getByText('Row 1: sc in each st across (1 sc)')).toBeVisible();
-
-    await page.getByRole('button', { name: 'Add SC' }).click();
-    await page.getByRole('button', { name: 'Add SC' }).click();
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('6');
-    await expect(panel.getByText('Row 1: sc in each st across (3 sc)')).toBeVisible();
   });
 
-  test('shows error when adding single crochet without foundation', async ({ page }) => {
-    await page.goto('/');
-
-    await page.getByRole('button', { name: 'Add SC' }).click();
-
-    const alert = page.getByRole('alert');
-    await expect(alert).toContainText('Add a foundation chain before placing single crochet stitches.');
-  });
-
-  test('chain length dialog opens with default 10', async ({ page }) => {
+  test('dialog opens with default 10', async ({ page }) => {
     await page.goto('/');
 
     await openChainDialog(page);
@@ -84,7 +72,7 @@ test.describe('crochet-3d app', () => {
     await expect(input).toBeFocused();
   });
 
-  test('chain length dialog accepts numbers only', async ({ page }) => {
+  test('dialog accepts numbers only', async ({ page }) => {
     await page.goto('/');
 
     await openChainDialog(page);
@@ -94,7 +82,7 @@ test.describe('crochet-3d app', () => {
     await expect(input).toHaveValue('123');
   });
 
-  test('chain length stepper adjusts the value', async ({ page }) => {
+  test('stepper adjusts the chain length', async ({ page }) => {
     await page.goto('/');
 
     await openChainDialog(page);
@@ -109,7 +97,7 @@ test.describe('crochet-3d app', () => {
     await expect(input).toHaveValue('11');
   });
 
-  test('chain length stepper disables at min and max', async ({ page }) => {
+  test('stepper disables at min and max bounds', async ({ page }) => {
     await page.goto('/');
 
     await openChainDialog(page);
@@ -124,7 +112,7 @@ test.describe('crochet-3d app', () => {
     await expect(increase).toBeDisabled();
   });
 
-  test('shows error for out-of-range chain length in dialog', async ({ page }) => {
+  test('shows error for out-of-range chain length', async ({ page }) => {
     await page.goto('/');
 
     await openChainDialog(page);
@@ -137,9 +125,73 @@ test.describe('crochet-3d app', () => {
     );
   });
 
-  test('shows error when starting a new row before the current row is complete', async ({
-    page,
-  }) => {
+  test('shows error when chain length is empty', async ({ page }) => {
+    await page.goto('/');
+
+    await openChainDialog(page);
+    const dialog = chainDialog(page);
+    await chainLengthInput(page).fill('');
+    await dialog.getByRole('button', { name: 'Create chain' }).click();
+
+    await expect(dialog.getByRole('alert')).toContainText('Enter a chain length.');
+    await expect(chainDialog(page)).toBeVisible();
+  });
+
+  test('closes without creating a chain when cancelled', async ({ page }) => {
+    await page.goto('/');
+
+    await openChainDialog(page);
+    await chainDialog(page).getByRole('button', { name: 'Cancel' }).click();
+
+    await expect(chainDialog(page)).toBeHidden();
+    await expect(infoPanel(page).locator('dt:text("Stitches") + dd')).toHaveText('0');
+  });
+
+  test('closes without creating a chain when Escape is pressed', async ({ page }) => {
+    await page.goto('/');
+
+    await openChainDialog(page);
+    await page.keyboard.press('Escape');
+
+    await expect(chainDialog(page)).toBeHidden();
+    await expect(infoPanel(page).locator('dt:text("Stitches") + dd')).toHaveText('0');
+  });
+});
+
+test.describe('Single crochet rows', () => {
+  test('completes MVP flow across a foundation row', async ({ page }) => {
+    await page.goto('/');
+
+    await createFoundationChain(page, 3);
+
+    const panel = infoPanel(page);
+    await page.getByRole('button', { name: 'New Row' }).click();
+    await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Row 1');
+
+    await page.getByRole('button', { name: 'Add SC' }).click();
+    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('4');
+    await expect(panel.getByText('Row 1: sc in each st across (1 sc)')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Add SC' }).click();
+    await page.getByRole('button', { name: 'Add SC' }).click();
+    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('6');
+    await expect(panel.getByText('Row 1: sc in each st across (3 sc)')).toBeVisible();
+  });
+});
+
+test.describe('Pattern validation', () => {
+  test('cannot add single crochet without a foundation chain', async ({ page }) => {
+    await page.goto('/');
+
+    await page.getByRole('button', { name: 'Add SC' }).click();
+
+    const alert = page.getByRole('alert');
+    await expect(alert).toContainText(
+      'Add a foundation chain before placing single crochet stitches.',
+    );
+  });
+
+  test('cannot start a new row before the current row is complete', async ({ page }) => {
     await page.goto('/');
 
     await createFoundationChain(page, 3);
@@ -150,8 +202,10 @@ test.describe('crochet-3d app', () => {
     const alert = page.getByRole('alert');
     await expect(alert).toContainText('Complete row 1 before starting a new row');
   });
+});
 
-  test('reset clears the pattern', async ({ page }) => {
+test.describe('Reset pattern', () => {
+  test('reset clears an existing pattern', async ({ page }) => {
     await page.goto('/');
 
     await createFoundationChain(page, 2);

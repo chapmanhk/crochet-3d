@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { Pattern, PlacementError, StitchType } from '@engine/index';
+import {
+  Pattern,
+  PlacementError,
+  StitchType,
+  MAX_CHAIN_LENGTH,
+  MIN_CHAIN_LENGTH,
+} from '@engine/index';
+
+function expectPlacementError(
+  action: () => void,
+  code: PlacementError['code'],
+): void {
+  try {
+    action();
+    expect.unreachable('Expected PlacementError to be thrown');
+  } catch (error) {
+    expect(error).toBeInstanceOf(PlacementError);
+    expect((error as PlacementError).code).toBe(code);
+  }
+}
 
 describe('Pattern', () => {
   it('creates a foundation chain', () => {
@@ -12,16 +31,40 @@ describe('Pattern', () => {
     expect(pattern.getCurrentRow()).toBe(0);
   });
 
+  it('accepts the minimum and maximum allowed chain lengths', () => {
+    const minPattern = new Pattern();
+    expect(minPattern.addFoundationChain(MIN_CHAIN_LENGTH)).toHaveLength(
+      MIN_CHAIN_LENGTH,
+    );
+
+    const maxPattern = new Pattern();
+    expect(maxPattern.addFoundationChain(MAX_CHAIN_LENGTH)).toHaveLength(
+      MAX_CHAIN_LENGTH,
+    );
+  });
+
   it('rejects invalid chain lengths', () => {
     const pattern = new Pattern();
-    expect(() => pattern.addFoundationChain(0)).toThrow(PlacementError);
-    expect(() => pattern.addFoundationChain(501)).toThrow(PlacementError);
+    expectPlacementError(() => pattern.addFoundationChain(0), 'INVALID_CHAIN_LENGTH');
+    expectPlacementError(() => pattern.addFoundationChain(501), 'INVALID_CHAIN_LENGTH');
   });
 
   it('rejects duplicate foundation chains', () => {
     const pattern = new Pattern();
     pattern.addFoundationChain(3);
-    expect(() => pattern.addFoundationChain(3)).toThrow(PlacementError);
+    expectPlacementError(() => pattern.addFoundationChain(3), 'FOUNDATION_EXISTS');
+  });
+
+  it('rejects single crochet before a foundation chain exists', () => {
+    const pattern = new Pattern();
+    expectPlacementError(() => pattern.addSingleCrochet(), 'NO_FOUNDATION');
+  });
+
+  it('rejects single crochet on the foundation row', () => {
+    const pattern = new Pattern();
+    pattern.addFoundationChain(3);
+
+    expectPlacementError(() => pattern.addSingleCrochet(), 'NO_TARGET_STITCH');
   });
 
   it('adds single crochet on row 1 after starting a new row', () => {
@@ -36,26 +79,44 @@ describe('Pattern', () => {
     expect(stitch.attachToId).toBeTruthy();
   });
 
-  it('fills a row up to foundation length', () => {
+  it('attaches single crochet to the matching stitch in the previous row', () => {
     const pattern = new Pattern();
-    pattern.addFoundationChain(2);
+    const chains = pattern.addFoundationChain(3);
     pattern.startNewRow();
 
-    pattern.addSingleCrochet();
-    pattern.addSingleCrochet();
+    const first = pattern.addSingleCrochet();
+    const second = pattern.addSingleCrochet();
 
-    expect(() => pattern.addSingleCrochet()).toThrow(PlacementError);
+    expect(first.attachToId).toBe(chains[0].id);
+    expect(second.attachToId).toBe(chains[1].id);
   });
 
-  it('starts additional rows after the first row has stitches', () => {
+  it('rejects adding single crochet when the row is full', () => {
     const pattern = new Pattern();
     pattern.addFoundationChain(2);
     pattern.startNewRow();
     pattern.addSingleCrochet();
     pattern.addSingleCrochet();
 
-    const row = pattern.startNewRow();
-    expect(row).toBe(2);
+    expectPlacementError(() => pattern.addSingleCrochet(), 'ROW_FULL');
+  });
+
+  it('starts the first working row from foundation', () => {
+    const pattern = new Pattern();
+    pattern.addFoundationChain(3);
+
+    expect(pattern.startNewRow()).toBe(1);
+    expect(pattern.getCurrentRow()).toBe(1);
+  });
+
+  it('starts additional rows after the previous row is complete', () => {
+    const pattern = new Pattern();
+    pattern.addFoundationChain(2);
+    pattern.startNewRow();
+    pattern.addSingleCrochet();
+    pattern.addSingleCrochet();
+
+    expect(pattern.startNewRow()).toBe(2);
     expect(pattern.getCurrentRow()).toBe(2);
   });
 
@@ -65,7 +126,7 @@ describe('Pattern', () => {
     pattern.startNewRow();
     pattern.addSingleCrochet();
 
-    expect(() => pattern.startNewRow()).toThrow(PlacementError);
+    expectPlacementError(() => pattern.startNewRow(), 'CANNOT_START_ROW');
   });
 
   it('rejects starting a new row when the current row has no stitches', () => {
@@ -73,7 +134,25 @@ describe('Pattern', () => {
     pattern.addFoundationChain(3);
     pattern.startNewRow();
 
-    expect(() => pattern.startNewRow()).toThrow(PlacementError);
+    expectPlacementError(() => pattern.startNewRow(), 'CANNOT_START_ROW');
+  });
+
+  it('rejects starting a new row without a foundation chain', () => {
+    const pattern = new Pattern();
+
+    expectPlacementError(() => pattern.startNewRow(), 'CANNOT_START_ROW');
+  });
+
+  it('exposes pattern state through getSnapshot', () => {
+    const pattern = new Pattern();
+    pattern.addFoundationChain(2);
+    pattern.startNewRow();
+    pattern.addSingleCrochet();
+
+    const snapshot = pattern.getSnapshot();
+    expect(snapshot.foundationChainLength).toBe(2);
+    expect(snapshot.currentRow).toBe(1);
+    expect(snapshot.stitches).toHaveLength(3);
   });
 
   it('resets the pattern', () => {
@@ -85,5 +164,6 @@ describe('Pattern', () => {
 
     expect(pattern.getStitches()).toHaveLength(0);
     expect(pattern.getFoundationChainLength()).toBe(0);
+    expect(pattern.getCurrentRow()).toBe(0);
   });
 });
