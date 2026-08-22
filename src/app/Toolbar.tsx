@@ -3,12 +3,14 @@ import { usePatternStore } from '@store/patternStore';
 import { ChainLengthDialog } from './ChainLengthDialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import {
+  CONFIRM_DIALOG_COPY,
+  type ConfirmAction,
+} from './confirmDialogCopy';
+import {
   getAddScDisabledReason,
   getNewRowDisabledReason,
   getResetDisabledReason,
 } from './toolbarState';
-
-type ConfirmAction = 'reset' | 'new-chain' | null;
 
 export function Toolbar() {
   const addFoundationChain = usePatternStore((state) => state.addFoundationChain);
@@ -21,20 +23,23 @@ export function Toolbar() {
     (state) => state.foundationChainLength,
   );
   const currentRow = usePatternStore((state) => state.currentRow);
+  const currentRowStitchCount = usePatternStore(
+    (state) => state.currentRowStitchCount,
+  );
   const canAddSingleCrochet = usePatternStore(
     (state) => state.canAddSingleCrochet,
   );
   const canStartNewRow = usePatternStore((state) => state.canStartNewRow);
   const stitches = usePatternStore((state) => state.stitches);
   const [chainDialogOpen, setChainDialogOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
 
   const toolbarState = {
     foundationChainLength,
     currentRow,
+    currentRowStitchCount,
     canAddSingleCrochet,
     canStartNewRow,
-    stitches,
   };
 
   const addScDisabledReason = getAddScDisabledReason(toolbarState);
@@ -85,20 +90,7 @@ export function Toolbar() {
     setConfirmAction(null);
   };
 
-  const confirmCopy =
-    confirmAction === 'new-chain'
-      ? {
-          title: 'Start a new foundation chain?',
-          description:
-            'This will clear your current pattern and open the chain length dialog.',
-          confirmLabel: 'Start new chain',
-        }
-      : {
-          title: 'Reset the current pattern?',
-          description:
-            'This will remove all stitches and instructions. This cannot be undone.',
-          confirmLabel: 'Reset pattern',
-        };
+  const confirmCopy = confirmAction ? CONFIRM_DIALOG_COPY[confirmAction] : null;
 
   return (
     <>
@@ -142,14 +134,16 @@ export function Toolbar() {
         onSubmit={handleChainSubmit}
       />
 
-      <ConfirmDialog
-        open={confirmAction !== null}
-        title={confirmCopy.title}
-        description={confirmCopy.description}
-        confirmLabel={confirmCopy.confirmLabel}
-        onConfirm={handleConfirm}
-        onCancel={() => setConfirmAction(null)}
-      />
+      {confirmCopy ? (
+        <ConfirmDialog
+          open
+          title={confirmCopy.title}
+          description={confirmCopy.description}
+          confirmLabel={confirmCopy.confirmLabel}
+          onConfirm={handleConfirm}
+          onCancel={() => setConfirmAction(null)}
+        />
+      ) : null}
     </>
   );
 }

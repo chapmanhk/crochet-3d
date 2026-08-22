@@ -1,9 +1,9 @@
 interface ToolbarPatternState {
   foundationChainLength: number;
   currentRow: number;
+  currentRowStitchCount: number;
   canAddSingleCrochet: boolean;
   canStartNewRow: boolean;
-  stitches: Array<{ row: number }>;
 }
 
 export function getAddScDisabledReason(
@@ -32,11 +32,7 @@ export function getNewRowDisabledReason(
   }
 
   if (!state.canStartNewRow) {
-    const rowStitches = state.stitches.filter(
-      (stitch) => stitch.row === state.currentRow,
-    ).length;
-
-    if (state.currentRow > 0 && rowStitches === 0) {
+    if (state.currentRow > 0 && state.currentRowStitchCount === 0) {
       return 'Place at least one single crochet stitch before starting a new row.';
     }
 

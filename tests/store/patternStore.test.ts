@@ -128,5 +128,6 @@ describe('patternStore', () => {
     state = usePatternStore.getState();
     expect(state.canAddSingleCrochet).toBe(false);
     expect(state.canStartNewRow).toBe(true);
+    expect(state.currentRowStitchCount).toBe(2);
   });
 });

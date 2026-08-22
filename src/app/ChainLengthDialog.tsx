@@ -73,11 +73,6 @@ export function ChainLengthDialog({
   };
 
   const handleSubmit = () => {
-    if (!value) {
-      setLocalError('Enter a chain length.');
-      return;
-    }
-
     const length = parseLength(value);
     if (length === null) {
       setLocalError('Enter a chain length.');

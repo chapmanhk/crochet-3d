@@ -11,9 +11,9 @@ describe('toolbarState', () => {
       getAddScDisabledReason({
         foundationChainLength: 0,
         currentRow: 0,
+        currentRowStitchCount: 0,
         canAddSingleCrochet: false,
         canStartNewRow: false,
-        stitches: [],
       }),
     ).toContain('foundation chain');
 
@@ -21,9 +21,9 @@ describe('toolbarState', () => {
       getAddScDisabledReason({
         foundationChainLength: 3,
         currentRow: 0,
+        currentRowStitchCount: 0,
         canAddSingleCrochet: false,
         canStartNewRow: true,
-        stitches: [],
       }),
     ).toContain('working row');
   });
@@ -33,9 +33,9 @@ describe('toolbarState', () => {
       getNewRowDisabledReason({
         foundationChainLength: 0,
         currentRow: 0,
+        currentRowStitchCount: 0,
         canAddSingleCrochet: false,
         canStartNewRow: false,
-        stitches: [],
       }),
     ).toContain('foundation chain');
 
@@ -43,9 +43,9 @@ describe('toolbarState', () => {
       getNewRowDisabledReason({
         foundationChainLength: 3,
         currentRow: 1,
+        currentRowStitchCount: 1,
         canAddSingleCrochet: true,
         canStartNewRow: false,
-        stitches: [{ row: 1 }],
       }),
     ).toContain('Complete row 1');
   });

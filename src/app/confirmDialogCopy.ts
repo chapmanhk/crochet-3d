@@ -1,0 +1,19 @@
+export type ConfirmAction = 'reset' | 'new-chain';
+
+export const CONFIRM_DIALOG_COPY: Record<
+  ConfirmAction,
+  { title: string; description: string; confirmLabel: string }
+> = {
+  'new-chain': {
+    title: 'Start a new foundation chain?',
+    description:
+      'This will clear your current pattern and open the chain length dialog.',
+    confirmLabel: 'Start new chain',
+  },
+  reset: {
+    title: 'Reset the current pattern?',
+    description:
+      'This will remove all stitches and instructions. This cannot be undone.',
+    confirmLabel: 'Reset pattern',
+  },
+};

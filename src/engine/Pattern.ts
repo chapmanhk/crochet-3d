@@ -2,7 +2,6 @@ import type { PatternSnapshot, StitchNode } from './types';
 import { PlacementError, StitchType } from './types';
 import { StitchGraph } from './StitchGraph';
 import { createStitchNode, resetIdCounter } from './StitchNode';
-import { layoutPosition } from './layout';
 
 const MIN_CHAIN_LENGTH = 1;
 const MAX_CHAIN_LENGTH = 500;
@@ -179,13 +178,5 @@ export class Pattern {
     this.currentRow = 0;
     this.foundationChainLength = 0;
     resetIdCounter();
-  }
-
-  /** Recompute positions after layout constant changes (testing helper). */
-  relayout(): void {
-    for (const stitch of this.graph.getAll()) {
-      stitch.position = layoutPosition(stitch.type, stitch.row, stitch.column);
-      this.graph.add(stitch);
-    }
   }
 }

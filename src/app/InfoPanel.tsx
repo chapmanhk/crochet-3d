@@ -1,4 +1,9 @@
 import { usePatternStore } from '@store/patternStore';
+import {
+  getNextStep,
+  getRowLabel,
+  getRowProgress,
+} from './infoPanelState';
 
 export function InfoPanel() {
   const stitches = usePatternStore((state) => state.stitches);
@@ -6,35 +11,24 @@ export function InfoPanel() {
   const foundationChainLength = usePatternStore(
     (state) => state.foundationChainLength,
   );
+  const currentRowStitchCount = usePatternStore(
+    (state) => state.currentRowStitchCount,
+  );
   const instructions = usePatternStore((state) => state.instructions);
   const lastError = usePatternStore((state) => state.lastError);
   const clearError = usePatternStore((state) => state.clearError);
 
-  const rowLabel =
-    foundationChainLength === 0
-      ? 'No pattern'
-      : currentRow === 0
-        ? 'Foundation'
-        : `Row ${currentRow}`;
-
-  const currentRowStitchCount =
-    currentRow > 0
-      ? stitches.filter((stitch) => stitch.row === currentRow).length
-      : 0;
-
-  const rowProgress =
-    currentRow > 0 && foundationChainLength > 0
-      ? `${currentRowStitchCount}/${foundationChainLength}`
-      : '—';
-
-  const nextStep =
-    foundationChainLength === 0
-      ? 'Choose New Chain to start your foundation.'
-      : currentRow === 0
-        ? 'Choose New Row to begin the first working row.'
-        : currentRowStitchCount < foundationChainLength
-          ? `Place ${foundationChainLength - currentRowStitchCount} more single crochet stitch${foundationChainLength - currentRowStitchCount === 1 ? '' : 'es'} on row ${currentRow}.`
-          : `Row ${currentRow} is complete. Choose New Row to continue.`;
+  const rowLabel = getRowLabel(foundationChainLength, currentRow);
+  const rowProgress = getRowProgress(
+    currentRow,
+    foundationChainLength,
+    currentRowStitchCount,
+  );
+  const nextStep = getNextStep(
+    foundationChainLength,
+    currentRow,
+    currentRowStitchCount,
+  );
 
   return (
     <aside className="info panel" aria-label="Pattern information">
