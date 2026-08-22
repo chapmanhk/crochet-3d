@@ -11,15 +11,18 @@ Feature: Single crochet rows
   Scenario: Start the first working row after foundation
     When I choose "New Row"
     Then the pattern status should be "Row 1"
+    And the row progress should be "0/3"
 
   Scenario: Add single crochet stitches across a row
     Given I am on row 1
     When I choose "Add SC"
     Then the stitch count should be 4
+    And the row progress should be "1/3"
     And the instructions should include "Row 1: sc in each st across (1 sc)"
     When I choose "Add SC"
     And I choose "Add SC"
     Then the stitch count should be 6
+    And the row progress should be "3/3"
     And the instructions should include "Row 1: sc in each st across (3 sc)"
 
   @engine

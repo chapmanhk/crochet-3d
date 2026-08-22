@@ -14,8 +14,9 @@ Feature: Reset pattern
     And the stitch count should be 0
     And I should see guidance to "Start with a foundation chain."
 
-  @deferred
-  Scenario: Reset with no pattern is a no-op
-    Given I have no pattern
+  Scenario: Declining reset keeps the existing pattern
+    Given I have a foundation chain of 2
     When I choose "Reset"
-    Then the pattern status should be "No pattern"
+    And I choose "Cancel" in the confirmation dialog
+    Then the pattern status should be "Foundation"
+    And the stitch count should be 2

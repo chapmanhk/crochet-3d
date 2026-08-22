@@ -12,7 +12,14 @@ export function App() {
       <Toolbar />
       <InfoPanel />
       <main className="canvas-shell">
-        <CrochetScene />
+        <div
+          id="main-canvas"
+          className="canvas-focus-target"
+          tabIndex={-1}
+          aria-label="3D pattern preview. Stitch status and instructions are in the pattern information panel."
+        >
+          <CrochetScene />
+        </div>
       </main>
     </div>
   );

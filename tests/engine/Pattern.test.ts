@@ -151,6 +151,40 @@ describe('Pattern', () => {
     expectPlacementError(() => pattern.startNewRow(), 'CANNOT_START_ROW');
   });
 
+  it('reports whether single crochet can be placed', () => {
+    const pattern = new Pattern();
+
+    expect(pattern.canAddSingleCrochet()).toBe(false);
+
+    pattern.addFoundationChain(2);
+    expect(pattern.canAddSingleCrochet()).toBe(false);
+
+    pattern.startNewRow();
+    expect(pattern.canAddSingleCrochet()).toBe(true);
+
+    pattern.addSingleCrochet();
+    pattern.addSingleCrochet();
+    expect(pattern.canAddSingleCrochet()).toBe(false);
+  });
+
+  it('reports whether a new row can be started', () => {
+    const pattern = new Pattern();
+
+    expect(pattern.canStartNewRow()).toBe(false);
+
+    pattern.addFoundationChain(2);
+    expect(pattern.canStartNewRow()).toBe(true);
+
+    pattern.startNewRow();
+    expect(pattern.canStartNewRow()).toBe(false);
+
+    pattern.addSingleCrochet();
+    expect(pattern.canStartNewRow()).toBe(false);
+
+    pattern.addSingleCrochet();
+    expect(pattern.canStartNewRow()).toBe(true);
+  });
+
   it('exposes pattern state through getSnapshot', () => {
     const pattern = new Pattern();
     pattern.addFoundationChain(2);
