@@ -54,7 +54,6 @@ export type PlacementErrorCode =
   | 'FOUNDATION_EXISTS'
   | 'NO_TARGET_STITCH'
   | 'ROW_FULL'
-  | 'CANNOT_ADD_CHAIN_AFTER_FOUNDATION'
   | 'CANNOT_START_ROW';
 
 export class PlacementError extends Error {

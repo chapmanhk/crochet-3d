@@ -4,13 +4,10 @@ import { StitchType } from '@engine/index';
 
 const YARN_COLOR = 0x8b4513;
 
-function createChainGeometry(): THREE.TorusGeometry {
-  return new THREE.TorusGeometry(0.25, 0.08, 12, 24);
-}
-
-function createSingleCrochetGeometry(): THREE.CylinderGeometry {
-  return new THREE.CylinderGeometry(0.18, 0.18, 0.5, 16);
-}
+const STITCH_GEOMETRIES: Record<StitchType, THREE.BufferGeometry> = {
+  [StitchType.CHAIN]: new THREE.TorusGeometry(0.25, 0.08, 12, 24),
+  [StitchType.SINGLE_CROCHET]: new THREE.CylinderGeometry(0.18, 0.18, 0.5, 16),
+};
 
 export class StitchRenderer {
   readonly group = new THREE.Group();
@@ -29,7 +26,6 @@ export class StitchRenderer {
         const mesh = this.meshes.get(id);
         if (mesh) {
           this.group.remove(mesh);
-          mesh.geometry.dispose();
         }
         this.meshes.delete(id);
       }
@@ -50,19 +46,13 @@ export class StitchRenderer {
   dispose(): void {
     for (const mesh of this.meshes.values()) {
       this.group.remove(mesh);
-      mesh.geometry.dispose();
     }
     this.meshes.clear();
     this.material.dispose();
   }
 
   private createMesh(stitch: StitchNode): THREE.Mesh {
-    const geometry =
-      stitch.type === StitchType.CHAIN
-        ? createChainGeometry()
-        : createSingleCrochetGeometry();
-
-    const mesh = new THREE.Mesh(geometry, this.material);
+    const mesh = new THREE.Mesh(STITCH_GEOMETRIES[stitch.type], this.material);
     if (stitch.type === StitchType.CHAIN) {
       mesh.rotation.x = Math.PI / 2;
     }

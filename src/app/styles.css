@@ -109,6 +109,15 @@ button {
   background: #f8f5ef;
 }
 
+.btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.btn.primary:focus-visible {
+  outline-color: #fff;
+}
+
 .btn.primary {
   border-color: #2563eb;
   background: #2563eb;

@@ -11,6 +11,13 @@ async function acceptNextPrompt(page: Page, value: string) {
   });
 }
 
+async function acceptNextConfirm(page: Page) {
+  page.once('dialog', async (dialog) => {
+    expect(dialog.type()).toBe('confirm');
+    await dialog.accept();
+  });
+}
+
 test.describe('crochet-3d app', () => {
   test('loads toolbar, info panel, and 3D canvas', async ({ page }) => {
     await page.goto('/');
@@ -56,6 +63,31 @@ test.describe('crochet-3d app', () => {
     await expect(alert).toContainText('Add a foundation chain before placing single crochet stitches.');
   });
 
+  test('shows error for invalid chain length input', async ({ page }) => {
+    await page.goto('/');
+
+    await acceptNextPrompt(page, 'abc');
+    await page.getByRole('button', { name: 'New Chain' }).click();
+
+    const alert = page.getByRole('alert');
+    await expect(alert).toContainText('Enter a whole number for chain length.');
+  });
+
+  test('shows error when starting a new row before the current row is complete', async ({
+    page,
+  }) => {
+    await page.goto('/');
+
+    await acceptNextPrompt(page, '3');
+    await page.getByRole('button', { name: 'New Chain' }).click();
+    await page.getByRole('button', { name: 'New Row' }).click();
+    await page.getByRole('button', { name: 'Add SC' }).click();
+    await page.getByRole('button', { name: 'New Row' }).click();
+
+    const alert = page.getByRole('alert');
+    await expect(alert).toContainText('Complete row 1 before starting a new row');
+  });
+
   test('reset clears the pattern', async ({ page }) => {
     await page.goto('/');
 
@@ -65,6 +97,7 @@ test.describe('crochet-3d app', () => {
     const panel = infoPanel(page);
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('2');
 
+    await acceptNextConfirm(page);
     await page.getByRole('button', { name: 'Reset' }).click();
     await expect(panel.locator('dt:text("Status") + dd')).toHaveText('No pattern');
     await expect(panel.getByText('Start with a foundation chain.')).toBeVisible();
