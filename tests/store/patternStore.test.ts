@@ -47,6 +47,20 @@ describe('patternStore', () => {
     expect(usePatternStore.getState().lastError).toBeNull();
   });
 
+  it('rejects startNewRow when the current row has no stitches', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(3);
+    store.startNewRow();
+    store.addSingleCrochet();
+    store.addSingleCrochet();
+    store.addSingleCrochet();
+    store.startNewRow();
+
+    expect(store.startNewRow()).toBe(false);
+    expect(usePatternStore.getState().lastError).toContain('no stitches');
+    expect(usePatternStore.getState().currentRow).toBe(2);
+  });
+
   it('preserves currentRow when startNewRow fails', () => {
     const store = usePatternStore.getState();
     store.addFoundationChain(3);

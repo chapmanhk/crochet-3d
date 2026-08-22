@@ -1,52 +1,18 @@
-import { expect, test, type Page } from '@playwright/test';
-
-function infoPanel(page: Page) {
-  return page.getByRole('complementary', { name: 'Pattern information' });
-}
-
-function chainDialog(page: Page) {
-  return page.getByRole('dialog', { name: 'Foundation chain' });
-}
-
-function confirmDialog(page: Page) {
-  return page.getByRole('alertdialog');
-}
-
-function chainLengthInput(page: Page) {
-  return chainDialog(page).getByRole('spinbutton', { name: 'Chain length' });
-}
-
-function toolbarButton(page: Page, name: string | RegExp) {
-  return page
-    .getByRole('toolbar', { name: 'Pattern tools' })
-    .getByRole('button', { name });
-}
-
-async function openChainDialog(page: Page) {
-  await page.getByRole('button', { name: 'New Chain' }).click();
-  await expect(chainDialog(page)).toBeVisible();
-}
-
-async function createFoundationChain(page: Page, length: number) {
-  await openChainDialog(page);
-  await chainLengthInput(page).fill(String(length));
-  await chainDialog(page).getByRole('button', { name: 'Create chain' }).click();
-}
-
-async function acceptConfirm(page: Page, label: string) {
-  const dialog = confirmDialog(page);
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: label }).click();
-}
-
-async function dismissConfirm(page: Page) {
-  const dialog = confirmDialog(page);
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
-}
+import { expect, test } from '@playwright/test';
+import {
+  acceptConfirm,
+  completeRow,
+  createFoundationChain,
+  dismissConfirm,
+  infoPanel,
+  openChainDialog,
+  chainDialog,
+  chainLengthInput,
+  toolbarButton,
+} from './helpers';
 
 test.describe('App shell', () => {
-  test('loads toolbar, info panel, and 3D canvas', async ({ page }) => {
+  test('App loads with toolbar, info panel, and 3D canvas', async ({ page }) => {
     await page.goto('/');
 
     await expect(page.getByRole('toolbar', { name: 'Pattern tools' })).toBeVisible();
@@ -55,7 +21,7 @@ test.describe('App shell', () => {
     await expect(page.getByRole('button', { name: 'New Chain' })).toBeVisible();
   });
 
-  test('empty pattern shows guidance', async ({ page }) => {
+  test('Empty pattern shows guidance', async ({ page }) => {
     await page.goto('/');
 
     const panel = infoPanel(page);
@@ -64,7 +30,7 @@ test.describe('App shell', () => {
     await expect(panel.getByText('Choose New Chain to start your foundation.')).toBeVisible();
   });
 
-  test('skip link focuses the 3D canvas region', async ({ page }) => {
+  test('Skip link focuses the 3D canvas region', async ({ page }) => {
     await page.goto('/');
 
     await page.getByRole('link', { name: 'Skip to 3D canvas' }).focus();
@@ -75,7 +41,7 @@ test.describe('App shell', () => {
 });
 
 test.describe('Foundation chain', () => {
-  test('creates a foundation chain', async ({ page }) => {
+  test('Create a foundation chain', async ({ page }) => {
     await page.goto('/');
 
     await createFoundationChain(page, 3);
@@ -87,7 +53,7 @@ test.describe('Foundation chain', () => {
     await expect(panel.getByText('Foundation: ch 3')).toBeVisible();
   });
 
-  test('dialog opens with default 10', async ({ page }) => {
+  test('Chain length dialog opens with a default of 10', async ({ page }) => {
     await page.goto('/');
 
     await openChainDialog(page);
@@ -105,7 +71,7 @@ test.describe('Foundation chain', () => {
       .toBe(true);
   });
 
-  test('dialog accepts numbers only', async ({ page }) => {
+  test('Chain length can be typed directly', async ({ page }) => {
     await page.goto('/');
 
     await openChainDialog(page);
@@ -115,7 +81,7 @@ test.describe('Foundation chain', () => {
     await expect(input).toHaveValue('123');
   });
 
-  test('stepper adjusts the chain length', async ({ page }) => {
+  test('Chain length can be adjusted with stepper buttons', async ({ page }) => {
     await page.goto('/');
 
     await openChainDialog(page);
@@ -130,7 +96,7 @@ test.describe('Foundation chain', () => {
     await expect(input).toHaveValue('11');
   });
 
-  test('stepper disables at min and max bounds', async ({ page }) => {
+  test('Stepper buttons disable at min and max bounds', async ({ page }) => {
     await page.goto('/');
 
     await openChainDialog(page);
@@ -145,7 +111,7 @@ test.describe('Foundation chain', () => {
     await expect(increase).toBeDisabled();
   });
 
-  test('arrow keys adjust the chain length', async ({ page }) => {
+  test('Chain length can be adjusted with arrow keys', async ({ page }) => {
     await page.goto('/');
 
     await openChainDialog(page);
@@ -171,7 +137,7 @@ test.describe('Foundation chain', () => {
     await expect(infoPanel(page).locator('dt:text("Foundation") + dd')).toHaveText('4');
   });
 
-  test('shows error for out-of-range chain length', async ({ page }) => {
+  test('Out-of-range chain length shows an error in the dialog', async ({ page }) => {
     await page.goto('/');
 
     await openChainDialog(page);
@@ -184,7 +150,7 @@ test.describe('Foundation chain', () => {
     );
   });
 
-  test('shows error when chain length is empty', async ({ page }) => {
+  test('Empty chain length shows an error in the dialog', async ({ page }) => {
     await page.goto('/');
 
     await openChainDialog(page);
@@ -196,7 +162,7 @@ test.describe('Foundation chain', () => {
     await expect(chainDialog(page)).toBeVisible();
   });
 
-  test('closes without creating a chain when cancelled', async ({ page }) => {
+  test('Cancel closes the chain dialog without creating a chain', async ({ page }) => {
     await page.goto('/');
 
     await openChainDialog(page);
@@ -206,7 +172,7 @@ test.describe('Foundation chain', () => {
     await expect(infoPanel(page).locator('dt:text("Stitches") + dd')).toHaveText('0');
   });
 
-  test('closes without creating a chain when Escape is pressed', async ({ page }) => {
+  test('Escape closes the chain dialog without creating a chain', async ({ page }) => {
     await page.goto('/');
 
     await openChainDialog(page);
@@ -216,7 +182,7 @@ test.describe('Foundation chain', () => {
     await expect(infoPanel(page).locator('dt:text("Stitches") + dd')).toHaveText('0');
   });
 
-  test('declining New Chain reset keeps the existing pattern', async ({ page }) => {
+  test('Declining New Chain reset keeps the existing pattern', async ({ page }) => {
     await page.goto('/');
 
     await createFoundationChain(page, 3);
@@ -227,7 +193,7 @@ test.describe('Foundation chain', () => {
     await expect(infoPanel(page).locator('dt:text("Stitches") + dd')).toHaveText('3');
   });
 
-  test('confirming New Chain reset replaces the pattern', async ({ page }) => {
+  test('Confirming New Chain reset replaces the pattern', async ({ page }) => {
     await page.goto('/');
 
     await createFoundationChain(page, 3);
@@ -243,7 +209,7 @@ test.describe('Foundation chain', () => {
 });
 
 test.describe('Single crochet rows', () => {
-  test('starts the first working row after foundation', async ({ page }) => {
+  test('Start the first working row after foundation', async ({ page }) => {
     await page.goto('/');
 
     await createFoundationChain(page, 3);
@@ -254,7 +220,7 @@ test.describe('Single crochet rows', () => {
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('0/3');
   });
 
-  test('completes MVP flow across a foundation row', async ({ page }) => {
+  test('Add single crochet stitches across a row', async ({ page }) => {
     await page.goto('/');
 
     await createFoundationChain(page, 3);
@@ -268,11 +234,27 @@ test.describe('Single crochet rows', () => {
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('1/3');
     await expect(panel.getByText('Row 1: sc in each st across (1 sc)')).toBeVisible();
 
-    await toolbarButton(page, 'Add SC').click();
-    await toolbarButton(page, 'Add SC').click();
+    await completeRow(page, 2);
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('6');
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('3/3');
     await expect(panel.getByText('Row 1: sc in each st across (3 sc)')).toBeVisible();
+  });
+
+  test('Work a second row after completing the first', async ({ page }) => {
+    await page.goto('/');
+
+    await createFoundationChain(page, 3);
+    await toolbarButton(page, 'New Row').click();
+    await completeRow(page, 3);
+
+    const panel = infoPanel(page);
+    await toolbarButton(page, 'New Row').click();
+    await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Row 2');
+    await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('0/3');
+
+    await toolbarButton(page, 'Add SC').click();
+    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('7');
+    await expect(panel.getByText('Row 2: sc in each st across (1 sc)')).toBeVisible();
   });
 });
 
@@ -311,10 +293,18 @@ test.describe('Pattern validation', () => {
 
     await expect(toolbarButton(page, /Reset/)).toBeDisabled();
   });
+
+  test('Disabled toolbar buttons expose reasons to assistive technology', async ({ page }) => {
+    await page.goto('/');
+
+    const addSc = toolbarButton(page, 'Add SC');
+    await expect(addSc).toBeDisabled();
+    await expect(addSc).toHaveAttribute('aria-describedby', /.+/);
+  });
 });
 
 test.describe('Reset pattern', () => {
-  test('reset clears an existing pattern', async ({ page }) => {
+  test('Reset clears an existing pattern', async ({ page }) => {
     await page.goto('/');
 
     await createFoundationChain(page, 2);
@@ -325,10 +315,11 @@ test.describe('Reset pattern', () => {
     await page.getByRole('button', { name: 'Reset' }).click();
     await acceptConfirm(page, 'Reset pattern');
     await expect(panel.locator('dt:text("Status") + dd')).toHaveText('No pattern');
+    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('0');
     await expect(panel.getByText('Start with a foundation chain.')).toBeVisible();
   });
 
-  test('declining reset keeps the existing pattern', async ({ page }) => {
+  test('Declining reset keeps the existing pattern', async ({ page }) => {
     await page.goto('/');
 
     await createFoundationChain(page, 2);

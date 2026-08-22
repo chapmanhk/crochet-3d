@@ -19,6 +19,8 @@ npm run test:e2e
 npm run build
 ```
 
+CI runs the same test and build commands on every push and pull request to `main` (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+
 ## MVP flow
 
 1. Click **New Chain** and enter a foundation length

@@ -8,6 +8,10 @@ const MAX_CHAIN_LENGTH = 500;
 
 export { MIN_CHAIN_LENGTH, MAX_CHAIN_LENGTH };
 
+export function formatChainLengthError(): string {
+  return `Chain length must be between ${MIN_CHAIN_LENGTH} and ${MAX_CHAIN_LENGTH}.`;
+}
+
 export class Pattern {
   private readonly graph = new StitchGraph();
   private currentRow = 0;
@@ -108,10 +112,7 @@ export class Pattern {
 
   private validateFoundationChain(length: number): PlacementError | null {
     if (length < MIN_CHAIN_LENGTH || length > MAX_CHAIN_LENGTH) {
-      return new PlacementError(
-        'INVALID_CHAIN_LENGTH',
-        `Chain length must be between ${MIN_CHAIN_LENGTH} and ${MAX_CHAIN_LENGTH}.`,
-      );
+      return new PlacementError('INVALID_CHAIN_LENGTH', formatChainLengthError());
     }
 
     if (this.graph.count() > 0) {

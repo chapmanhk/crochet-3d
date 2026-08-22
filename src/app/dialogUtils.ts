@@ -8,6 +8,35 @@ export function getFocusableElements(container: HTMLElement): HTMLElement[] {
   ];
 }
 
+export function trapTabFocus(event: KeyboardEvent, container: HTMLElement): boolean {
+  if (event.key !== 'Tab') {
+    return false;
+  }
+
+  const focusable = getFocusableElements(container);
+  if (focusable.length === 0) {
+    return false;
+  }
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement;
+
+  if (event.shiftKey && active === first) {
+    event.preventDefault();
+    last.focus();
+    return true;
+  }
+
+  if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
+    return true;
+  }
+
+  return false;
+}
+
 export function useDialogFocusTrap(
   open: boolean,
   dialogRef: RefObject<HTMLElement | null>,
@@ -27,26 +56,11 @@ export function useDialogFocusTrap(
         return;
       }
 
-      if (event.key !== 'Tab' || !dialogRef.current) {
+      if (!dialogRef.current) {
         return;
       }
 
-      const focusable = getFocusableElements(dialogRef.current);
-      if (focusable.length === 0) {
-        return;
-      }
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const active = document.activeElement;
-
-      if (event.shiftKey && active === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus();
-      }
+      trapTabFocus(event, dialogRef.current);
     };
 
     document.addEventListener('keydown', handleKeyDown);

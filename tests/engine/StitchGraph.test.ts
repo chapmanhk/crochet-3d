@@ -43,6 +43,15 @@ describe('StitchGraph', () => {
     expect(graph.getByRow(1)[0]?.type).toBe(StitchType.SINGLE_CROCHET);
   });
 
+  it('returns row stitches ordered by column', () => {
+    const graph = new StitchGraph();
+    graph.add(createStitchNode(StitchType.SINGLE_CROCHET, 1, 2));
+    graph.add(createStitchNode(StitchType.SINGLE_CROCHET, 1, 0));
+    graph.add(createStitchNode(StitchType.SINGLE_CROCHET, 1, 1));
+
+    expect(graph.getByRow(1).map((stitch) => stitch.column)).toEqual([0, 1, 2]);
+  });
+
   it('clears all stitches', () => {
     const graph = new StitchGraph();
     graph.add(createStitchNode(StitchType.CHAIN, 0, 0));

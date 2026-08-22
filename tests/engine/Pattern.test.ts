@@ -5,6 +5,7 @@ import {
   StitchType,
   MAX_CHAIN_LENGTH,
   MIN_CHAIN_LENGTH,
+  formatChainLengthError,
 } from '@engine/index';
 import { resetIdCounter } from '@engine/StitchNode';
 
@@ -268,5 +269,11 @@ describe('Pattern', () => {
 
     expect(firstId).toBe('stitch-1');
     expect(secondId).toBe('stitch-1');
+  });
+});
+
+describe('formatChainLengthError', () => {
+  it('formats out-of-range chain length message', () => {
+    expect(formatChainLengthError()).toBe('Chain length must be between 1 and 500.');
   });
 });

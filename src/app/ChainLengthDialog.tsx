@@ -1,5 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { MAX_CHAIN_LENGTH, MIN_CHAIN_LENGTH } from '@engine/index';
+import {
+  formatChainLengthError,
+  MAX_CHAIN_LENGTH,
+  MIN_CHAIN_LENGTH,
+} from '@engine/index';
 import { useDialogFocusTrap } from './dialogUtils';
 
 export const DEFAULT_CHAIN_LENGTH = 10;
@@ -80,9 +84,7 @@ export function ChainLengthDialog({
     }
 
     if (length < MIN_CHAIN_LENGTH || length > MAX_CHAIN_LENGTH) {
-      setLocalError(
-        `Chain length must be between ${MIN_CHAIN_LENGTH} and ${MAX_CHAIN_LENGTH}.`,
-      );
+      setLocalError(formatChainLengthError());
       return;
     }
 
