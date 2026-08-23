@@ -9,6 +9,7 @@ import {
   createStitchFillMaterial,
   createStitchOutlineMaterial,
   disposeOutlinedStitch,
+  updateOutlineMaterialSize,
 } from './stitchMaterials';
 
 export class StitchRenderer {
@@ -50,6 +51,10 @@ export class StitchRenderer {
     }
     this.fillMaterial.dispose();
     this.outlineMaterial.dispose();
+  }
+
+  updateOutlineSize(): void {
+    updateOutlineMaterialSize(this.outlineMaterial);
   }
 
   private upsertSegment(key: string, geometry: THREE.BufferGeometry): void {

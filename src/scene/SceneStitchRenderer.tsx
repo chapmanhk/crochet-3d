@@ -20,5 +20,14 @@ export function SceneStitchRenderer() {
     renderer.sync(stitches);
   }, [renderer, stitches]);
 
+  useEffect(() => {
+    const handleResize = () => {
+      renderer.updateOutlineSize();
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [renderer]);
+
   return null;
 }

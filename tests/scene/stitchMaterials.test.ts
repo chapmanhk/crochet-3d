@@ -19,8 +19,8 @@ describe('stitchMaterials', () => {
     const outline = group.children[0] as THREE.Mesh;
     const fill = group.children[1] as THREE.Mesh;
 
-    expect(outline.geometry).toBe(fill.geometry);
-    expect(outline.scale.x).toBeGreaterThan(fill.scale.x);
+    expect(outline.geometry).not.toBe(fill.geometry);
+    expect(outline.material).toBeInstanceOf(THREE.ShaderMaterial);
     expect(outline.renderOrder).toBeLessThan(fill.renderOrder);
 
     disposeOutlinedStitch(group);
@@ -28,16 +28,21 @@ describe('stitchMaterials', () => {
     outlineMaterial.dispose();
   });
 
-  it('disposes shared geometry only once', () => {
+  it('disposes fill and outline geometries', () => {
     const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const disposeSpy = vi.spyOn(geometry, 'dispose');
     const group = createOutlinedStitch(
       geometry,
       createStitchFillMaterial(),
       createStitchOutlineMaterial(),
     );
 
+    const outline = group.children[0] as THREE.Mesh;
+    const fill = group.children[1] as THREE.Mesh;
+    const outlineDispose = vi.spyOn(outline.geometry, 'dispose');
+    const fillDispose = vi.spyOn(fill.geometry, 'dispose');
+
     disposeOutlinedStitch(group);
-    expect(disposeSpy).toHaveBeenCalledTimes(1);
+    expect(outlineDispose).toHaveBeenCalledTimes(1);
+    expect(fillDispose).toHaveBeenCalledTimes(1);
   });
 });
