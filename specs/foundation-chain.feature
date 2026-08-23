@@ -112,6 +112,17 @@ Feature: Foundation chain
     And the instructions should include "Foundation: magic ring, 6 sc"
     And I should see next-step guidance to work into the magic ring stitches
 
+  @e2e
+  Scenario: Work multiple rounds on a magic ring
+    Given I have a magic ring of 4 stitches
+    When I choose "New Row"
+    And I add 4 single crochet stitches
+    And I choose "New Row"
+    And I add 4 single crochet stitches
+    Then the pattern status should be "Row 2"
+    And the stitch count should be 12
+    And the row progress should be "4/4"
+
   @engine
   Scenario: Chain length must be within allowed bounds
     Given I have no pattern

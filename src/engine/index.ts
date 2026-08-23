@@ -3,7 +3,19 @@ export { StitchGraph } from './StitchGraph';
 export { createStitchNode, resetIdCounter, restoreIdCounter } from './StitchNode';
 export { groupStitchesByRow } from './stitchRows';
 export { generateInstructions, getStitchLabel, getWorkingStitchLabel, getWorkingStitchName } from './instructions';
-export { layoutPosition, layoutMagicRingPosition, layoutStitchPositions, ROW_HEIGHT, STITCH_SPACING } from './layout';
+export {
+  layoutPosition,
+  layoutMagicRingPosition,
+  layoutMagicRingWorkingPosition,
+  layoutStitchPositions,
+  ROW_HEIGHT,
+  STITCH_SPACING,
+  MAGIC_RING_BASE_RADIUS,
+  MAGIC_RING_RADIUS_GROWTH,
+  MAGIC_RING_Z_CENTER,
+  MAGIC_RING_Z_SCALE,
+} from './layout';
+export type { MagicRingWorkingLayoutOptions } from './layout';
 export {
   countParentSlotsConsumed,
   isRowComplete,

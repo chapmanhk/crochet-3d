@@ -9,7 +9,11 @@ import {
 } from './types';
 import { StitchGraph } from './StitchGraph';
 import { createStitchNode, resetIdCounter, restoreIdCounter } from './StitchNode';
-import { layoutMagicRingPosition, layoutPosition } from './layout';
+import {
+  layoutMagicRingPosition,
+  layoutMagicRingWorkingPosition,
+  layoutPosition,
+} from './layout';
 import {
   canPlaceDecrease,
   countParentSlotsConsumed,
@@ -369,10 +373,40 @@ export class Pattern {
       options.secondaryAttachToId ?? null,
     );
 
-    stitch.position = layoutPosition(type, this.currentRow, stitchIndex);
+    stitch.position = this.resolveWorkingStitchPosition(
+      type,
+      stitchIndex,
+      attachToId,
+      options,
+    );
 
     this.graph.add(stitch);
     return stitch;
+  }
+
+  private resolveWorkingStitchPosition(
+    type: WorkingStitchType,
+    stitchIndex: number,
+    attachToId: string,
+    options: { placementKind?: PlacementKind; secondaryAttachToId?: string },
+  ) {
+    if (this.foundationType === FoundationType.MAGIC_RING && this.currentRow >= 1) {
+      const parent = this.graph.get(attachToId);
+      if (parent) {
+        const secondaryParent = options.secondaryAttachToId
+          ? this.graph.get(options.secondaryAttachToId)
+          : null;
+
+        return layoutMagicRingWorkingPosition({
+          row: this.currentRow,
+          parentPosition: parent.position,
+          secondaryParentPosition: secondaryParent?.position ?? null,
+          placementKind: options.placementKind ?? PlacementKind.NORMAL,
+        });
+      }
+    }
+
+    return layoutPosition(type, this.currentRow, stitchIndex);
   }
 
   private validateFoundationChain(length: number): PlacementError | null {

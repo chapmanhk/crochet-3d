@@ -4,6 +4,9 @@ import type { StitchNode, Vec3, WorkingDirection } from '@engine/index';
 import {
   defaultDirectionForRow,
   groupStitchesByRow,
+  MAGIC_RING_BASE_RADIUS,
+  MAGIC_RING_Z_CENTER,
+  MAGIC_RING_Z_SCALE,
   StitchDefinitions,
   StitchType,
   STITCH_SPACING,
@@ -191,14 +194,19 @@ function chainLoopCrown(position: Vec3): THREE.Vector3 {
   return new THREE.Vector3(position.x, position.y, position.z + CHAIN_CROWN_Z);
 }
 
+function isMagicRingFoundation(stitches: StitchNode[]): boolean {
+  const rowZero = groupStitchesByRow(stitches).get(0) ?? [];
+  return rowZero.length > 0 && rowZero.every((stitch) => stitch.type !== StitchType.CHAIN);
+}
+
 function buildMagicRingFoundationGeometry(stitches: StitchNode[]): THREE.BufferGeometry | null {
   if (stitches.length === 0) {
     return null;
   }
 
   const tubes: THREE.TubeGeometry[] = [];
-  const center = new THREE.Vector3(0, 0, 0.04);
-  const ringRadius = 0.12;
+  const center = new THREE.Vector3(0, 0, MAGIC_RING_Z_CENTER - 0.08);
+  const ringRadius = MAGIC_RING_BASE_RADIUS;
 
   tubes.push(
     createTube(
@@ -207,7 +215,7 @@ function buildMagicRingFoundationGeometry(stitches: StitchNode[]): THREE.BufferG
         return new THREE.Vector3(
           Math.cos(angle) * ringRadius,
           0.01,
-          Math.sin(angle) * ringRadius * 0.35 + 0.04,
+          Math.sin(angle) * ringRadius * MAGIC_RING_Z_SCALE + MAGIC_RING_Z_CENTER - 0.08,
         );
       }),
       16,
@@ -336,7 +344,12 @@ function workingYarnEndpoints(
   previousPoints: ReturnType<typeof scStitchPoints>,
   currentPoints: ReturnType<typeof scStitchPoints>,
   direction: WorkingDirection,
+  roundFoundation = false,
 ): [THREE.Vector3, THREE.Vector3] {
+  if (roundFoundation) {
+    return [previousPoints.rightTop, currentPoints.leftTop];
+  }
+
   return direction === WorkingDirectionEnum.LEFT_TO_RIGHT
     ? [previousPoints.rightTop, currentPoints.leftTop]
     : [previousPoints.leftTop, currentPoints.rightTop];
@@ -346,6 +359,7 @@ function buildWorkingRowGeometry(
   rowStitches: StitchNode[],
   stitchById: Map<string, StitchNode>,
   rowNumber: number,
+  roundFoundation = false,
 ): THREE.BufferGeometry | null {
   if (rowStitches.length === 0) {
     return null;
@@ -370,7 +384,12 @@ function buildWorkingRowGeometry(
       const previousInsertion = scInsertionPoint(previous, previousParent, stitchById);
       const previousPoints = scStitchPoints(previous, previousInsertion);
       const currentPoints = scStitchPoints(stitch, insertion);
-      const [from, to] = workingYarnEndpoints(previousPoints, currentPoints, direction);
+      const [from, to] = workingYarnEndpoints(
+        previousPoints,
+        currentPoints,
+        direction,
+        roundFoundation,
+      );
       tubes.push(buildWorkingYarnGeometry(from, to));
     }
   }
@@ -390,10 +409,32 @@ function hookPointForRowEnd(stitch: StitchNode, role: 'attach' | 'rowExit'): THR
   return new THREE.Vector3(stitch.position.x + xOffset, topY, topZ);
 }
 
+function buildRoundRowJoinPath(
+  lowerEnd: StitchNode,
+  upperStart: StitchNode,
+  stitchById: Map<string, StitchNode>,
+): THREE.Vector3[] | null {
+  const lowerExit = hookPointForRowEnd(lowerEnd, 'rowExit');
+  const upperParent = stitchById.get(upperStart.attachToId ?? '');
+  if (!upperParent) {
+    return null;
+  }
+
+  const upperEntry = scInsertionPoint(upperStart, upperParent, stitchById);
+  const turn = new THREE.Vector3(
+    (lowerExit.x + upperEntry.x) / 2,
+    (lowerExit.y + upperEntry.y) / 2 + VISUAL_ROW_HEIGHT * 0.12,
+    (lowerExit.z + upperEntry.z) / 2,
+  );
+
+  return [lowerExit, turn, upperEntry];
+}
+
 function buildRowJoinPath(
   lowerRow: StitchNode[],
   upperRow: StitchNode[],
   stitchById: Map<string, StitchNode>,
+  roundFoundation = false,
 ): THREE.Vector3[] | null {
   if (lowerRow.length === 0 || upperRow.length === 0) {
     return null;
@@ -401,6 +442,10 @@ function buildRowJoinPath(
 
   const lowerEnd = lowerRow[lowerRow.length - 1]!;
   const upperStart = upperRow[0]!;
+
+  if (roundFoundation) {
+    return buildRoundRowJoinPath(lowerEnd, upperStart, stitchById);
+  }
 
   const lowerExit = hookPointForRowEnd(
     lowerEnd,
@@ -479,6 +524,7 @@ export function getYarnSegmentManifests(stitches: StitchNode[]): YarnSegmentMani
   }
 
   const { stitchById, byRow, rowNumbers } = indexStitches(stitches);
+  const roundFoundation = isMagicRingFoundation(stitches);
   const manifests: YarnSegmentManifest[] = [];
 
   for (const rowNumber of rowNumbers) {
@@ -499,7 +545,7 @@ export function getYarnSegmentManifests(stitches: StitchNode[]): YarnSegmentMani
   for (let index = 1; index < rowNumbers.length; index += 1) {
     const lowerRow = byRow.get(rowNumbers[index - 1]!)!;
     const upperRow = byRow.get(rowNumbers[index]!)!;
-    const joinPoints = buildRowJoinPath(lowerRow, upperRow, stitchById);
+    const joinPoints = buildRowJoinPath(lowerRow, upperRow, stitchById, roundFoundation);
 
     if (!joinPoints || joinPoints.length < 2) {
       continue;
@@ -519,6 +565,7 @@ export function buildYarnSegmentGeometry(
   stitches: StitchNode[],
 ): THREE.BufferGeometry | null {
   const { stitchById, byRow, rowNumbers } = indexStitches(stitches);
+  const roundFoundation = isMagicRingFoundation(stitches);
 
   if (key.startsWith('row-')) {
     const rowNumber = Number.parseInt(key.slice(4), 10);
@@ -529,7 +576,7 @@ export function buildYarnSegmentGeometry(
 
     return rowNumber === 0
       ? buildFoundationRowGeometry(rowStitches)
-      : buildWorkingRowGeometry(rowStitches, stitchById, rowNumber);
+      : buildWorkingRowGeometry(rowStitches, stitchById, rowNumber, roundFoundation);
   }
 
   if (key.startsWith('join-')) {
@@ -541,7 +588,7 @@ export function buildYarnSegmentGeometry(
 
     const lowerRow = byRow.get(rowNumbers[lowerIndex - 1]!)!;
     const upperRow = byRow.get(rowNumber)!;
-    const joinPoints = buildRowJoinPath(lowerRow, upperRow, stitchById);
+    const joinPoints = buildRowJoinPath(lowerRow, upperRow, stitchById, roundFoundation);
 
     if (!joinPoints || joinPoints.length < 2) {
       return null;

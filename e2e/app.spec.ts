@@ -495,6 +495,26 @@ test.describe('Magic ring foundation', () => {
     await expect(panel.getByText('Foundation: magic ring, 6 sc')).toBeVisible();
     await expect(panel.getByText('Choose New Row to work into the magic ring stitches.')).toBeVisible();
   });
+
+  test('Work multiple rounds on a magic ring', async ({ page }) => {
+    await page.goto('/');
+
+    await createMagicRing(page, 4);
+    await toolbarButton(page, 'New Row').click();
+
+    const panel = infoPanel(page);
+    await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Row 1');
+    await completeRow(page, 4);
+    await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('4/4');
+    await expect(panel.getByText('Row 1 is complete. Choose New Row to continue.')).toBeVisible();
+
+    await toolbarButton(page, 'New Row').click();
+    await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Row 2');
+    await completeRow(page, 4);
+    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('12');
+    await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('4/4');
+    await expect(panel.getByText('Row 2: work across (4 sc)')).toBeVisible();
+  });
 });
 
 test.describe('Increase and decrease', () => {

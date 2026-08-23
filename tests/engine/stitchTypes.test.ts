@@ -5,6 +5,10 @@ import {
   StitchType,
 } from '@engine/index';
 
+function radialDistance(position: { x: number; z: number }): number {
+  return Math.hypot(position.x, (position.z - 0.12) / 0.35);
+}
+
 describe('stitch types', () => {
   it('adds half double crochet stitches', () => {
     const pattern = new Pattern();
@@ -128,5 +132,29 @@ describe('magic ring', () => {
     const stitch = pattern.addWorkingStitch(StitchType.SINGLE_CROCHET);
     expect(stitch.attachToId).toBe(ring[0]!.id);
     expect(pattern.getRowWidthTarget(1)).toBe(4);
+  });
+
+  it('lays out magic ring working rows in expanding circles', () => {
+    const pattern = new Pattern();
+    const ring = pattern.addMagicRing(4);
+    pattern.startNewRow();
+
+    for (let index = 0; index < 4; index += 1) {
+      pattern.addWorkingStitch(StitchType.SINGLE_CROCHET);
+    }
+
+    const rowOne = pattern.getStitches().filter((stitch) => stitch.row === 1);
+    const parentRadius = radialDistance(ring[0]!.position);
+
+    for (const stitch of rowOne) {
+      expect(radialDistance(stitch.position)).toBeGreaterThan(parentRadius);
+    }
+
+    pattern.startNewRow();
+    pattern.addWorkingStitch(StitchType.SINGLE_CROCHET);
+    const rowTwoFirst = pattern.getStitches().find((stitch) => stitch.row === 2)!;
+    const rowOneRadius = radialDistance(rowOne[0]!.position);
+    const rowTwoRadius = radialDistance(rowTwoFirst.position);
+    expect(rowTwoRadius).toBeGreaterThan(rowOneRadius);
   });
 });
