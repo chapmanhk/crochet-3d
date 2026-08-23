@@ -6,7 +6,6 @@ export { generateInstructions, getStitchLabel, getWorkingStitchLabel, getWorking
 export { layoutPosition, layoutMagicRingPosition, layoutStitchPositions, ROW_HEIGHT, STITCH_SPACING } from './layout';
 export {
   countParentSlotsConsumed,
-  countWorkingStitches,
   isRowComplete,
   remainingParentSlots,
   canPlaceDecrease,

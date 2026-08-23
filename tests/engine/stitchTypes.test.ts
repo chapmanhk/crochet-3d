@@ -24,6 +24,35 @@ describe('stitch types', () => {
     expect(stitch.type).toBe(StitchType.DOUBLE_CROCHET);
   });
 
+  it('attaches half double crochet to the first foundation stitch', () => {
+    const pattern = new Pattern();
+    const chains = pattern.addFoundationChain(3);
+    pattern.startNewRow();
+
+    const stitch = pattern.addWorkingStitch(StitchType.HALF_DOUBLE_CROCHET);
+    expect(stitch.attachToId).toBe(chains[0]!.id);
+  });
+
+  it('maps row 2 attachments across an increase row in working order', () => {
+    const pattern = new Pattern();
+    pattern.addFoundationChain(3);
+    pattern.startNewRow();
+    const [incFirst, incSecond] = pattern.addIncrease(StitchType.SINGLE_CROCHET);
+    const sc1 = pattern.addSingleCrochet();
+    const sc2 = pattern.addSingleCrochet();
+
+    pattern.startNewRow();
+    const r2a = pattern.addSingleCrochet();
+    const r2b = pattern.addSingleCrochet();
+    const r2c = pattern.addSingleCrochet();
+
+    // Row 2 works right-to-left across the four stitches below.
+    expect(r2a.attachToId).toBe(sc2.id);
+    expect(r2b.attachToId).toBe(sc1.id);
+    expect(r2c.attachToId).toBe(incSecond.id);
+    expect(r2c.attachToId).not.toBe(incFirst.id);
+  });
+
   it('places an increase as two stitches in one parent slot', () => {
     const pattern = new Pattern();
     const chains = pattern.addFoundationChain(3);

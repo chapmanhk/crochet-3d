@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three-stdlib';
+import { DEFAULT_YARN_COLOR } from '../shared/yarnColor';
 
-export const STITCH_YARN_COLOR = 0xd98952;
+export const STITCH_YARN_COLOR = DEFAULT_YARN_COLOR;
 
 // Screen-space stroke width in pixels (approximate).
 const OUTLINE_THICKNESS_PX = 2.5;

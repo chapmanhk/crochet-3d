@@ -28,6 +28,7 @@ export function AttachmentPointPicker() {
   const attachmentPoint = getNextAttachmentPoint(
     stitches,
     nextAttachmentTargetId,
+    selectedStitchType,
   );
 
   if (!attachmentPoint) {

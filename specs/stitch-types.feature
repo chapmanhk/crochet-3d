@@ -36,7 +36,22 @@ Feature: Stitch types
 
   @engine
   Scenario: Decrease uses two parent stitches
-    Given I am on row 1 with 2 single crochet stitches placed
+    Given I have a foundation chain of 4
+    And I am on row 1 with 2 single crochet stitches placed
     When I add a decrease
     Then the row should have 3 stitches
     And the decrease should attach to two parent stitches
+
+  @e2e
+  Scenario: Increase places two stitches in one parent slot
+    Given I am on row 1
+    When I choose "Increase"
+    Then the stitch count should be 5
+    And the row progress should show an increase consumed one parent slot
+
+  @e2e
+  Scenario: Decrease consumes two parent slots
+    Given I have a foundation chain of 4
+    And I am on row 1 with 2 single crochet stitches placed
+    When I choose "Decrease"
+    Then the row should have 3 stitches on the current row

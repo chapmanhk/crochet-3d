@@ -9,6 +9,7 @@ import {
   createStitchFillMaterial,
   createStitchOutlineMaterial,
   disposeOutlinedStitch,
+  STITCH_YARN_COLOR,
   updateFillMaterialColor,
   updateOutlineMaterialColor,
   updateOutlineMaterialSize,
@@ -60,7 +61,8 @@ export class StitchRenderer {
   }
 
   setYarnColor(hexColor: string): void {
-    const color = Number.parseInt(hexColor.replace('#', ''), 16);
+    const parsed = Number.parseInt(hexColor.replace('#', ''), 16);
+    const color = Number.isNaN(parsed) ? STITCH_YARN_COLOR : parsed;
     updateFillMaterialColor(this.fillMaterial, color);
     updateOutlineMaterialColor(this.outlineMaterial, color);
   }

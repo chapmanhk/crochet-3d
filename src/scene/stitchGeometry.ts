@@ -43,7 +43,8 @@ function midpoint(a: Vec3, b: Vec3): THREE.Vector3 {
 
 function stitchFingerprint(stitch: StitchNode): string {
   const { x, y, z } = stitch.position;
-  return `${stitch.id}:${stitch.column}:${stitch.attachToId ?? ''}:${x},${y},${z}`;
+  const kind = stitch.placementKind ?? 'normal';
+  return `${stitch.id}:${stitch.type}:${kind}:${stitch.secondaryAttachToId ?? ''}:${stitch.column}:${stitch.attachToId ?? ''}:${x},${y},${z}`;
 }
 
 function stitchHeightOffset(type: StitchType): number {
@@ -564,3 +565,18 @@ export function buildYarnSegments(stitches: StitchNode[]): YarnSegment[] {
 }
 
 export { VISUAL_ROW_HEIGHT };
+
+export function getAttachmentInsertionPosition(
+  parent: StitchNode,
+  childType: StitchType = StitchType.SINGLE_CROCHET,
+): { x: number; y: number; z: number } {
+  const childStub = { type: childType } as StitchNode;
+  const x = parent.position.x;
+  const y = scInsertionY(parent, childStub);
+  const z =
+    parent.type === StitchType.CHAIN
+      ? CHAIN_CROWN_Z - 0.015
+      : scRowTopZ(parent.row) - 0.01;
+
+  return { x, y, z };
+}

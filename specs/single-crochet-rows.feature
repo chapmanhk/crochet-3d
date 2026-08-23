@@ -15,16 +15,16 @@ Feature: Single crochet rows
 
   Scenario: Add single crochet stitches across a row
     Given I am on row 1
-    When I choose "Add SC"
+    When I choose "Add single crochet"
     Then the stitch count should be 4
     And the row progress should be "1/3"
-    And the instructions should include "Row 1: sc in each st across (1 sc)"
+    And the instructions should include "Row 1: work across (1 sc)"
     And I should see next-step guidance to "Place 2 more single crochet stitches on row 1."
-    When I choose "Add SC"
-    And I choose "Add SC"
+    When I choose "Add single crochet"
+    And I choose "Add single crochet"
     Then the stitch count should be 6
     And the row progress should be "3/3"
-    And the instructions should include "Row 1: sc in each st across (3 sc)"
+    And the instructions should include "Row 1: work across (3 sc)"
     And I should see next-step guidance to "Row 1 is complete. Choose New Row to continue."
 
   Scenario: Work a second row after completing the first
@@ -33,9 +33,9 @@ Feature: Single crochet rows
     When I choose "New Row"
     Then the pattern status should be "Row 2"
     And the row progress should be "0/3"
-    When I choose "Add SC"
+    When I choose "Add single crochet"
     Then the stitch count should be 7
-    And the instructions should include "Row 2: sc in each st across (1 sc)"
+    And the instructions should include "Row 2: work across (1 sc)"
 
   @engine
   Scenario: Cannot add single crochet on the foundation row

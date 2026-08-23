@@ -11,13 +11,13 @@ Feature: App shell
     Then I should see the pattern tools toolbar
     And I should see the pattern information panel
     And I should see the 3D canvas
-    And I should see the "New Chain" action
+    And I should see the "New foundation" action
 
   Scenario: Empty pattern shows guidance
     Given I have no pattern
     Then the pattern status should be "No pattern"
-    And I should see guidance to "Start with a foundation chain."
-    And I should see next-step guidance to choose "New Chain"
+    And I should see guidance to start a foundation chain or magic ring
+    And I should see next-step guidance to choose "New foundation" or "Templates"
 
   Scenario: Skip link focuses the 3D canvas region
     Given I am using the crochet pattern designer
@@ -27,3 +27,8 @@ Feature: App shell
   Scenario: Foundation chain shows next-step guidance
     Given I have a foundation chain of 3
     Then I should see next-step guidance to choose "New Row"
+
+  Scenario: Yarn color picker updates the selected color
+    Given I have no pattern
+    When I choose the yarn color "#336699"
+    Then the yarn color should be "#336699"

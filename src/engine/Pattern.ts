@@ -158,33 +158,13 @@ export class Pattern {
 
     if (placementKind === PlacementKind.DECREASE) {
       const secondaryId = options.secondaryAttachToId;
-      if (!expectedTarget || !secondaryId) {
-        throw new PlacementError(
-          'CANNOT_DECREASE',
-          'Not enough stitches remain in the row below for a decrease.',
-        );
-      }
-
-      const previousRow = this.graph.getByRow(this.currentRow - 1);
-      const slotIndex = countParentSlotsConsumed(this.graph.getByRow(this.currentRow));
-      const primaryColumn = resolveAttachColumn(
-        slotIndex,
-        this.foundationChainLength,
-        this.getRowDirection(this.currentRow),
-      );
-      const secondaryColumn = resolveAttachColumn(
-        slotIndex + 1,
-        this.foundationChainLength,
-        this.getRowDirection(this.currentRow),
-      );
-      const expectedPrimary = previousRow[primaryColumn];
-      const expectedSecondary = previousRow[secondaryColumn];
-
+      const decreaseTargets = this.getDecreaseTargets();
       if (
-        !expectedPrimary ||
-        !expectedSecondary ||
-        expectedPrimary.id !== attachToId ||
-        expectedSecondary.id !== secondaryId
+        !decreaseTargets ||
+        !expectedTarget ||
+        !secondaryId ||
+        decreaseTargets.primary.id !== attachToId ||
+        decreaseTargets.secondary.id !== secondaryId
       ) {
         throw new PlacementError(
           'INVALID_ATTACHMENT_TARGET',
@@ -212,32 +192,17 @@ export class Pattern {
   }
 
   addDecrease(type: WorkingStitchType): StitchNode {
-    const previousRow = this.graph.getByRow(this.currentRow - 1);
-    const slotIndex = countParentSlotsConsumed(this.graph.getByRow(this.currentRow));
-    const direction = this.getRowDirection(this.currentRow);
-    const primaryColumn = resolveAttachColumn(
-      slotIndex,
-      this.foundationChainLength,
-      direction,
-    );
-    const secondaryColumn = resolveAttachColumn(
-      slotIndex + 1,
-      this.foundationChainLength,
-      direction,
-    );
-    const primary = previousRow[primaryColumn];
-    const secondary = previousRow[secondaryColumn];
-
-    if (!primary || !secondary) {
+    const decreaseTargets = this.getDecreaseTargets();
+    if (!decreaseTargets) {
       throw new PlacementError(
         'CANNOT_DECREASE',
         'Not enough stitches remain in the row below for a decrease.',
       );
     }
 
-    return this.addWorkingStitchAt(type, primary.id, {
+    return this.addWorkingStitchAt(type, decreaseTargets.primary.id, {
       placementKind: PlacementKind.DECREASE,
-      secondaryAttachToId: secondary.id,
+      secondaryAttachToId: decreaseTargets.secondary.id,
     });
   }
 
@@ -246,15 +211,11 @@ export class Pattern {
       return null;
     }
 
-    const rowStitches = this.graph.getByRow(this.currentRow);
-    const slotIndex = countParentSlotsConsumed(rowStitches);
-    const attachColumn = resolveAttachColumn(
+    const slotIndex = countParentSlotsConsumed(this.graph.getByRow(this.currentRow));
+    return this.resolveParentAttachTarget(
       slotIndex,
-      this.foundationChainLength,
       this.getRowDirection(this.currentRow),
     );
-
-    return this.graph.getByRow(this.currentRow - 1)[attachColumn] ?? null;
   }
 
   startNewRow(): number {
@@ -495,27 +456,20 @@ export class Pattern {
     }
 
     const slotIndex = countParentSlotsConsumed(rowStitches);
-    const attachColumn = resolveAttachColumn(
+    const attachTarget = this.resolveParentAttachTarget(
       slotIndex,
-      this.foundationChainLength,
       this.getRowDirection(this.currentRow),
     );
-    const attachTarget = this.graph.getByRow(this.currentRow - 1)[attachColumn];
     if (!attachTarget && placementKind !== PlacementKind.DECREASE) {
       return new PlacementError(
         'NO_TARGET_STITCH',
-        `No stitch available to attach to in row ${this.currentRow - 1}, column ${attachColumn}.`,
+        `No stitch available to attach to in row ${this.currentRow - 1}.`,
       );
     }
 
     if (placementKind === PlacementKind.DECREASE) {
-      const secondaryColumn = resolveAttachColumn(
-        slotIndex + 1,
-        this.foundationChainLength,
-        this.getRowDirection(this.currentRow),
-      );
-      const secondaryTarget = this.graph.getByRow(this.currentRow - 1)[secondaryColumn];
-      if (!attachTarget || !secondaryTarget) {
+      const decreaseTargets = this.getDecreaseTargets();
+      if (!decreaseTargets) {
         return new PlacementError(
           'CANNOT_DECREASE',
           'Not enough stitches remain in the row below for a decrease.',
@@ -555,5 +509,41 @@ export class Pattern {
     }
 
     return null;
+  }
+
+  private resolveParentAttachTarget(
+    slotIndex: number,
+    direction: WorkingDirection,
+  ): StitchNode | null {
+    const parentRow = this.currentRow - 1;
+    const parentStitches = this.graph.getByRow(parentRow);
+
+    if (parentRow === 0) {
+      const attachColumn = resolveAttachColumn(
+        slotIndex,
+        this.foundationChainLength,
+        direction,
+      );
+      return parentStitches[attachColumn] ?? null;
+    }
+
+    const ordered =
+      direction === WorkingDirection.LEFT_TO_RIGHT
+        ? parentStitches
+        : [...parentStitches].reverse();
+    return ordered[slotIndex] ?? null;
+  }
+
+  private getDecreaseTargets(): { primary: StitchNode; secondary: StitchNode } | null {
+    const direction = this.getRowDirection(this.currentRow);
+    const slotIndex = countParentSlotsConsumed(this.graph.getByRow(this.currentRow));
+    const primary = this.resolveParentAttachTarget(slotIndex, direction);
+    const secondary = this.resolveParentAttachTarget(slotIndex + 1, direction);
+
+    if (!primary || !secondary) {
+      return null;
+    }
+
+    return { primary, secondary };
   }
 }

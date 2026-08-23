@@ -25,10 +25,6 @@ export function countParentSlotsConsumed(rowStitches: StitchNode[]): number {
   return slots;
 }
 
-export function countWorkingStitches(rowStitches: StitchNode[]): number {
-  return rowStitches.length;
-}
-
 export function isRowComplete(
   rowStitches: StitchNode[],
   foundationLength: number,

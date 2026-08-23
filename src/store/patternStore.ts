@@ -10,8 +10,8 @@ import {
   type StitchNode,
   type TemplateId,
   type WorkingStitchType,
-  countParentSlotsConsumed,
 } from '@engine/index';
+import { DEFAULT_YARN_COLOR_HEX } from '../shared/yarnColor';
 
 interface PatternState {
   stitches: StitchNode[];
@@ -59,7 +59,7 @@ interface PatternState {
   clearError: () => void;
 }
 
-const DEFAULT_YARN_COLOR = '#d98952';
+const DEFAULT_YARN_COLOR = DEFAULT_YARN_COLOR_HEX;
 
 const pattern = new Pattern();
 let historyPast: PatternSnapshot[] = [];
@@ -106,7 +106,6 @@ function syncState(selectedStitchType: WorkingStitchType): Pick<
 > {
   const snapshot = pattern.getSnapshot();
   const nextTarget = pattern.getNextAttachmentTarget(selectedStitchType);
-  const rowStitches = snapshot.stitches.filter((stitch) => stitch.row === snapshot.currentRow);
 
   return {
     stitches: snapshot.stitches,
@@ -114,7 +113,7 @@ function syncState(selectedStitchType: WorkingStitchType): Pick<
     foundationChainLength: snapshot.foundationChainLength,
     foundationType: snapshot.foundationType,
     currentRowStitchCount: pattern.getRowStitchCount(snapshot.currentRow),
-    currentRowSlotsConsumed: countParentSlotsConsumed(rowStitches),
+    currentRowSlotsConsumed: pattern.getParentSlotsConsumed(snapshot.currentRow),
     rowDirections: snapshot.rowDirections,
     instructions: generateInstructions(snapshot.stitches, snapshot.foundationType),
     canAddStitch: pattern.canAddWorkingStitch(selectedStitchType),

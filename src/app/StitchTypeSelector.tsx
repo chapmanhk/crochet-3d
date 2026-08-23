@@ -1,6 +1,5 @@
 import {
   StitchDefinitions,
-  StitchType,
   WORKING_STITCH_TYPES,
   getWorkingStitchLabel,
 } from '@engine/index';
@@ -30,5 +29,3 @@ export function StitchTypeSelector({ value, onChange }: StitchTypeSelectorProps)
     </div>
   );
 }
-
-export { StitchType };
