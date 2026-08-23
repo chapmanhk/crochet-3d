@@ -8,7 +8,7 @@ import {
 } from '@engine/index';
 
 // Visual tuning — derived from engine layout, not placement rules.
-const YARN_RADIUS = 0.068;
+const YARN_RADIUS = 0.06;
 const TUBE_RADIAL = 8;
 const TUBE_SEGMENTS_MIN = 24;
 const TUBE_SEGMENTS_MAX = 192;
@@ -16,9 +16,11 @@ const TUBE_SEGMENTS_PER_POINT = 8;
 
 const CHAIN_CROWN_Z = 0.13;
 const CHAIN_LOOP_SPAN_SCALE = 0.34;
-const SC_HEIGHT = 0.095;
-const SC_V_HALF_WIDTH = 0.036;
-const SC_TOP_FORWARD = 0.028;
+// Tall enough to read above yarn thickness, but anchored to the hook — not layout y.
+const SC_HEIGHT = 0.16;
+const SC_V_HALF_WIDTH = 0.044;
+const SC_TOP_FORWARD = 0.07;
+const SC_VALLEY_HEIGHT = 0.045;
 const SC_HOOK_Y_LIFT = 0.02;
 const SC_ROW_EXIT_X = 0.12;
 const SC_ROW_EXIT_Y = 0.11;
@@ -139,6 +141,31 @@ function buildFoundationYarnPath(chainStitches: StitchNode[]): THREE.Vector3[] {
   return dedupePoints(points);
 }
 
+function scRowPoint(
+  stitch: StitchNode,
+  hook: THREE.Vector3,
+  offsets: { x?: number; y?: number; z?: number },
+): THREE.Vector3 {
+  return new THREE.Vector3(
+    stitch.position.x + (offsets.x ?? 0),
+    hook.y + (offsets.y ?? 0),
+    hook.z + SC_TOP_FORWARD + (offsets.z ?? 0),
+  );
+}
+
+function scValleyBetween(
+  left: StitchNode,
+  right: StitchNode,
+  leftHook: THREE.Vector3,
+  rightHook: THREE.Vector3,
+): THREE.Vector3 {
+  return new THREE.Vector3(
+    (left.position.x + right.position.x) / 2,
+    (leftHook.y + rightHook.y) / 2 + SC_VALLEY_HEIGHT,
+    (leftHook.z + rightHook.z) / 2 + SC_TOP_FORWARD * 0.45,
+  );
+}
+
 function buildWorkingRowYarnPath(
   rowStitches: StitchNode[],
   stitchById: Map<string, StitchNode>,
@@ -156,49 +183,31 @@ function buildWorkingRowYarnPath(
       return null;
     }
 
-    const position = stitch.position;
     const hook = hookPointForStitch(parent, 'attach');
-    const topY = hook.y + SC_HEIGHT;
-    const topZ = hook.z + SC_TOP_FORWARD;
-    const leftTop = new THREE.Vector3(position.x - SC_V_HALF_WIDTH, topY, topZ);
-    const rightTop = new THREE.Vector3(position.x + SC_V_HALF_WIDTH, topY, topZ);
-    const crown = new THREE.Vector3(position.x, topY + 0.012, topZ + 0.01);
-    const through = new THREE.Vector3(position.x, hook.y + SC_HEIGHT * 0.35, topZ * 0.65);
+    const leftTop = scRowPoint(stitch, hook, { x: -SC_V_HALF_WIDTH, y: SC_HEIGHT });
+    const rightTop = scRowPoint(stitch, hook, { x: SC_V_HALF_WIDTH, y: SC_HEIGHT });
+    const crown = scRowPoint(stitch, hook, { y: SC_HEIGHT + 0.016, z: 0.012 });
+    const pullThrough = scRowPoint(stitch, hook, { y: SC_HEIGHT * 0.42, z: -0.018 });
+    const base = scRowPoint(stitch, hook, { y: SC_HEIGHT * 0.12, z: -0.03 });
 
     if (index === 0) {
       points.push(
-        new THREE.Vector3(position.x - 0.14, hook.y + SC_HEIGHT * 0.55, hook.z + 0.015),
+        scRowPoint(stitch, hook, { x: -0.16, y: SC_HEIGHT * 0.35, z: -0.01 }),
       );
     } else {
       const previous = rowStitches[index - 1]!;
-      const previousHook = hookPointForStitch(
-        stitchById.get(previous.attachToId ?? '')!,
-        'attach',
-      );
-      const previousTopY = previousHook.y + SC_HEIGHT;
-      points.push(
-        new THREE.Vector3(
-          (previous.position.x + position.x) / 2,
-          (previousTopY + topY) / 2 + 0.01,
-          (previousHook.z + hook.z) / 2 + SC_TOP_FORWARD + 0.01,
-        ),
-      );
+      const previousParent = stitchById.get(previous.attachToId ?? '')!;
+      const previousHook = hookPointForStitch(previousParent, 'attach');
+      points.push(scValleyBetween(previous, stitch, previousHook, hook));
     }
 
-    points.push(hook, through, leftTop, crown, rightTop);
+    points.push(hook, base, pullThrough, leftTop, crown, rightTop);
 
     if (index < rowStitches.length - 1) {
       const next = rowStitches[index + 1]!;
-      const nextParent = stitchById.get(next.attachToId ?? '');
-      const nextHook = nextParent ? hookPointForStitch(nextParent, 'attach') : hook;
-      const nextTopY = nextHook.y + SC_HEIGHT;
-      points.push(
-        new THREE.Vector3(
-          (position.x + next.position.x) / 2,
-          (topY + nextTopY) / 2 + 0.01,
-          (hook.z + nextHook.z) / 2 + SC_TOP_FORWARD + 0.01,
-        ),
-      );
+      const nextParent = stitchById.get(next.attachToId ?? '')!;
+      const nextHook = hookPointForStitch(nextParent, 'attach');
+      points.push(scValleyBetween(stitch, next, hook, nextHook));
     }
   }
 
@@ -206,11 +215,7 @@ function buildWorkingRowYarnPath(
   const lastParent = stitchById.get(last.attachToId ?? '');
   const lastHook = lastParent ? hookPointForStitch(lastParent, 'attach') : new THREE.Vector3();
   points.push(
-    new THREE.Vector3(
-      last.position.x + 0.14,
-      lastHook.y + SC_HEIGHT + 0.015,
-      lastHook.z + SC_TOP_FORWARD + 0.01,
-    ),
+    scRowPoint(last, lastHook, { x: 0.16, y: SC_HEIGHT * 0.35, z: -0.01 }),
   );
 
   return dedupePoints(points);
