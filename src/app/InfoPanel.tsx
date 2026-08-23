@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePatternStore } from '@store/patternStore';
 import {
+  getFoundationStatLabel,
   getNextStep,
+  getProgressLabel,
   getRowLabel,
   getRowProgress,
 } from './infoPanelState';
@@ -29,7 +31,13 @@ export function InfoPanel() {
     stitches,
     currentRow,
     foundationChainLength,
+    foundationType,
     currentRowStitchCount,
+    currentRowSlotsConsumed,
+    currentRowWidthTarget,
+    selectedStitchType,
+    yarnColor,
+    setYarnColor,
     instructions,
     lastError,
     clearError,
@@ -38,23 +46,37 @@ export function InfoPanel() {
       stitches: state.stitches,
       currentRow: state.currentRow,
       foundationChainLength: state.foundationChainLength,
+      foundationType: state.foundationType,
       currentRowStitchCount: state.currentRowStitchCount,
+      currentRowSlotsConsumed: state.currentRowSlotsConsumed,
+      currentRowWidthTarget: state.currentRowWidthTarget,
+      selectedStitchType: state.selectedStitchType,
+      yarnColor: state.yarnColor,
+      setYarnColor: state.setYarnColor,
       instructions: state.instructions,
       lastError: state.lastError,
       clearError: state.clearError,
     })),
   );
 
-  const rowLabel = getRowLabel(foundationChainLength, currentRow);
+  const rowLabel = getRowLabel(foundationChainLength, currentRow, foundationType);
+  const progressLabel = getProgressLabel(foundationType);
+  const foundationStatLabel = getFoundationStatLabel(foundationType);
   const rowProgress = getRowProgress(
     currentRow,
     foundationChainLength,
+    currentRowWidthTarget,
     currentRowStitchCount,
+    currentRowSlotsConsumed,
   );
   const nextStep = getNextStep(
     foundationChainLength,
     currentRow,
+    currentRowWidthTarget,
     currentRowStitchCount,
+    currentRowSlotsConsumed,
+    selectedStitchType,
+    foundationType,
   );
 
   return (
@@ -75,10 +97,6 @@ export function InfoPanel() {
         </button>
       </div>
 
-      <div className="visually-hidden" aria-live="polite" aria-atomic="true">
-        {rowLabel}. {stitches.length} stitches. Row progress {rowProgress}.
-      </div>
-
       <div id="info-panel-content" className="info-content" hidden={collapsed}>
         <div aria-live="polite" aria-atomic="true" className="info-live-region">
           <dl className="info-grid">
@@ -91,21 +109,33 @@ export function InfoPanel() {
               <dd>{stitches.length}</dd>
             </div>
             <div>
-              <dt>Foundation</dt>
+              <dt>{foundationStatLabel}</dt>
               <dd>{foundationChainLength || '—'}</dd>
             </div>
             <div>
-              <dt>Row progress</dt>
+              <dt>{progressLabel}</dt>
               <dd>{rowProgress}</dd>
             </div>
           </dl>
           <p className="next-step muted">{nextStep}</p>
         </div>
 
+        <div className="yarn-color-field">
+          <label htmlFor="yarn-color">Yarn color</label>
+          <input
+            id="yarn-color"
+            type="color"
+            value={yarnColor}
+            onChange={(event) => setYarnColor(event.target.value)}
+          />
+        </div>
+
         <h3>Instructions</h3>
         {instructions.length === 0 ? (
           <p className="muted">
-            Start with a foundation chain. Choose <strong>New Chain</strong> in the toolbar.
+            Start with a foundation chain or magic ring, or choose a{' '}
+            <strong>Template</strong> from the toolbar. Use <strong>New foundation</strong> to
+            begin from scratch.
           </p>
         ) : (
           <ol className="instructions">

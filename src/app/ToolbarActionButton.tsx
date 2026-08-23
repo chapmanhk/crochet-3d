@@ -5,6 +5,7 @@ interface ToolbarActionButtonProps {
   disabledReason: string | null;
   onClick: () => void;
   variant?: 'default' | 'subtle';
+  ariaLabel?: string;
 }
 
 export function ToolbarActionButton({
@@ -12,6 +13,7 @@ export function ToolbarActionButton({
   disabledReason,
   onClick,
   variant = 'default',
+  ariaLabel,
 }: ToolbarActionButtonProps) {
   const reasonId = useId();
   const isDisabled = Boolean(disabledReason);
@@ -21,6 +23,7 @@ export function ToolbarActionButton({
     <button
       type="button"
       className={className}
+      aria-label={ariaLabel}
       aria-disabled={isDisabled || undefined}
       aria-describedby={isDisabled ? reasonId : undefined}
       onClick={(event) => {

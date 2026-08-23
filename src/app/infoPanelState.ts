@@ -1,13 +1,61 @@
+import {
+  FoundationType,
+  getWorkingStitchName,
+  StitchType,
+  type WorkingStitchType,
+} from '@engine/index';
+
+function isMagicRing(foundationType: FoundationType): boolean {
+  return foundationType === FoundationType.MAGIC_RING;
+}
+
+export function getAdvanceActionLabel(
+  foundationType: FoundationType = FoundationType.CHAIN,
+): string {
+  return isMagicRing(foundationType) ? 'New Round' : 'New Row';
+}
+
+export function getProgressLabel(
+  foundationType: FoundationType = FoundationType.CHAIN,
+): string {
+  return isMagicRing(foundationType) ? 'Round progress' : 'Row progress';
+}
+
+export function getFoundationStatLabel(
+  foundationType: FoundationType = FoundationType.CHAIN,
+): string {
+  return isMagicRing(foundationType) ? 'Stitches in ring' : 'Chain length';
+}
+
+export function relabelForFoundationType(
+  message: string | null,
+  foundationType: FoundationType = FoundationType.CHAIN,
+): string | null {
+  if (!message || !isMagicRing(foundationType)) {
+    return message;
+  }
+
+  return message
+    .replace(/\bRow\b/g, 'Round')
+    .replace(/\brow\b/g, 'round')
+    .replace(/\bNew row\b/g, 'New Round');
+}
+
 export function getRowLabel(
   foundationChainLength: number,
   currentRow: number,
+  foundationType: FoundationType = FoundationType.CHAIN,
 ): string {
   if (foundationChainLength === 0) {
     return 'No pattern';
   }
 
   if (currentRow === 0) {
-    return 'Foundation';
+    return isMagicRing(foundationType) ? 'Magic ring' : 'Foundation';
+  }
+
+  if (isMagicRing(foundationType)) {
+    return `Round ${currentRow}`;
   }
 
   return `Row ${currentRow}`;
@@ -16,33 +64,58 @@ export function getRowLabel(
 export function getRowProgress(
   currentRow: number,
   foundationChainLength: number,
+  rowWidthTarget: number,
   currentRowStitchCount: number,
+  currentRowSlotsConsumed: number,
 ): string {
   if (currentRow <= 0 || foundationChainLength === 0) {
     return '—';
   }
 
-  return `${currentRowStitchCount}/${foundationChainLength}`;
+  if (currentRowSlotsConsumed !== currentRowStitchCount) {
+    const stitchWord = currentRowStitchCount === 1 ? 'stitch' : 'stitches';
+    return `${currentRowStitchCount} ${stitchWord} (uses ${currentRowSlotsConsumed} of ${rowWidthTarget} stitches)`;
+  }
+
+  return `${currentRowStitchCount}/${rowWidthTarget}`;
 }
 
 export function getNextStep(
   foundationChainLength: number,
   currentRow: number,
-  currentRowStitchCount: number,
+  rowWidthTarget: number,
+  _currentRowStitchCount: number,
+  currentRowSlotsConsumed: number,
+  selectedStitchType: WorkingStitchType = StitchType.SINGLE_CROCHET,
+  foundationType: FoundationType = FoundationType.CHAIN,
 ): string {
+  const advanceAction = getAdvanceActionLabel(foundationType);
+  const workUnit = isMagicRing(foundationType) ? 'round' : 'row';
+
   if (foundationChainLength === 0) {
-    return 'Choose New Chain to start your foundation.';
+    return 'Choose New foundation or Templates to start your pattern.';
   }
 
   if (currentRow === 0) {
-    return 'Choose New Row to begin the first working row.';
+    if (isMagicRing(foundationType)) {
+      return `Choose ${advanceAction} to work into the magic ring stitches.`;
+    }
+    return `Choose ${advanceAction} to begin the first working row.`;
   }
 
-  const remaining = foundationChainLength - currentRowStitchCount;
-  if (remaining > 0) {
-    const stitchWord = remaining === 1 ? 'stitch' : 'stitches';
-    return `Place ${remaining} more single crochet ${stitchWord} on row ${currentRow}.`;
+  const remainingSlots = rowWidthTarget - currentRowSlotsConsumed;
+  if (remainingSlots > 0) {
+    const stitchName = getWorkingStitchName(selectedStitchType);
+    const stitchWord = remainingSlots === 1 ? 'stitch' : 'stitches';
+    return `Place ${remainingSlots} more ${stitchName} ${stitchWord} in ${workUnit} ${currentRow}.`;
   }
 
-  return `Row ${currentRow} is complete. Choose New Row to continue.`;
+  const completeLabel = isMagicRing(foundationType)
+    ? `Round ${currentRow}`
+    : `Row ${currentRow}`;
+  return `${completeLabel} is complete. Choose ${advanceAction} to continue.`;
+}
+
+export function getAddStitchButtonLabel(selectedStitchType: WorkingStitchType): string {
+  return `Add ${getWorkingStitchName(selectedStitchType)}`;
 }

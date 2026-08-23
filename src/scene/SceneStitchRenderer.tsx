@@ -5,6 +5,8 @@ import { StitchRenderer } from './StitchRenderer';
 
 export function SceneStitchRenderer() {
   const stitches = usePatternStore((state) => state.stitches);
+  const foundationType = usePatternStore((state) => state.foundationType);
+  const yarnColor = usePatternStore((state) => state.yarnColor);
   const scene = useThree((state) => state.scene);
   const renderer = useMemo(() => new StitchRenderer(), []);
 
@@ -17,8 +19,12 @@ export function SceneStitchRenderer() {
   }, [renderer, scene]);
 
   useEffect(() => {
-    renderer.sync(stitches);
-  }, [renderer, stitches]);
+    renderer.sync(stitches, foundationType);
+  }, [renderer, stitches, foundationType]);
+
+  useEffect(() => {
+    renderer.setYarnColor(yarnColor);
+  }, [renderer, yarnColor]);
 
   useEffect(() => {
     const handleResize = () => {

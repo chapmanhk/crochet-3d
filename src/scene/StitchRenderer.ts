@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { StitchNode } from '@engine/index';
+import type { FoundationType, StitchNode } from '@engine/index';
 import {
   buildYarnSegmentGeometry,
   getYarnSegmentManifests,
@@ -9,6 +9,9 @@ import {
   createStitchFillMaterial,
   createStitchOutlineMaterial,
   disposeOutlinedStitch,
+  STITCH_YARN_COLOR,
+  updateFillMaterialColor,
+  updateOutlineMaterialColor,
   updateOutlineMaterialSize,
 } from './stitchMaterials';
 
@@ -19,8 +22,8 @@ export class StitchRenderer {
   private readonly fillMaterial = createStitchFillMaterial();
   private readonly outlineMaterial = createStitchOutlineMaterial();
 
-  sync(stitches: StitchNode[]): void {
-    const manifests = getYarnSegmentManifests(stitches);
+  sync(stitches: StitchNode[], foundationType: FoundationType): void {
+    const manifests = getYarnSegmentManifests(stitches, foundationType);
     const incomingKeys = new Set(manifests.map((manifest) => manifest.key));
 
     for (const key of this.segments.keys()) {
@@ -34,7 +37,7 @@ export class StitchRenderer {
         continue;
       }
 
-      const geometry = buildYarnSegmentGeometry(manifest.key, stitches);
+      const geometry = buildYarnSegmentGeometry(manifest.key, stitches, foundationType);
       if (!geometry) {
         this.removeSegment(manifest.key);
         continue;
@@ -55,6 +58,13 @@ export class StitchRenderer {
 
   updateOutlineSize(): void {
     updateOutlineMaterialSize(this.outlineMaterial);
+  }
+
+  setYarnColor(hexColor: string): void {
+    const parsed = Number.parseInt(hexColor.replace('#', ''), 16);
+    const color = Number.isNaN(parsed) ? STITCH_YARN_COLOR : parsed;
+    updateFillMaterialColor(this.fillMaterial, color);
+    updateOutlineMaterialColor(this.outlineMaterial, color);
   }
 
   private upsertSegment(key: string, geometry: THREE.BufferGeometry): void {

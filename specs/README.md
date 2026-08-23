@@ -38,6 +38,8 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | `reset-pattern.feature` | Clearing the pattern |
 | `click-to-place.feature` | Click attachment points in 3D canvas to place SC |
 | `pattern-editing.feature` | Undo and redo stitch placements |
+| `stitch-types.feature` | HDC/DC, increase/decrease |
+| `templates.feature` | Coaster and swatch templates |
 | `deferred.feature` | Roadmap items tagged `@deferred` (not yet implemented) |
 
 ## Scenario index

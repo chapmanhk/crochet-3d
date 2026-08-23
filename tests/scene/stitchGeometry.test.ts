@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { Pattern, resetIdCounter, StitchType } from '@engine/index';
+import { Pattern, FoundationType, resetIdCounter, StitchType } from '@engine/index';
 import { buildYarnSegments, getYarnSegmentManifests, measureSegmentsHeight, VISUAL_ROW_HEIGHT } from '../../src/scene/stitchGeometry';
 import { ROW_HEIGHT } from '@engine/index';
 
@@ -194,5 +194,46 @@ describe('stitchGeometry', () => {
   it('uses scene VISUAL_ROW_HEIGHT instead of engine ROW_HEIGHT for stacking', () => {
     expect(VISUAL_ROW_HEIGHT).toBeLessThan(ROW_HEIGHT * 0.25);
     expect(VISUAL_ROW_HEIGHT).toBe(0.22);
+  });
+
+  it('emits row and join segments for a magic ring working row', () => {
+    const stitches = stitchesFromPattern((pattern) => {
+      pattern.addMagicRing(4);
+      pattern.startNewRow();
+      pattern.addSingleCrochet();
+      pattern.addSingleCrochet();
+    });
+
+    expect(getYarnSegmentManifests(stitches, FoundationType.MAGIC_RING).map((manifest) => manifest.key)).toEqual([
+      'row-0',
+      'row-1',
+      'join-1',
+    ]);
+
+    const segments = buildYarnSegments(stitches, FoundationType.MAGIC_RING);
+    expect(segments).toHaveLength(3);
+    disposeSegments(segments);
+  });
+
+  it('renders multi-row magic ring patterns with expanding rounds', () => {
+    const stitches = stitchesFromPattern((pattern) => {
+      pattern.addMagicRing(4);
+      pattern.startNewRow();
+      for (let index = 0; index < 4; index += 1) {
+        pattern.addSingleCrochet();
+      }
+      pattern.startNewRow();
+      for (let index = 0; index < 4; index += 1) {
+        pattern.addSingleCrochet();
+      }
+    });
+
+    const keys = getYarnSegmentManifests(stitches, FoundationType.MAGIC_RING).map((manifest) => manifest.key);
+    expect(keys).toEqual(['row-0', 'row-1', 'row-2', 'join-1', 'join-2']);
+
+    const segments = buildYarnSegments(stitches, FoundationType.MAGIC_RING);
+    expect(segments).toHaveLength(5);
+    expect(measureSegmentsHeight(segments)).toBeGreaterThan(VISUAL_ROW_HEIGHT * 1.5);
+    disposeSegments(segments);
   });
 });

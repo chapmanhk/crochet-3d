@@ -1,19 +1,26 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import {
   formatChainLengthError,
+  formatMagicRingCountError,
   MAX_CHAIN_LENGTH,
+  MAX_MAGIC_RING_STITCHES,
   MIN_CHAIN_LENGTH,
+  MIN_MAGIC_RING_STITCHES,
 } from '@engine/index';
 import { DialogShell } from './DialogShell';
 import { useDialogFocusTrap } from './dialogUtils';
 
 const DEFAULT_CHAIN_LENGTH = 10;
+const DEFAULT_MAGIC_RING_STITCHES = 6;
 
-interface ChainLengthDialogProps {
+type FoundationMode = 'chain' | 'magic_ring';
+
+interface FoundationStartDialogProps {
   open: boolean;
   serverError?: string | null;
   onClose: () => void;
-  onSubmit: (length: number) => boolean;
+  onSubmitChain: (length: number) => boolean;
+  onSubmitMagicRing: (stitchCount: number) => boolean;
 }
 
 function parseLength(value: string): number | null {
@@ -25,16 +32,17 @@ function parseLength(value: string): number | null {
   return Number.isInteger(length) ? length : null;
 }
 
-function clampLength(length: number): number {
-  return Math.min(MAX_CHAIN_LENGTH, Math.max(MIN_CHAIN_LENGTH, length));
+function clampLength(length: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, length));
 }
 
-export function ChainLengthDialog({
+export function FoundationStartDialog({
   open,
   serverError = null,
   onClose,
-  onSubmit,
-}: ChainLengthDialogProps) {
+  onSubmitChain,
+  onSubmitMagicRing,
+}: FoundationStartDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
   const labelId = useId();
@@ -42,13 +50,16 @@ export function ChainLengthDialog({
   const errorId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<FoundationMode>('chain');
   const [value, setValue] = useState(String(DEFAULT_CHAIN_LENGTH));
   const [localError, setLocalError] = useState<string | null>(null);
 
+  const min = mode === 'chain' ? MIN_CHAIN_LENGTH : MIN_MAGIC_RING_STITCHES;
+  const max = mode === 'chain' ? MAX_CHAIN_LENGTH : MAX_MAGIC_RING_STITCHES;
   const numericValue = parseLength(value);
-  const stepBase = numericValue ?? DEFAULT_CHAIN_LENGTH;
-  const canDecrease = stepBase > MIN_CHAIN_LENGTH;
-  const canIncrease = stepBase < MAX_CHAIN_LENGTH;
+  const stepBase = numericValue ?? (mode === 'chain' ? DEFAULT_CHAIN_LENGTH : DEFAULT_MAGIC_RING_STITCHES);
+  const canDecrease = stepBase > min;
+  const canIncrease = stepBase < max;
   const displayError = localError ?? serverError;
 
   useDialogFocusTrap(open, dialogRef, onClose);
@@ -58,15 +69,26 @@ export function ChainLengthDialog({
       return;
     }
 
-    setValue(String(DEFAULT_CHAIN_LENGTH));
+    setValue(
+      String(mode === 'chain' ? DEFAULT_CHAIN_LENGTH : DEFAULT_MAGIC_RING_STITCHES),
+    );
     setLocalError(null);
     inputRef.current?.focus();
     inputRef.current?.select();
-  }, [open]);
+  }, [open, mode]);
 
   if (!open) {
     return null;
   }
+
+  const handleModeChange = (nextMode: FoundationMode) => {
+    setMode(nextMode);
+    setValue(
+      String(nextMode === 'chain' ? DEFAULT_CHAIN_LENGTH : DEFAULT_MAGIC_RING_STITCHES),
+    );
+    setLocalError(null);
+    inputRef.current?.focus();
+  };
 
   const handleChange = (raw: string) => {
     setValue(raw.replace(/\D/g, ''));
@@ -74,7 +96,7 @@ export function ChainLengthDialog({
   };
 
   const adjustLength = (delta: number) => {
-    const next = clampLength(stepBase + delta);
+    const next = clampLength(stepBase + delta, min, max);
     setValue(String(next));
     setLocalError(null);
   };
@@ -82,22 +104,28 @@ export function ChainLengthDialog({
   const handleSubmit = () => {
     const length = parseLength(value);
     if (length === null) {
-      setLocalError('Enter a chain length.');
+      setLocalError(mode === 'chain' ? 'Enter a chain length.' : 'Enter a stitch count.');
       return;
     }
 
-    if (length < MIN_CHAIN_LENGTH || length > MAX_CHAIN_LENGTH) {
-      setLocalError(formatChainLengthError());
+    if (length < min || length > max) {
+      setLocalError(
+        mode === 'chain' ? formatChainLengthError() : formatMagicRingCountError(),
+      );
       return;
     }
 
-    const success = onSubmit(length);
+    const success =
+      mode === 'chain' ? onSubmitChain(length) : onSubmitMagicRing(length);
     if (!success) {
       setLocalError(null);
     }
   };
 
   const describedBy = displayError ? `${descriptionId} ${errorId}` : descriptionId;
+  const fieldLabel = mode === 'chain' ? 'Chain length' : 'Stitches in ring';
+  const submitLabel =
+    mode === 'chain' ? 'Create foundation chain' : 'Create magic ring';
 
   return (
     <DialogShell
@@ -107,20 +135,41 @@ export function ChainLengthDialog({
       descriptionId={descriptionId}
       onBackdropClick={onClose}
     >
-      <h2 id={titleId}>Foundation chain</h2>
-      <p id={descriptionId} className="muted">
-        How many chains should the foundation row have?
+      <h2 id={titleId}>Start foundation</h2>
+      <p id={descriptionId} className="muted" aria-live="polite">
+        {mode === 'chain'
+          ? 'How many chains should the foundation row have?'
+          : 'How many single crochet stitches should the magic ring start with? Magic ring foundations always use single crochet; choose other stitch types after the first round.'}
       </p>
+
+      <div className="foundation-mode-toggle" role="group" aria-label="Foundation type">
+        <button
+          type="button"
+          aria-pressed={mode === 'chain'}
+          className={`btn${mode === 'chain' ? ' primary' : ''}`}
+          onClick={() => handleModeChange('chain')}
+        >
+          Chain
+        </button>
+        <button
+          type="button"
+          aria-pressed={mode === 'magic_ring'}
+          className={`btn${mode === 'magic_ring' ? ' primary' : ''}`}
+          onClick={() => handleModeChange('magic_ring')}
+        >
+          Magic ring
+        </button>
+      </div>
 
       <div className="dialog-field">
         <label id={labelId} htmlFor={inputId}>
-          Chain length
+          {fieldLabel}
         </label>
         <div className="chain-stepper" role="group" aria-labelledby={labelId}>
           <button
             type="button"
             className="btn stepper-btn"
-            aria-label="Decrease chain length"
+            aria-label={`Decrease ${fieldLabel.toLowerCase()}`}
             disabled={!canDecrease}
             onClick={() => adjustLength(-1)}
           >
@@ -135,10 +184,9 @@ export function ChainLengthDialog({
             pattern="[0-9]*"
             autoComplete="off"
             role="spinbutton"
-            aria-valuemin={MIN_CHAIN_LENGTH}
-            aria-valuemax={MAX_CHAIN_LENGTH}
+            aria-valuemin={min}
+            aria-valuemax={max}
             aria-valuenow={numericValue ?? undefined}
-            aria-label="Chain length"
             aria-invalid={displayError ? true : undefined}
             aria-describedby={describedBy}
             value={value}
@@ -165,7 +213,7 @@ export function ChainLengthDialog({
           <button
             type="button"
             className="btn stepper-btn"
-            aria-label="Increase chain length"
+            aria-label={`Increase ${fieldLabel.toLowerCase()}`}
             disabled={!canIncrease}
             onClick={() => adjustLength(1)}
           >
@@ -175,7 +223,7 @@ export function ChainLengthDialog({
       </div>
 
       <p className="dialog-hint muted">
-        Between {MIN_CHAIN_LENGTH} and {MAX_CHAIN_LENGTH} chains.
+        Between {min} and {max} {mode === 'chain' ? 'chains' : 'stitches'}.
       </p>
 
       {displayError ? (
@@ -189,7 +237,7 @@ export function ChainLengthDialog({
           Cancel
         </button>
         <button type="button" className="btn primary" onClick={handleSubmit}>
-          Create foundation chain
+          {submitLabel}
         </button>
       </div>
     </DialogShell>

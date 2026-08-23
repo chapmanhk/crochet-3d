@@ -1,21 +1,38 @@
 import { create } from 'zustand';
 import {
+  createTemplateSnapshot,
+  FoundationType,
   generateInstructions,
   Pattern,
   PlacementError,
+  StitchType,
   type PatternSnapshot,
   type StitchNode,
+  type TemplateId,
+  type WorkingStitchType,
 } from '@engine/index';
+import { DEFAULT_YARN_COLOR_HEX } from '../shared/yarnColor';
 
 interface PatternState {
   stitches: StitchNode[];
   currentRow: number;
   foundationChainLength: number;
+  foundationType: FoundationType;
   currentRowStitchCount: number;
+  currentRowSlotsConsumed: number;
+  currentRowWidthTarget: number;
   rowDirections: Record<number, import('@engine/index').WorkingDirectionType>;
+  selectedStitchType: WorkingStitchType;
+  yarnColor: string;
   instructions: string[];
+  canAddStitch: boolean;
+  canAddIncrease: boolean;
+  canAddDecrease: boolean;
   canAddSingleCrochet: boolean;
   canStartNewRow: boolean;
+  addStitchDisabledReason: string | null;
+  addIncreaseDisabledReason: string | null;
+  addDecreaseDisabledReason: string | null;
   addScDisabledReason: string | null;
   newRowDisabledReason: string | null;
   nextAttachmentTargetId: string | null;
@@ -25,14 +42,25 @@ interface PatternState {
   redoDisabledReason: string | null;
   lastError: string | null;
   addFoundationChain: (length: number) => boolean;
+  addMagicRing: (stitchCount: number) => boolean;
+  addWorkingStitch: () => boolean;
   addSingleCrochet: () => boolean;
+  addWorkingStitchAt: (attachToId: string) => boolean;
   addSingleCrochetAt: (attachToId: string) => boolean;
+  addIncrease: () => boolean;
+  addDecrease: () => boolean;
+  setSelectedStitchType: (type: WorkingStitchType) => void;
+  setYarnColor: (color: string) => void;
+  loadTemplate: (templateId: TemplateId) => boolean;
+  loadSnapshot: (snapshot: PatternSnapshot) => void;
   startNewRow: () => boolean;
   undo: () => boolean;
   redo: () => boolean;
   resetPattern: () => void;
   clearError: () => void;
 }
+
+const DEFAULT_YARN_COLOR = DEFAULT_YARN_COLOR_HEX;
 
 const pattern = new Pattern();
 let historyPast: PatternSnapshot[] = [];
@@ -46,20 +74,30 @@ function cloneSnapshot(snapshot: PatternSnapshot): PatternSnapshot {
     })),
     currentRow: snapshot.currentRow,
     foundationChainLength: snapshot.foundationChainLength,
+    foundationType: snapshot.foundationType ?? FoundationType.CHAIN,
     rowDirections: { ...snapshot.rowDirections },
   };
 }
 
-function syncState(): Pick<
+function syncState(selectedStitchType: WorkingStitchType): Pick<
   PatternState,
   | 'stitches'
   | 'currentRow'
   | 'foundationChainLength'
+  | 'foundationType'
   | 'currentRowStitchCount'
+  | 'currentRowSlotsConsumed'
+  | 'currentRowWidthTarget'
   | 'rowDirections'
   | 'instructions'
+  | 'canAddStitch'
+  | 'canAddIncrease'
+  | 'canAddDecrease'
   | 'canAddSingleCrochet'
   | 'canStartNewRow'
+  | 'addStitchDisabledReason'
+  | 'addIncreaseDisabledReason'
+  | 'addDecreaseDisabledReason'
   | 'addScDisabledReason'
   | 'newRowDisabledReason'
   | 'nextAttachmentTargetId'
@@ -69,17 +107,26 @@ function syncState(): Pick<
   | 'redoDisabledReason'
 > {
   const snapshot = pattern.getSnapshot();
-  const nextTarget = pattern.getNextAttachmentTarget();
+  const nextTarget = pattern.getNextAttachmentTarget(selectedStitchType);
 
   return {
     stitches: snapshot.stitches,
     currentRow: snapshot.currentRow,
     foundationChainLength: snapshot.foundationChainLength,
+    foundationType: snapshot.foundationType,
     currentRowStitchCount: pattern.getRowStitchCount(snapshot.currentRow),
+    currentRowSlotsConsumed: pattern.getParentSlotsConsumed(snapshot.currentRow),
+    currentRowWidthTarget: pattern.getRowWidthTarget(snapshot.currentRow),
     rowDirections: snapshot.rowDirections,
-    instructions: generateInstructions(snapshot.stitches),
+    instructions: generateInstructions(snapshot.stitches, snapshot.foundationType),
+    canAddStitch: pattern.canAddWorkingStitch(selectedStitchType),
+    canAddIncrease: pattern.canAddIncrease(selectedStitchType),
+    canAddDecrease: pattern.canAddDecrease(selectedStitchType),
     canAddSingleCrochet: pattern.canAddSingleCrochet(),
     canStartNewRow: pattern.canStartNewRow(),
+    addStitchDisabledReason: pattern.getAddWorkingStitchError(selectedStitchType),
+    addIncreaseDisabledReason: pattern.getAddIncreaseError(selectedStitchType),
+    addDecreaseDisabledReason: pattern.getAddDecreaseError(selectedStitchType),
     addScDisabledReason: pattern.getAddSingleCrochetError(),
     newRowDisabledReason: pattern.getStartNewRowError(),
     nextAttachmentTargetId: nextTarget?.id ?? null,
@@ -108,6 +155,7 @@ function pushHistory(): void {
 
 function runPatternAction(
   set: (partial: Partial<PatternState>) => void,
+  get: () => PatternState,
   action: () => void,
   fallback: string,
   options: { recordHistory?: boolean } = {},
@@ -119,7 +167,8 @@ function runPatternAction(
       pushHistory();
     }
     action();
-    set({ ...syncState(), lastError: null });
+    const { selectedStitchType } = get();
+    set({ ...syncState(selectedStitchType), lastError: null });
     return true;
   } catch (error) {
     if (recordHistory) {
@@ -130,40 +179,122 @@ function runPatternAction(
   }
 }
 
-export const usePatternStore = create<PatternState>((set) => ({
-  ...syncState(),
+export const usePatternStore = create<PatternState>((set, get) => ({
+  ...syncState(StitchType.SINGLE_CROCHET),
+  selectedStitchType: StitchType.SINGLE_CROCHET,
+  yarnColor: DEFAULT_YARN_COLOR,
   lastError: null,
 
   addFoundationChain: (length: number) =>
     runPatternAction(
       set,
+      get,
       () => {
         pattern.addFoundationChain(length);
       },
       'Failed to add foundation chain.',
     ),
 
+  addMagicRing: (stitchCount: number) =>
+    runPatternAction(
+      set,
+      get,
+      () => {
+        pattern.addMagicRing(stitchCount);
+      },
+      'Failed to create magic ring.',
+    ),
+
+  addWorkingStitch: () =>
+    runPatternAction(
+      set,
+      get,
+      () => {
+        pattern.addWorkingStitch(get().selectedStitchType);
+      },
+      'Failed to add stitch.',
+    ),
+
   addSingleCrochet: () =>
     runPatternAction(
       set,
+      get,
       () => {
         pattern.addSingleCrochet();
       },
       'Failed to add single crochet.',
     ),
 
+  addWorkingStitchAt: (attachToId: string) =>
+    runPatternAction(
+      set,
+      get,
+      () => {
+        pattern.addWorkingStitchAt(get().selectedStitchType, attachToId);
+      },
+      'Failed to place stitch.',
+    ),
+
   addSingleCrochetAt: (attachToId: string) =>
     runPatternAction(
       set,
+      get,
       () => {
         pattern.addSingleCrochetAt(attachToId);
       },
       'Failed to place single crochet.',
     ),
 
+  addIncrease: () =>
+    runPatternAction(
+      set,
+      get,
+      () => {
+        pattern.addIncrease(get().selectedStitchType);
+      },
+      'Failed to add increase.',
+    ),
+
+  addDecrease: () =>
+    runPatternAction(
+      set,
+      get,
+      () => {
+        pattern.addDecrease(get().selectedStitchType);
+      },
+      'Failed to add decrease.',
+    ),
+
+  setSelectedStitchType: (type: WorkingStitchType) => {
+    set({
+      selectedStitchType: type,
+      ...syncState(type),
+    });
+  },
+
+  setYarnColor: (color: string) => {
+    set({ yarnColor: color });
+  },
+
+  loadTemplate: (templateId: TemplateId) =>
+    runPatternAction(
+      set,
+      get,
+      () => {
+        pattern.loadSnapshot(createTemplateSnapshot(templateId));
+      },
+      'Failed to load template.',
+    ),
+
+  loadSnapshot: (snapshot: PatternSnapshot) => {
+    pattern.loadSnapshot(snapshot);
+    set({ ...syncState(get().selectedStitchType), lastError: null });
+  },
+
   startNewRow: () =>
     runPatternAction(
       set,
+      get,
       () => {
         pattern.startNewRow();
       },
@@ -180,7 +311,7 @@ export const usePatternStore = create<PatternState>((set) => ({
     const previous = historyPast.pop()!;
     historyFuture.push(current);
     pattern.loadSnapshot(previous);
-    set({ ...syncState(), lastError: null });
+    set({ ...syncState(get().selectedStitchType), lastError: null });
     return true;
   },
 
@@ -194,14 +325,14 @@ export const usePatternStore = create<PatternState>((set) => ({
     const next = historyFuture.pop()!;
     historyPast.push(current);
     pattern.loadSnapshot(next);
-    set({ ...syncState(), lastError: null });
+    set({ ...syncState(get().selectedStitchType), lastError: null });
     return true;
   },
 
   resetPattern: () => {
     pattern.reset();
     clearHistory();
-    set({ ...syncState(), lastError: null });
+    set({ ...syncState(get().selectedStitchType), lastError: null });
   },
 
   clearError: () => {
@@ -209,9 +340,13 @@ export const usePatternStore = create<PatternState>((set) => ({
   },
 }));
 
-/** Test helper to reset the module-scoped pattern between store tests. */
 export function __resetPatternStoreForTests(): void {
   pattern.reset();
   clearHistory();
-  usePatternStore.setState({ ...syncState(), lastError: null });
+  usePatternStore.setState({
+    ...syncState(StitchType.SINGLE_CROCHET),
+    selectedStitchType: StitchType.SINGLE_CROCHET,
+    yarnColor: DEFAULT_YARN_COLOR,
+    lastError: null,
+  });
 }

@@ -1,8 +1,24 @@
-import type { PatternSnapshot, StitchNode } from './types';
-import { PlacementError, StitchType, WorkingDirection } from './types';
+import type { PatternSnapshot, StitchNode, WorkingStitchType } from './types';
+import {
+  FoundationType,
+  PlacementError,
+  PlacementKind,
+  StitchType,
+  WorkingDirection,
+  isWorkingStitchType,
+} from './types';
 import { StitchGraph } from './StitchGraph';
 import { createStitchNode, resetIdCounter, restoreIdCounter } from './StitchNode';
-import { layoutPosition } from './layout';
+import {
+  layoutMagicRingPosition,
+  layoutMagicRingWorkingPosition,
+  layoutPosition,
+} from './layout';
+import {
+  canPlaceDecrease,
+  countParentSlotsConsumed,
+  isRowComplete,
+} from './placement';
 import {
   defaultDirectionForRow,
   resolveAttachColumn,
@@ -10,11 +26,22 @@ import {
 
 const MIN_CHAIN_LENGTH = 1;
 const MAX_CHAIN_LENGTH = 500;
+const MIN_MAGIC_RING_STITCHES = 2;
+const MAX_MAGIC_RING_STITCHES = 50;
 
-export { MIN_CHAIN_LENGTH, MAX_CHAIN_LENGTH };
+export {
+  MIN_CHAIN_LENGTH,
+  MAX_CHAIN_LENGTH,
+  MIN_MAGIC_RING_STITCHES,
+  MAX_MAGIC_RING_STITCHES,
+};
 
 export function formatChainLengthError(): string {
   return `Chain length must be between ${MIN_CHAIN_LENGTH} and ${MAX_CHAIN_LENGTH}.`;
+}
+
+export function formatMagicRingCountError(): string {
+  return `Magic ring stitch count must be between ${MIN_MAGIC_RING_STITCHES} and ${MAX_MAGIC_RING_STITCHES}.`;
 }
 
 function cloneSnapshot(snapshot: PatternSnapshot): PatternSnapshot {
@@ -25,7 +52,20 @@ function cloneSnapshot(snapshot: PatternSnapshot): PatternSnapshot {
     })),
     currentRow: snapshot.currentRow,
     foundationChainLength: snapshot.foundationChainLength,
+    foundationType: snapshot.foundationType,
     rowDirections: { ...snapshot.rowDirections },
+  };
+}
+
+function normalizeSnapshot(snapshot: PatternSnapshot): PatternSnapshot {
+  return {
+    ...snapshot,
+    foundationType: snapshot.foundationType ?? FoundationType.CHAIN,
+    rowDirections: snapshot.rowDirections ?? {},
+    stitches: snapshot.stitches.map((stitch) => ({
+      ...stitch,
+      placementKind: stitch.placementKind ?? PlacementKind.NORMAL,
+    })),
   };
 }
 
@@ -33,6 +73,7 @@ export class Pattern {
   private readonly graph = new StitchGraph();
   private currentRow = 0;
   private foundationChainLength = 0;
+  private foundationType: FoundationType = FoundationType.CHAIN;
   private rowDirections: Record<number, WorkingDirection> = {};
 
   addFoundationChain(length: number): StitchNode[] {
@@ -44,85 +85,142 @@ export class Pattern {
     const stitches: StitchNode[] = [];
     for (let column = 0; column < length; column++) {
       const stitch = createStitchNode(StitchType.CHAIN, 0, column);
+      stitch.position = layoutPosition(StitchType.CHAIN, 0, column);
       this.graph.add(stitch);
       stitches.push(stitch);
     }
 
     this.foundationChainLength = length;
+    this.foundationType = FoundationType.CHAIN;
+    this.currentRow = 0;
+    this.rowDirections = {};
+    return stitches;
+  }
+
+  addMagicRing(stitchCount: number): StitchNode[] {
+    const error = this.validateMagicRing(stitchCount);
+    if (error) {
+      throw error;
+    }
+
+    const stitches: StitchNode[] = [];
+    for (let column = 0; column < stitchCount; column++) {
+      const stitch = createStitchNode(
+        StitchType.SINGLE_CROCHET,
+        0,
+        column,
+        null,
+        PlacementKind.NORMAL,
+      );
+      stitch.position = layoutMagicRingPosition(column, stitchCount);
+      this.graph.add(stitch);
+      stitches.push(stitch);
+    }
+
+    this.foundationChainLength = stitchCount;
+    this.foundationType = FoundationType.MAGIC_RING;
     this.currentRow = 0;
     this.rowDirections = {};
     return stitches;
   }
 
   addSingleCrochet(): StitchNode {
-    const attachTarget = this.getNextAttachmentTarget();
+    return this.addWorkingStitch(StitchType.SINGLE_CROCHET);
+  }
+
+  addSingleCrochetAt(attachToId: string): StitchNode {
+    return this.addWorkingStitchAt(StitchType.SINGLE_CROCHET, attachToId);
+  }
+
+  addWorkingStitch(type: WorkingStitchType): StitchNode {
+    const attachTarget = this.getNextAttachmentTarget(type);
     if (!attachTarget) {
-      const error = this.validateAddSingleCrochet();
+      const error = this.validateAddWorkingStitch(type);
       if (error) {
         throw error;
       }
       throw new PlacementError(
         'NO_TARGET_STITCH',
-        'No stitch available to attach the next single crochet.',
+        'No stitch available to attach the next stitch.',
       );
     }
 
-    return this.addSingleCrochetAt(attachTarget.id);
+    return this.addWorkingStitchAt(type, attachTarget.id);
   }
 
-  addSingleCrochetAt(attachToId: string): StitchNode {
-    const error = this.validateAddSingleCrochet();
+  addWorkingStitchAt(
+    type: WorkingStitchType,
+    attachToId: string,
+    options: { placementKind?: PlacementKind; secondaryAttachToId?: string } = {},
+  ): StitchNode {
+    const error = this.validateAddWorkingStitch(type, options);
     if (error) {
       throw error;
     }
 
-    const expectedTarget = this.getNextAttachmentTarget();
-    if (!expectedTarget || expectedTarget.id !== attachToId) {
+    const expectedTarget = this.getNextAttachmentTarget(type);
+    const placementKind = options.placementKind ?? PlacementKind.NORMAL;
+
+    if (placementKind === PlacementKind.DECREASE) {
+      const secondaryId = options.secondaryAttachToId;
+      const decreaseTargets = this.getDecreaseTargets();
+      if (
+        !decreaseTargets ||
+        !expectedTarget ||
+        !secondaryId ||
+        decreaseTargets.primary.id !== attachToId ||
+        decreaseTargets.secondary.id !== secondaryId
+      ) {
+        throw new PlacementError(
+          'INVALID_ATTACHMENT_TARGET',
+          'That attachment point is not valid for the next decrease.',
+        );
+      }
+    } else if (!expectedTarget || expectedTarget.id !== attachToId) {
       throw new PlacementError(
         'INVALID_ATTACHMENT_TARGET',
         'That attachment point is not the next stitch for the current row.',
       );
     }
 
-    const rowStitches = this.graph.getByRow(this.currentRow);
-    const stitchIndex = rowStitches.length;
-    const direction = this.getRowDirection(this.currentRow);
-    const visualColumn = resolveAttachColumn(
-      stitchIndex,
-      this.foundationChainLength,
-      direction,
-    );
-
-    const stitch = createStitchNode(
-      StitchType.SINGLE_CROCHET,
-      this.currentRow,
-      stitchIndex,
-      attachToId,
-    );
-    stitch.position = layoutPosition(
-      StitchType.SINGLE_CROCHET,
-      this.currentRow,
-      visualColumn,
-    );
-
-    this.graph.add(stitch);
-    return stitch;
+    return this.createAndAddWorkingStitch(type, attachToId, options);
   }
 
-  getNextAttachmentTarget(): StitchNode | null {
-    if (this.validateAddSingleCrochet() !== null) {
+  addIncrease(type: WorkingStitchType): StitchNode[] {
+    const first = this.addWorkingStitch(type);
+    const second = this.createAndAddWorkingStitch(
+      type,
+      first.attachToId!,
+      { placementKind: PlacementKind.INCREASE_SECOND },
+    );
+    return [first, second];
+  }
+
+  addDecrease(type: WorkingStitchType): StitchNode {
+    const decreaseTargets = this.getDecreaseTargets();
+    if (!decreaseTargets) {
+      throw new PlacementError(
+        'CANNOT_DECREASE',
+        'Not enough stitches remain in the row below for a decrease.',
+      );
+    }
+
+    return this.addWorkingStitchAt(type, decreaseTargets.primary.id, {
+      placementKind: PlacementKind.DECREASE,
+      secondaryAttachToId: decreaseTargets.secondary.id,
+    });
+  }
+
+  getNextAttachmentTarget(type: WorkingStitchType = StitchType.SINGLE_CROCHET): StitchNode | null {
+    if (this.validateAddWorkingStitch(type) !== null) {
       return null;
     }
 
-    const rowStitches = this.graph.getByRow(this.currentRow);
-    const stitchIndex = rowStitches.length;
-    const attachColumn = resolveAttachColumn(
-      stitchIndex,
-      this.foundationChainLength,
+    const slotIndex = countParentSlotsConsumed(this.graph.getByRow(this.currentRow));
+    return this.resolveParentAttachTarget(
+      slotIndex,
       this.getRowDirection(this.currentRow),
     );
-
-    return this.graph.getByRow(this.currentRow - 1)[attachColumn] ?? null;
   }
 
   startNewRow(): number {
@@ -150,8 +248,24 @@ export class Pattern {
     return this.foundationChainLength;
   }
 
+  getFoundationType(): FoundationType {
+    return this.foundationType;
+  }
+
   getRowDirection(row: number): WorkingDirection {
     return this.rowDirections[row] ?? defaultDirectionForRow(row);
+  }
+
+  getParentSlotsConsumed(row: number): number {
+    return countParentSlotsConsumed(this.graph.getByRow(row));
+  }
+
+  getRowWidthTarget(row: number): number {
+    if (row <= 1) {
+      return this.foundationChainLength;
+    }
+
+    return this.getRowStitchCount(row - 1);
   }
 
   getStitches(): StitchNode[] {
@@ -162,16 +276,44 @@ export class Pattern {
     return this.graph.getByRow(row).length;
   }
 
+  canAddWorkingStitch(type: WorkingStitchType): boolean {
+    return this.validateAddWorkingStitch(type) === null;
+  }
+
   canAddSingleCrochet(): boolean {
-    return this.validateAddSingleCrochet() === null;
+    return this.canAddWorkingStitch(StitchType.SINGLE_CROCHET);
+  }
+
+  canAddIncrease(type: WorkingStitchType): boolean {
+    return this.validateAddWorkingStitch(type) === null;
+  }
+
+  canAddDecrease(type: WorkingStitchType): boolean {
+    return this.validateAddWorkingStitch(type, {
+      placementKind: PlacementKind.DECREASE,
+    }) === null;
   }
 
   canStartNewRow(): boolean {
     return this.validateStartNewRow() === null;
   }
 
+  getAddWorkingStitchError(type: WorkingStitchType): string | null {
+    return this.validateAddWorkingStitch(type)?.message ?? null;
+  }
+
   getAddSingleCrochetError(): string | null {
-    return this.validateAddSingleCrochet()?.message ?? null;
+    return this.getAddWorkingStitchError(StitchType.SINGLE_CROCHET);
+  }
+
+  getAddIncreaseError(type: WorkingStitchType): string | null {
+    return this.validateAddWorkingStitch(type)?.message ?? null;
+  }
+
+  getAddDecreaseError(type: WorkingStitchType): string | null {
+    return this.validateAddWorkingStitch(type, {
+      placementKind: PlacementKind.DECREASE,
+    })?.message ?? null;
   }
 
   getStartNewRowError(): string | null {
@@ -183,18 +325,21 @@ export class Pattern {
       stitches: this.getStitches(),
       currentRow: this.currentRow,
       foundationChainLength: this.foundationChainLength,
+      foundationType: this.foundationType,
       rowDirections: { ...this.rowDirections },
     });
   }
 
   loadSnapshot(snapshot: PatternSnapshot): void {
+    const normalized = normalizeSnapshot(snapshot);
     this.graph.clear();
-    this.currentRow = snapshot.currentRow;
-    this.foundationChainLength = snapshot.foundationChainLength;
-    this.rowDirections = { ...snapshot.rowDirections };
+    this.currentRow = normalized.currentRow;
+    this.foundationChainLength = normalized.foundationChainLength;
+    this.foundationType = normalized.foundationType;
+    this.rowDirections = { ...normalized.rowDirections };
 
-    restoreIdCounter(snapshot.stitches);
-    for (const stitch of snapshot.stitches) {
+    restoreIdCounter(normalized.stitches);
+    for (const stitch of normalized.stitches) {
       this.graph.add({
         ...stitch,
         position: { ...stitch.position },
@@ -206,8 +351,67 @@ export class Pattern {
     this.graph.clear();
     this.currentRow = 0;
     this.foundationChainLength = 0;
+    this.foundationType = FoundationType.CHAIN;
     this.rowDirections = {};
     resetIdCounter();
+  }
+
+  private createAndAddWorkingStitch(
+    type: WorkingStitchType,
+    attachToId: string,
+    options: { placementKind?: PlacementKind; secondaryAttachToId?: string } = {},
+  ): StitchNode {
+    const rowStitches = this.graph.getByRow(this.currentRow);
+    const stitchIndex = rowStitches.length;
+
+    const stitch = createStitchNode(
+      type,
+      this.currentRow,
+      stitchIndex,
+      attachToId,
+      options.placementKind ?? PlacementKind.NORMAL,
+      options.secondaryAttachToId ?? null,
+    );
+
+    stitch.position = this.resolveWorkingStitchPosition(
+      type,
+      stitchIndex,
+      attachToId,
+      options,
+    );
+
+    this.graph.add(stitch);
+    return stitch;
+  }
+
+  private resolveWorkingStitchPosition(
+    type: WorkingStitchType,
+    stitchIndex: number,
+    attachToId: string,
+    options: { placementKind?: PlacementKind; secondaryAttachToId?: string },
+  ) {
+    if (this.foundationType === FoundationType.MAGIC_RING && this.currentRow >= 1) {
+      const parent = this.graph.get(attachToId);
+      if (!parent) {
+        throw new PlacementError(
+          'NO_TARGET_STITCH',
+          'Could not resolve parent stitch for round placement.',
+        );
+      }
+
+      const secondaryParent = options.secondaryAttachToId
+        ? this.graph.get(options.secondaryAttachToId)
+        : null;
+
+      return layoutMagicRingWorkingPosition({
+        row: this.currentRow,
+        parentPosition: parent.position,
+        secondaryParentPosition: secondaryParent?.position ?? null,
+        placementKind: options.placementKind ?? PlacementKind.NORMAL,
+      });
+    }
+
+    return layoutPosition(type, this.currentRow, stitchIndex);
   }
 
   private validateFoundationChain(length: number): PlacementError | null {
@@ -218,48 +422,94 @@ export class Pattern {
     if (this.graph.count() > 0) {
       return new PlacementError(
         'FOUNDATION_EXISTS',
-        'Foundation chain already exists. Start a new pattern to reset.',
+        'Foundation already exists. Start a new pattern to reset.',
       );
     }
 
     return null;
   }
 
-  private validateAddSingleCrochet(): PlacementError | null {
+  private validateMagicRing(stitchCount: number): PlacementError | null {
+    if (
+      stitchCount < MIN_MAGIC_RING_STITCHES ||
+      stitchCount > MAX_MAGIC_RING_STITCHES
+    ) {
+      return new PlacementError(
+        'INVALID_MAGIC_RING_COUNT',
+        formatMagicRingCountError(),
+      );
+    }
+
+    if (this.graph.count() > 0) {
+      return new PlacementError(
+        'FOUNDATION_EXISTS',
+        'Foundation already exists. Start a new pattern to reset.',
+      );
+    }
+
+    return null;
+  }
+
+  private validateAddWorkingStitch(
+    type: WorkingStitchType,
+    options: { placementKind?: PlacementKind; secondaryAttachToId?: string } = {},
+  ): PlacementError | null {
+    if (!isWorkingStitchType(type)) {
+      return new PlacementError('INVALID_STITCH_TYPE', 'Unsupported stitch type.');
+    }
+
     if (this.foundationChainLength === 0) {
       return new PlacementError(
         'NO_FOUNDATION',
-        'Add a foundation chain before placing single crochet stitches.',
+        'Add a foundation before placing stitches.',
       );
     }
 
     if (this.currentRow === 0) {
       return new PlacementError(
         'NO_TARGET_STITCH',
-        'Single crochet must be worked into row 1 or later.',
+        'Stitches must be worked into row 1 or later.',
       );
     }
 
     const rowStitches = this.graph.getByRow(this.currentRow);
-    if (rowStitches.length >= this.foundationChainLength) {
+    const placementKind = options.placementKind ?? PlacementKind.NORMAL;
+    const rowWidthTarget = this.getRowWidthTarget(this.currentRow);
+
+    if (placementKind === PlacementKind.DECREASE) {
+      if (!canPlaceDecrease(rowStitches, rowWidthTarget)) {
+        return new PlacementError(
+          'CANNOT_DECREASE',
+          'Not enough stitches remain in the row below for a decrease.',
+        );
+      }
+    } else if (isRowComplete(rowStitches, rowWidthTarget)) {
       return new PlacementError(
         'ROW_FULL',
-        `Row ${this.currentRow} already has ${this.foundationChainLength} stitches.`,
+        `Row ${this.currentRow} already has enough stitches for the row width.`,
       );
     }
 
-    const stitchIndex = rowStitches.length;
-    const attachColumn = resolveAttachColumn(
-      stitchIndex,
-      this.foundationChainLength,
+    const slotIndex = countParentSlotsConsumed(rowStitches);
+    const attachTarget = this.resolveParentAttachTarget(
+      slotIndex,
       this.getRowDirection(this.currentRow),
     );
-    const attachTarget = this.graph.getByRow(this.currentRow - 1)[attachColumn];
-    if (!attachTarget) {
+    if (!attachTarget && placementKind !== PlacementKind.DECREASE) {
       return new PlacementError(
         'NO_TARGET_STITCH',
-        `No stitch available to attach to in row ${this.currentRow - 1}, column ${attachColumn}.`,
+        `No stitch available to attach to in row ${this.currentRow - 1}.`,
       );
+    }
+
+    if (placementKind === PlacementKind.DECREASE) {
+      const decreaseTargets = this.getDecreaseTargets();
+      if (!decreaseTargets) {
+        return new PlacementError(
+          'CANNOT_DECREASE',
+          'Not enough stitches remain in the row below for a decrease.',
+        );
+      }
     }
 
     return null;
@@ -269,7 +519,7 @@ export class Pattern {
     if (this.foundationChainLength === 0) {
       return new PlacementError(
         'CANNOT_START_ROW',
-        'Add a foundation chain before starting a new row.',
+        'Add a foundation before starting a new row.',
       );
     }
 
@@ -285,13 +535,59 @@ export class Pattern {
       );
     }
 
-    if (currentRowStitches.length < this.foundationChainLength) {
+    if (!isRowComplete(currentRowStitches, this.getRowWidthTarget(this.currentRow))) {
+      const slots = countParentSlotsConsumed(currentRowStitches);
+      const target = this.getRowWidthTarget(this.currentRow);
       return new PlacementError(
         'CANNOT_START_ROW',
-        `Complete row ${this.currentRow} before starting a new row (${currentRowStitches.length}/${this.foundationChainLength} stitches).`,
+        `Complete row ${this.currentRow} before starting a new row (${slots}/${target} stitches).`,
+      );
+    }
+
+    const nextRowParentCount = this.getRowStitchCount(this.currentRow);
+    if (nextRowParentCount === 0) {
+      return new PlacementError(
+        'CANNOT_START_ROW',
+        'The next row has no stitches to work into.',
       );
     }
 
     return null;
+  }
+
+  private resolveParentAttachTarget(
+    slotIndex: number,
+    direction: WorkingDirection,
+  ): StitchNode | null {
+    const parentRow = this.currentRow - 1;
+    const parentStitches = this.graph.getByRow(parentRow);
+
+    if (parentRow === 0) {
+      const attachColumn = resolveAttachColumn(
+        slotIndex,
+        this.foundationChainLength,
+        direction,
+      );
+      return parentStitches[attachColumn] ?? null;
+    }
+
+    const ordered =
+      direction === WorkingDirection.LEFT_TO_RIGHT
+        ? parentStitches
+        : [...parentStitches].reverse();
+    return ordered[slotIndex] ?? null;
+  }
+
+  private getDecreaseTargets(): { primary: StitchNode; secondary: StitchNode } | null {
+    const direction = this.getRowDirection(this.currentRow);
+    const slotIndex = countParentSlotsConsumed(this.graph.getByRow(this.currentRow));
+    const primary = this.resolveParentAttachTarget(slotIndex, direction);
+    const secondary = this.resolveParentAttachTarget(slotIndex + 1, direction);
+
+    if (!primary || !secondary) {
+      return null;
+    }
+
+    return { primary, secondary };
   }
 }

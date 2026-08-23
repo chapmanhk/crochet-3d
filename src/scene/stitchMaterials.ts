@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three-stdlib';
+import { DEFAULT_YARN_COLOR } from '../shared/yarnColor';
 
-export const STITCH_YARN_COLOR = 0xd98952;
+export const STITCH_YARN_COLOR = DEFAULT_YARN_COLOR;
 
 // Screen-space stroke width in pixels (approximate).
 const OUTLINE_THICKNESS_PX = 2.5;
@@ -63,25 +64,42 @@ function getDrawingBufferSize(): THREE.Vector2 {
   return new THREE.Vector2(1280, 800);
 }
 
-export function createStitchFillMaterial(): THREE.MeshBasicMaterial {
+export function createStitchFillMaterial(color = STITCH_YARN_COLOR): THREE.MeshBasicMaterial {
   return new THREE.MeshBasicMaterial({
-    color: STITCH_YARN_COLOR,
+    color,
   });
 }
 
-export function createStitchOutlineMaterial(): THREE.ShaderMaterial {
+export function createStitchOutlineMaterial(color = STITCH_YARN_COLOR): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     side: THREE.BackSide,
     transparent: false,
     uniforms: {
       thickness: { value: OUTLINE_THICKNESS_PX },
       size: { value: getDrawingBufferSize() },
-      color: { value: darkenYarnColor(STITCH_YARN_COLOR) },
+      color: { value: darkenYarnColor(color) },
       opacity: { value: 1 },
     },
     vertexShader: outlineVertexShader,
     fragmentShader: outlineFragmentShader,
   });
+}
+
+export function updateOutlineMaterialColor(
+  material: THREE.ShaderMaterial,
+  color: number,
+): void {
+  const uniform = material.uniforms.color;
+  if (uniform) {
+    uniform.value = darkenYarnColor(color);
+  }
+}
+
+export function updateFillMaterialColor(
+  material: THREE.MeshBasicMaterial,
+  color: number,
+): void {
+  material.color.setHex(color);
 }
 
 export function updateOutlineMaterialSize(material: THREE.ShaderMaterial): void {
