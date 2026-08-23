@@ -20,6 +20,7 @@ interface PatternState {
   foundationType: FoundationType;
   currentRowStitchCount: number;
   currentRowSlotsConsumed: number;
+  currentRowWidthTarget: number;
   rowDirections: Record<number, import('@engine/index').WorkingDirectionType>;
   selectedStitchType: WorkingStitchType;
   yarnColor: string;
@@ -86,6 +87,7 @@ function syncState(selectedStitchType: WorkingStitchType): Pick<
   | 'foundationType'
   | 'currentRowStitchCount'
   | 'currentRowSlotsConsumed'
+  | 'currentRowWidthTarget'
   | 'rowDirections'
   | 'instructions'
   | 'canAddStitch'
@@ -114,6 +116,7 @@ function syncState(selectedStitchType: WorkingStitchType): Pick<
     foundationType: snapshot.foundationType,
     currentRowStitchCount: pattern.getRowStitchCount(snapshot.currentRow),
     currentRowSlotsConsumed: pattern.getParentSlotsConsumed(snapshot.currentRow),
+    currentRowWidthTarget: pattern.getRowWidthTarget(snapshot.currentRow),
     rowDirections: snapshot.rowDirections,
     instructions: generateInstructions(snapshot.stitches, snapshot.foundationType),
     canAddStitch: pattern.canAddWorkingStitch(selectedStitchType),

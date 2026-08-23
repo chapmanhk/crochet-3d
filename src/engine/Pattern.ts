@@ -81,6 +81,7 @@ export class Pattern {
     const stitches: StitchNode[] = [];
     for (let column = 0; column < length; column++) {
       const stitch = createStitchNode(StitchType.CHAIN, 0, column);
+      stitch.position = layoutPosition(StitchType.CHAIN, 0, column);
       this.graph.add(stitch);
       stitches.push(stitch);
     }
@@ -255,6 +256,14 @@ export class Pattern {
     return countParentSlotsConsumed(this.graph.getByRow(row));
   }
 
+  getRowWidthTarget(row: number): number {
+    if (row <= 1) {
+      return this.foundationChainLength;
+    }
+
+    return this.getRowStitchCount(row - 1);
+  }
+
   getStitches(): StitchNode[] {
     return this.graph.getAll();
   }
@@ -350,12 +359,6 @@ export class Pattern {
   ): StitchNode {
     const rowStitches = this.graph.getByRow(this.currentRow);
     const stitchIndex = rowStitches.length;
-    const direction = this.getRowDirection(this.currentRow);
-    const visualColumn = resolveAttachColumn(
-      countParentSlotsConsumed(rowStitches),
-      this.foundationChainLength,
-      direction,
-    );
 
     const stitch = createStitchNode(
       type,
@@ -366,15 +369,7 @@ export class Pattern {
       options.secondaryAttachToId ?? null,
     );
 
-    if (options.placementKind === PlacementKind.INCREASE_SECOND && rowStitches.length > 0) {
-      const previous = rowStitches[rowStitches.length - 1]!;
-      stitch.position = {
-        ...previous.position,
-        x: previous.position.x + 0.04,
-      };
-    } else {
-      stitch.position = layoutPosition(type, this.currentRow, visualColumn);
-    }
+    stitch.position = layoutPosition(type, this.currentRow, stitchIndex);
 
     this.graph.add(stitch);
     return stitch;
@@ -440,18 +435,19 @@ export class Pattern {
 
     const rowStitches = this.graph.getByRow(this.currentRow);
     const placementKind = options.placementKind ?? PlacementKind.NORMAL;
+    const rowWidthTarget = this.getRowWidthTarget(this.currentRow);
 
     if (placementKind === PlacementKind.DECREASE) {
-      if (!canPlaceDecrease(rowStitches, this.foundationChainLength)) {
+      if (!canPlaceDecrease(rowStitches, rowWidthTarget)) {
         return new PlacementError(
           'CANNOT_DECREASE',
           'Not enough stitches remain in the row below for a decrease.',
         );
       }
-    } else if (isRowComplete(rowStitches, this.foundationChainLength)) {
+    } else if (isRowComplete(rowStitches, rowWidthTarget)) {
       return new PlacementError(
         'ROW_FULL',
-        `Row ${this.currentRow} already has enough stitches for the foundation width.`,
+        `Row ${this.currentRow} already has enough stitches for the row width.`,
       );
     }
 
@@ -500,11 +496,20 @@ export class Pattern {
       );
     }
 
-    if (!isRowComplete(currentRowStitches, this.foundationChainLength)) {
+    if (!isRowComplete(currentRowStitches, this.getRowWidthTarget(this.currentRow))) {
       const slots = countParentSlotsConsumed(currentRowStitches);
+      const target = this.getRowWidthTarget(this.currentRow);
       return new PlacementError(
         'CANNOT_START_ROW',
-        `Complete row ${this.currentRow} before starting a new row (${slots}/${this.foundationChainLength} parent slots).`,
+        `Complete row ${this.currentRow} before starting a new row (${slots}/${target} stitches).`,
+      );
+    }
+
+    const nextRowParentCount = this.getRowStitchCount(this.currentRow);
+    if (nextRowParentCount === 0) {
+      return new PlacementError(
+        'CANNOT_START_ROW',
+        'The next row has no stitches to work into.',
       );
     }
 

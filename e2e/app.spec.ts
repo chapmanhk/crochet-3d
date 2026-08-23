@@ -507,7 +507,7 @@ test.describe('Increase and decrease', () => {
     const panel = infoPanel(page);
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('5');
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText(
-      '2 stitches (uses 1 of 3 foundation stitches)',
+      '2 stitches (uses 1 of 3 stitches)',
     );
   });
 
@@ -521,7 +521,7 @@ test.describe('Increase and decrease', () => {
     const panel = infoPanel(page);
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('7');
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText(
-      '3 stitches (uses 4 of 4 foundation stitches)',
+      '3 stitches (uses 4 of 4 stitches)',
     );
   });
 });

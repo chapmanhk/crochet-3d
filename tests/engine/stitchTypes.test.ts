@@ -79,6 +79,26 @@ describe('stitch types', () => {
     expect(decrease.secondaryAttachToId).toBe(chains[3]!.id);
     expect(pattern.getParentSlotsConsumed(1)).toBe(4);
   });
+
+  it('allows row 2 after a decrease-shaped row 1', () => {
+    const pattern = new Pattern();
+    pattern.addFoundationChain(4);
+    pattern.startNewRow();
+    pattern.addDecrease(StitchType.SINGLE_CROCHET);
+    pattern.addDecrease(StitchType.SINGLE_CROCHET);
+
+    expect(pattern.getRowStitchCount(1)).toBe(2);
+    expect(pattern.canStartNewRow()).toBe(true);
+
+    pattern.startNewRow();
+    expect(pattern.getRowWidthTarget(2)).toBe(2);
+    expect(pattern.canAddWorkingStitch(StitchType.SINGLE_CROCHET)).toBe(true);
+
+    pattern.addSingleCrochet();
+    pattern.addSingleCrochet();
+    expect(pattern.getRowStitchCount(2)).toBe(2);
+    expect(pattern.canStartNewRow()).toBe(true);
+  });
 });
 
 describe('magic ring', () => {
@@ -89,5 +109,24 @@ describe('magic ring', () => {
     expect(stitches).toHaveLength(6);
     expect(pattern.getFoundationType()).toBe('magic_ring');
     expect(pattern.getSnapshot().foundationType).toBe('magic_ring');
+  });
+
+  it('lays out foundation chain stitches along the row', () => {
+    const pattern = new Pattern();
+    const chains = pattern.addFoundationChain(3);
+
+    expect(chains[0]!.position.x).toBeLessThan(chains[1]!.position.x);
+    expect(chains[1]!.position.x).toBeLessThan(chains[2]!.position.x);
+    expect(chains.every((chain) => chain.position.x !== 0 || chain.column === 0)).toBe(true);
+  });
+
+  it('works stitches into a magic ring on row 1', () => {
+    const pattern = new Pattern();
+    const ring = pattern.addMagicRing(4);
+    pattern.startNewRow();
+
+    const stitch = pattern.addWorkingStitch(StitchType.SINGLE_CROCHET);
+    expect(stitch.attachToId).toBe(ring[0]!.id);
+    expect(pattern.getRowWidthTarget(1)).toBe(4);
   });
 });

@@ -24,6 +24,7 @@ export function getRowLabel(
 export function getRowProgress(
   currentRow: number,
   foundationChainLength: number,
+  rowWidthTarget: number,
   currentRowStitchCount: number,
   currentRowSlotsConsumed: number,
 ): string {
@@ -33,15 +34,16 @@ export function getRowProgress(
 
   if (currentRowSlotsConsumed !== currentRowStitchCount) {
     const stitchWord = currentRowStitchCount === 1 ? 'stitch' : 'stitches';
-    return `${currentRowStitchCount} ${stitchWord} (uses ${currentRowSlotsConsumed} of ${foundationChainLength} foundation stitches)`;
+    return `${currentRowStitchCount} ${stitchWord} (uses ${currentRowSlotsConsumed} of ${rowWidthTarget} stitches)`;
   }
 
-  return `${currentRowStitchCount}/${foundationChainLength}`;
+  return `${currentRowStitchCount}/${rowWidthTarget}`;
 }
 
 export function getNextStep(
   foundationChainLength: number,
   currentRow: number,
+  rowWidthTarget: number,
   _currentRowStitchCount: number,
   currentRowSlotsConsumed: number,
   selectedStitchType: WorkingStitchType = StitchType.SINGLE_CROCHET,
@@ -58,7 +60,7 @@ export function getNextStep(
     return 'Choose New Row to begin the first working row.';
   }
 
-  const remainingSlots = foundationChainLength - currentRowSlotsConsumed;
+  const remainingSlots = rowWidthTarget - currentRowSlotsConsumed;
   if (remainingSlots > 0) {
     const stitchName = getWorkingStitchName(selectedStitchType);
     const stitchWord = remainingSlots === 1 ? 'stitch' : 'stitches';

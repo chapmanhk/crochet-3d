@@ -32,6 +32,7 @@ export function InfoPanel() {
     foundationType,
     currentRowStitchCount,
     currentRowSlotsConsumed,
+    currentRowWidthTarget,
     selectedStitchType,
     yarnColor,
     setYarnColor,
@@ -46,6 +47,7 @@ export function InfoPanel() {
       foundationType: state.foundationType,
       currentRowStitchCount: state.currentRowStitchCount,
       currentRowSlotsConsumed: state.currentRowSlotsConsumed,
+      currentRowWidthTarget: state.currentRowWidthTarget,
       selectedStitchType: state.selectedStitchType,
       yarnColor: state.yarnColor,
       setYarnColor: state.setYarnColor,
@@ -59,12 +61,14 @@ export function InfoPanel() {
   const rowProgress = getRowProgress(
     currentRow,
     foundationChainLength,
+    currentRowWidthTarget,
     currentRowStitchCount,
     currentRowSlotsConsumed,
   );
   const nextStep = getNextStep(
     foundationChainLength,
     currentRow,
+    currentRowWidthTarget,
     currentRowStitchCount,
     currentRowSlotsConsumed,
     selectedStitchType,

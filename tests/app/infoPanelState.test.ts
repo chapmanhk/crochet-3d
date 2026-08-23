@@ -15,20 +15,21 @@ describe('infoPanelState', () => {
   });
 
   it('formats row progress for working rows', () => {
-    expect(getRowProgress(0, 3, 0, 0)).toBe('—');
-    expect(getRowProgress(1, 3, 2, 2)).toBe('2/3');
-    expect(getRowProgress(1, 3, 3, 2)).toBe(
-      '3 stitches (uses 2 of 3 foundation stitches)',
+    expect(getRowProgress(0, 3, 3, 0, 0)).toBe('—');
+    expect(getRowProgress(1, 3, 3, 2, 2)).toBe('2/3');
+    expect(getRowProgress(1, 4, 4, 3, 4)).toBe(
+      '3 stitches (uses 4 of 4 stitches)',
     );
+    expect(getRowProgress(2, 4, 2, 1, 1)).toBe('1/2');
   });
 
   it('describes the next step for beginners', () => {
-    expect(getNextStep(0, 0, 0, 0)).toContain('New foundation');
-    expect(getNextStep(0, 0, 0, 0)).toContain('Templates');
-    expect(getNextStep(3, 0, 0, 0)).toContain('New Row');
-    expect(getNextStep(3, 1, 1, 1, StitchType.HALF_DOUBLE_CROCHET)).toContain(
+    expect(getNextStep(0, 0, 0, 0, 0)).toContain('New foundation');
+    expect(getNextStep(0, 0, 0, 0, 0)).toContain('Templates');
+    expect(getNextStep(3, 0, 3, 0, 0)).toContain('New Row');
+    expect(getNextStep(3, 1, 3, 1, 1, StitchType.HALF_DOUBLE_CROCHET)).toContain(
       '2 more half double crochet stitches',
     );
-    expect(getNextStep(3, 1, 3, 3)).toContain('is complete');
+    expect(getNextStep(3, 1, 3, 3, 3)).toContain('is complete');
   });
 });
