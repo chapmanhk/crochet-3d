@@ -28,6 +28,22 @@ describe('stitchMaterials', () => {
     outlineMaterial.dispose();
   });
 
+  it('uses a slightly darker yarn color for the outline stroke', () => {
+    const fillMaterial = createStitchFillMaterial();
+    const outlineMaterial = createStitchOutlineMaterial();
+    const fillHsl = { h: 0, s: 0, l: 0 };
+    const outlineHsl = { h: 0, s: 0, l: 0 };
+
+    fillMaterial.color.getHSL(fillHsl);
+    (outlineMaterial.uniforms.color?.value as THREE.Color).getHSL(outlineHsl);
+
+    expect(outlineHsl.l).toBeLessThan(fillHsl.l);
+    expect(outlineHsl.h).toBeCloseTo(fillHsl.h, 5);
+
+    fillMaterial.dispose();
+    outlineMaterial.dispose();
+  });
+
   it('disposes fill and outline geometries', () => {
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const group = createOutlinedStitch(

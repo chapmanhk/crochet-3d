@@ -1,14 +1,18 @@
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three-stdlib';
 
-export const STITCH_COLORS = {
-  fill: 0xd98952,
-  outline: 0x5c3d2e,
-} as const;
+export const STITCH_YARN_COLOR = 0xd98952;
 
 // Screen-space stroke width in pixels (approximate).
 const OUTLINE_THICKNESS_PX = 3.5;
 const OUTLINE_CREASE_ANGLE = Math.PI;
+
+function darkenYarnColor(hex: number): THREE.Color {
+  const color = new THREE.Color(hex);
+  const hsl = { h: 0, s: 0, l: 0 };
+  color.getHSL(hsl);
+  return new THREE.Color().setHSL(hsl.h, Math.min(1, hsl.s * 1.02), hsl.l * 0.78);
+}
 
 const outlineVertexShader = /* glsl */ `
 #include <common>
@@ -61,7 +65,7 @@ function getDrawingBufferSize(): THREE.Vector2 {
 
 export function createStitchFillMaterial(): THREE.MeshBasicMaterial {
   return new THREE.MeshBasicMaterial({
-    color: STITCH_COLORS.fill,
+    color: STITCH_YARN_COLOR,
   });
 }
 
@@ -72,7 +76,7 @@ export function createStitchOutlineMaterial(): THREE.ShaderMaterial {
     uniforms: {
       thickness: { value: OUTLINE_THICKNESS_PX },
       size: { value: getDrawingBufferSize() },
-      color: { value: new THREE.Color(STITCH_COLORS.outline) },
+      color: { value: darkenYarnColor(STITCH_YARN_COLOR) },
       opacity: { value: 1 },
     },
     vertexShader: outlineVertexShader,
