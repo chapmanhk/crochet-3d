@@ -1,4 +1,4 @@
-export type ConfirmAction = 'reset' | 'new-chain';
+export type ConfirmAction = 'reset' | 'new-chain' | 'load-template';
 
 export const CONFIRM_DIALOG_COPY: Record<
   ConfirmAction,
@@ -9,6 +9,12 @@ export const CONFIRM_DIALOG_COPY: Record<
     description:
       'This will clear your current pattern and open the chain length dialog.',
     confirmLabel: 'Start new chain',
+  },
+  'load-template': {
+    title: 'Load a template?',
+    description:
+      'This will clear your current pattern and replace it with the selected template.',
+    confirmLabel: 'Load template',
   },
   reset: {
     title: 'Reset the current pattern?',

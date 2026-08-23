@@ -101,6 +101,17 @@ Feature: Foundation chain
     Then the stitch count should be 5
     And the foundation length should be 5
 
+  Scenario: Create a magic ring foundation
+    Given I have no pattern
+    When I choose "New Chain"
+    And I choose the "Magic ring" foundation type
+    And I enter 6 in the stitch count field
+    And I choose "Create magic ring"
+    Then the pattern status should be "Magic ring"
+    And the stitch count should be 6
+    And the instructions should include "Foundation: magic ring, 6 sc"
+    And I should see next-step guidance to work into the magic ring stitches
+
   @engine
   Scenario: Chain length must be within allowed bounds
     Given I have no pattern

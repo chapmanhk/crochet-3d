@@ -1,4 +1,5 @@
 import { Html } from '@react-three/drei';
+import { getWorkingStitchLabel } from '@engine/index';
 import { useShallow } from 'zustand/react/shallow';
 import { usePatternStore } from '@store/patternStore';
 import { getNextAttachmentPoint } from './attachmentPoints';
@@ -8,17 +9,19 @@ export function AttachmentPointPicker() {
     stitches,
     nextAttachmentTargetId,
     addWorkingStitchAt,
-    canAddSingleCrochet,
+    canAddStitch,
+    selectedStitchType,
   } = usePatternStore(
     useShallow((state) => ({
       stitches: state.stitches,
       nextAttachmentTargetId: state.nextAttachmentTargetId,
       addWorkingStitchAt: state.addWorkingStitchAt,
-      canAddSingleCrochet: state.canAddStitch,
+      canAddStitch: state.canAddStitch,
+      selectedStitchType: state.selectedStitchType,
     })),
   );
 
-  if (!canAddSingleCrochet || !nextAttachmentTargetId) {
+  if (!canAddStitch || !nextAttachmentTargetId) {
     return null;
   }
 
@@ -39,7 +42,7 @@ export function AttachmentPointPicker() {
         type="button"
         className="attachment-point"
         data-testid="attachment-point"
-        aria-label="Place next single crochet stitch"
+        aria-label={`Place next ${getWorkingStitchLabel(selectedStitchType)} stitch`}
         onClick={() => addWorkingStitchAt(attachmentPoint.attachToId)}
       />
     </Html>

@@ -68,6 +68,7 @@ export function Toolbar() {
   const [foundationDialogOpen, setFoundationDialogOpen] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const [pendingTemplateId, setPendingTemplateId] = useState<TemplateId | null>(null);
   const newChainRef = useRef<HTMLButtonElement>(null);
 
   const resetDisabledReason = getResetDisabledReason(stitches.length);
@@ -99,13 +100,24 @@ export function Toolbar() {
     if (action === 'new-chain') {
       resetPattern();
       openFoundationDialog();
+      return;
+    }
+
+    if (action === 'load-template' && pendingTemplateId) {
+      resetPattern();
+      loadTemplate(pendingTemplateId);
+      setPendingTemplateId(null);
+      setTemplateDialogOpen(false);
     }
   };
 
   const handleTemplateSelect = (templateId: TemplateId) => {
     if (foundationChainLength > 0) {
-      resetPattern();
+      setPendingTemplateId(templateId);
+      setConfirmAction('load-template');
+      return;
     }
+
     loadTemplate(templateId);
     setTemplateDialogOpen(false);
   };
@@ -141,11 +153,13 @@ export function Toolbar() {
         />
         <ToolbarActionButton
           label="Inc"
+          ariaLabel="Increase stitch"
           disabledReason={addIncreaseDisabledReason}
           onClick={addIncrease}
         />
         <ToolbarActionButton
           label="Dec"
+          ariaLabel="Decrease stitch"
           disabledReason={addDecreaseDisabledReason}
           onClick={addDecrease}
         />
@@ -212,7 +226,10 @@ export function Toolbar() {
           description={confirmCopy.description}
           confirmLabel={confirmCopy.confirmLabel}
           onConfirm={handleConfirm}
-          onCancel={() => setConfirmAction(null)}
+          onCancel={() => {
+            setConfirmAction(null);
+            setPendingTemplateId(null);
+          }}
         />
       ) : null}
     </>

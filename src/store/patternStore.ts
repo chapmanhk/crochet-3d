@@ -105,7 +105,7 @@ function syncState(selectedStitchType: WorkingStitchType): Pick<
   | 'redoDisabledReason'
 > {
   const snapshot = pattern.getSnapshot();
-  const nextTarget = pattern.getNextAttachmentTarget();
+  const nextTarget = pattern.getNextAttachmentTarget(selectedStitchType);
   const rowStitches = snapshot.stitches.filter((stitch) => stitch.row === snapshot.currentRow);
 
   return {

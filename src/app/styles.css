@@ -382,6 +382,11 @@ button {
   gap: 10px;
 }
 
+.template-card:focus-visible {
+  outline: 2px solid #1a5fb4;
+  outline-offset: 2px;
+}
+
 .template-card {
   width: 100%;
   min-height: 44px;

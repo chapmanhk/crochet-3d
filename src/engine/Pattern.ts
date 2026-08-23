@@ -128,7 +128,7 @@ export class Pattern {
   }
 
   addWorkingStitch(type: WorkingStitchType): StitchNode {
-    const attachTarget = this.getNextAttachmentTarget();
+    const attachTarget = this.getNextAttachmentTarget(type);
     if (!attachTarget) {
       const error = this.validateAddWorkingStitch(type);
       if (error) {
@@ -153,7 +153,7 @@ export class Pattern {
       throw error;
     }
 
-    const expectedTarget = this.getNextAttachmentTarget();
+    const expectedTarget = this.getNextAttachmentTarget(type);
     const placementKind = options.placementKind ?? PlacementKind.NORMAL;
 
     if (placementKind === PlacementKind.DECREASE) {
@@ -241,8 +241,8 @@ export class Pattern {
     });
   }
 
-  getNextAttachmentTarget(): StitchNode | null {
-    if (this.validateAddWorkingStitch(StitchType.SINGLE_CROCHET) !== null) {
+  getNextAttachmentTarget(type: WorkingStitchType = StitchType.SINGLE_CROCHET): StitchNode | null {
+    if (this.validateAddWorkingStitch(type) !== null) {
       return null;
     }
 
