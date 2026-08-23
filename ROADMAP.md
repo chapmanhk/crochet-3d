@@ -24,6 +24,9 @@ The 3D canvas is primary; panels explain status and next steps in plain crochet 
 | Pattern validation (disabled toolbar) | `pattern-validation.feature` | Proactive guards + tooltips |
 | Reset / New Chain confirms | `reset-pattern.feature`, `foundation-chain.feature` | Accessible `ConfirmDialog` |
 | Pure engine + diff-based 3D render | `@engine` tags | No physics yet |
+| Illustrated SC V-stitch topology + row stacking | `specs/README.md` Scope | Scene-only `VISUAL_ROW_HEIGHT`; inverted-V arcs with leg-through layering |
+| Flat canvas background (no grid floor) | `specs/README.md` Scope | `#f7f0e6` via `SCENE_BACKGROUND` + CSS variable |
+| Screen-space outline stroke | `specs/README.md` Scope | Replaces scaled BackSide hull shadow |
 
 **Stack:** TypeScript engine · Zustand store · R3F scene · React app · Gherkin specs · Vitest · Playwright
 
@@ -97,8 +100,10 @@ Performance and realism for larger patterns.
 |------|--------|-------|
 | Unify engine `can*` and `throw` validation paths | **Done** | `validate*` private methods in `Pattern.ts` |
 | Shared geometry disposal on HMR remount | **Done** | Per-segment dispose on row change; full dispose on unmount/HMR |
-| Row-level yarn path rendering | **Done** | Continuous tube per row + join segments |
+| Row-level yarn path rendering | **Done** | Per-row segments: foundation loops, SC V-stitch topology, join paths |
+| Illustrated scene style (flat bg, outline stroke, visual row height) | **Done** | `stitchGeometry.ts`, `stitchMaterials.ts`, `CrochetScene.tsx` |
 | Per-row geometry fingerprinting | **Done** | `StitchRenderer` skips rebuild when row fingerprint unchanged |
+| Engine validation messages for toolbar disabled states | **Done** | `getAddSingleCrochetError()` / `getStartNewRowError()` |
 | Cucumber step definitions | Deferred | Playwright is executable proof |
 | Store tests that only mirror engine | **Done** | Store tests focus on bridge behavior (`lastError`, sync, flags) |
 
@@ -150,5 +155,6 @@ When pulling an item from this roadmap into development:
 
 | Date | Change |
 |------|--------|
+| 2026-08-23 | Illustrated scene style shipped; SC V-stitch topology, flat background, outline stroke, UI/UX accessibility pass |
 | 2026-08-22 | Engineering backlog items completed (validation unify, geometry dispose, store tests) |
 | 2026-08-22 | Initial roadmap consolidated from MVP, skills, and agent passes |

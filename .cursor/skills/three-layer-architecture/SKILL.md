@@ -33,7 +33,7 @@ src/
 
 ### Scene (`src/scene/`)
 
-- R3F `Canvas` for camera, lights, controls
+- R3F `Canvas` for camera, flat background, orbit controls (unlit `MeshBasicMaterial` — no scene lights)
 - `StitchRenderer` (imperative) syncs row-level yarn segments with fingerprint caching
 - Reads stitch positions from engine snapshots — never invents placement
 - No crochet placement rules

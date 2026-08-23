@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePatternStore } from '@store/patternStore';
 import { ChainLengthDialog } from './ChainLengthDialog';
@@ -8,11 +8,7 @@ import {
   type ConfirmAction,
 } from './confirmDialogCopy';
 import { ToolbarActionButton } from './ToolbarActionButton';
-import {
-  getAddScDisabledReason,
-  getNewRowDisabledReason,
-  getResetDisabledReason,
-} from './toolbarState';
+import { getResetDisabledReason } from './toolbarState';
 
 export function Toolbar() {
   const {
@@ -23,10 +19,8 @@ export function Toolbar() {
     clearError,
     lastError,
     foundationChainLength,
-    currentRow,
-    currentRowStitchCount,
-    canAddSingleCrochet,
-    canStartNewRow,
+    addScDisabledReason,
+    newRowDisabledReason,
     stitches,
   } = usePatternStore(
     useShallow((state) => ({
@@ -37,27 +31,16 @@ export function Toolbar() {
       clearError: state.clearError,
       lastError: state.lastError,
       foundationChainLength: state.foundationChainLength,
-      currentRow: state.currentRow,
-      currentRowStitchCount: state.currentRowStitchCount,
-      canAddSingleCrochet: state.canAddSingleCrochet,
-      canStartNewRow: state.canStartNewRow,
+      addScDisabledReason: state.addScDisabledReason,
+      newRowDisabledReason: state.newRowDisabledReason,
       stitches: state.stitches,
     })),
   );
 
   const [chainDialogOpen, setChainDialogOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const newChainRef = useRef<HTMLButtonElement>(null);
 
-  const toolbarState = {
-    foundationChainLength,
-    currentRow,
-    currentRowStitchCount,
-    canAddSingleCrochet,
-    canStartNewRow,
-  };
-
-  const addScDisabledReason = getAddScDisabledReason(toolbarState);
-  const newRowDisabledReason = getNewRowDisabledReason(toolbarState);
   const resetDisabledReason = getResetDisabledReason(stitches.length);
 
   const openChainDialog = () => {
@@ -84,24 +67,22 @@ export function Toolbar() {
   };
 
   const handleReset = () => {
-    if (stitches.length === 0) {
-      return;
-    }
-
     setConfirmAction('reset');
   };
 
   const handleConfirm = () => {
-    if (confirmAction === 'reset') {
+    const action = confirmAction;
+    setConfirmAction(null);
+
+    if (action === 'reset') {
       resetPattern();
+      return;
     }
 
-    if (confirmAction === 'new-chain') {
+    if (action === 'new-chain') {
       resetPattern();
       openChainDialog();
     }
-
-    setConfirmAction(null);
   };
 
   const confirmCopy = confirmAction ? CONFIRM_DIALOG_COPY[confirmAction] : null;
@@ -109,7 +90,12 @@ export function Toolbar() {
   return (
     <>
       <div className="toolbar panel" role="toolbar" aria-label="Pattern tools">
-        <button type="button" className="btn primary" onClick={handleNewChain}>
+        <button
+          ref={newChainRef}
+          type="button"
+          className="btn primary"
+          onClick={handleNewChain}
+        >
           New Chain
         </button>
         <ToolbarActionButton
@@ -133,7 +119,10 @@ export function Toolbar() {
       <ChainLengthDialog
         open={chainDialogOpen}
         serverError={chainDialogOpen ? lastError : null}
-        onClose={() => setChainDialogOpen(false)}
+        onClose={() => {
+          setChainDialogOpen(false);
+          newChainRef.current?.focus();
+        }}
         onSubmit={handleChainSubmit}
       />
 

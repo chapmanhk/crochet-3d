@@ -209,6 +209,23 @@ describe('Pattern', () => {
     expectPlacementError(() => pattern.startNewRow(), 'CANNOT_START_ROW');
   });
 
+  it('exposes validation messages for toolbar disabled states', () => {
+    const pattern = new Pattern();
+
+    expect(pattern.getAddSingleCrochetError()).toContain('foundation chain');
+    expect(pattern.getStartNewRowError()).toContain('foundation chain');
+
+    pattern.addFoundationChain(2);
+    expect(pattern.getAddSingleCrochetError()).toContain('row 1');
+    expect(pattern.getStartNewRowError()).toBeNull();
+
+    pattern.startNewRow();
+    pattern.addSingleCrochet();
+    pattern.addSingleCrochet();
+    expect(pattern.getAddSingleCrochetError()).toContain('already has');
+    expect(pattern.getStartNewRowError()).toBeNull();
+  });
+
   it('exposes pattern state through getSnapshot', () => {
     const pattern = new Pattern();
     pattern.addFoundationChain(2);

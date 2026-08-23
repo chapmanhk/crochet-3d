@@ -42,8 +42,22 @@ See [`ROADMAP.md`](ROADMAP.md) for product phases, priorities, and how deferred 
 ## Architecture rules
 
 - `src/engine` must not import from React, Three.js, or Zustand
-- Scene updates from engine snapshots via row-level yarn segment sync
+- Scene updates from engine snapshots via row-level yarn segment sync with fingerprint caching; stitch height is scene-only (`VISUAL_ROW_HEIGHT`), decoupled from engine layout
 - Physics/drape is intentionally deferred
+
+## 3D scene (illustrated style)
+
+The canvas uses a **flat warm background** (`#f7f0e6`) with no perspective grid — an illustrated look, not a 3D workshop floor.
+
+Stitches are rendered imperatively by `StitchRenderer`:
+
+- **Foundation row** — chain loops and spine segments
+- **Working rows** — inverted-V single crochet arcs with legs through the row below, joined by top working-yarn bridges
+- **Row joins** — yarn path between consecutive rows
+- **Outline** — screen-space stroke (~2.5 px) in a darker yarn tone (not a drop shadow)
+- **Row stacking** — scene-only `VISUAL_ROW_HEIGHT` (0.22); engine layout Y (`ROW_HEIGHT` = 1.2) drives placement math only
+
+Visual behavior is tested in `tests/scene/`; crocheter-facing behavior is specified in `specs/*.feature`.
 
 ## Cursor agents & skills
 

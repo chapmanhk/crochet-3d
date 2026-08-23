@@ -3,7 +3,7 @@ import { useEffect, type RefObject } from 'react';
 export function getFocusableElements(container: HTMLElement): HTMLElement[] {
   return [
     ...container.querySelectorAll<HTMLElement>(
-      'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+      'button:not([disabled]), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
     ),
   ];
 }
@@ -41,12 +41,14 @@ export function useDialogFocusTrap(
   open: boolean,
   dialogRef: RefObject<HTMLElement | null>,
   onEscape: () => void,
+  returnFocusRef?: RefObject<HTMLElement | null>,
 ): void {
   useEffect(() => {
     if (!open) {
       return;
     }
 
+    const previouslyFocused = document.activeElement as HTMLElement | null;
     document.body.style.overflow = 'hidden';
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -67,6 +69,7 @@ export function useDialogFocusTrap(
     return () => {
       document.body.style.overflow = '';
       document.removeEventListener('keydown', handleKeyDown);
+      (returnFocusRef?.current ?? previouslyFocused)?.focus();
     };
-  }, [dialogRef, onEscape, open]);
+  }, [dialogRef, onEscape, open, returnFocusRef]);
 }

@@ -95,6 +95,14 @@ export class Pattern {
     return this.validateStartNewRow() === null;
   }
 
+  getAddSingleCrochetError(): string | null {
+    return this.validateAddSingleCrochet()?.message ?? null;
+  }
+
+  getStartNewRowError(): string | null {
+    return this.validateStartNewRow()?.message ?? null;
+  }
+
   getSnapshot(): PatternSnapshot {
     return {
       stitches: this.getStitches(),

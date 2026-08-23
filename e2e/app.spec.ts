@@ -5,6 +5,8 @@ import {
   createFoundationChain,
   dismissConfirm,
   infoPanel,
+  MAX_CHAIN_LENGTH,
+  MIN_CHAIN_LENGTH,
   openChainDialog,
   chainDialog,
   chainLengthInput,
@@ -113,10 +115,10 @@ test.describe('Foundation chain', () => {
     const decrease = dialog.getByRole('button', { name: 'Decrease chain length' });
     const increase = dialog.getByRole('button', { name: 'Increase chain length' });
 
-    await chainLengthInput(page).fill('1');
+    await chainLengthInput(page).fill(String(MIN_CHAIN_LENGTH));
     await expect(decrease).toBeDisabled();
 
-    await chainLengthInput(page).fill('500');
+    await chainLengthInput(page).fill(String(MAX_CHAIN_LENGTH));
     await expect(increase).toBeDisabled();
   });
 
@@ -151,11 +153,11 @@ test.describe('Foundation chain', () => {
 
     await openChainDialog(page);
     const dialog = chainDialog(page);
-    await chainLengthInput(page).fill('501');
-    await dialog.getByRole('button', { name: 'Create chain' }).click();
+    await chainLengthInput(page).fill(String(MAX_CHAIN_LENGTH + 1));
+    await dialog.getByRole('button', { name: 'Create foundation chain' }).click();
 
     await expect(dialog.getByRole('alert')).toContainText(
-      'Chain length must be between 1 and 500.',
+      `Chain length must be between ${MIN_CHAIN_LENGTH} and ${MAX_CHAIN_LENGTH}.`,
     );
   });
 
@@ -165,7 +167,7 @@ test.describe('Foundation chain', () => {
     await openChainDialog(page);
     const dialog = chainDialog(page);
     await chainLengthInput(page).fill('');
-    await dialog.getByRole('button', { name: 'Create chain' }).click();
+    await dialog.getByRole('button', { name: 'Create foundation chain' }).click();
 
     await expect(dialog.getByRole('alert')).toContainText('Enter a chain length.');
     await expect(chainDialog(page)).toBeVisible();
@@ -209,7 +211,7 @@ test.describe('Foundation chain', () => {
     await page.getByRole('button', { name: 'New Chain' }).click();
     await acceptConfirm(page, 'Start new chain');
     await chainLengthInput(page).fill('5');
-    await chainDialog(page).getByRole('button', { name: 'Create chain' }).click();
+    await chainDialog(page).getByRole('button', { name: 'Create foundation chain' }).click();
 
     const panel = infoPanel(page);
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('5');

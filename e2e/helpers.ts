@@ -30,7 +30,7 @@ export async function openChainDialog(page: Page) {
 export async function createFoundationChain(page: Page, length: number) {
   await openChainDialog(page);
   await chainLengthInput(page).fill(String(length));
-  await chainDialog(page).getByRole('button', { name: 'Create chain' }).click();
+  await chainDialog(page).getByRole('button', { name: 'Create foundation chain' }).click();
 }
 
 export async function acceptConfirm(page: Page, label: string) {
@@ -44,6 +44,8 @@ export async function dismissConfirm(page: Page) {
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Cancel' }).click();
 }
+
+export { MIN_CHAIN_LENGTH, MAX_CHAIN_LENGTH } from '../src/engine/Pattern';
 
 export async function completeRow(page: Page, stitchCount: number) {
   for (let index = 0; index < stitchCount; index += 1) {

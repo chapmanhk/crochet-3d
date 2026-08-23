@@ -96,6 +96,23 @@ describe('patternStore', () => {
     expect(state.currentRowStitchCount).toBe(2);
   });
 
+  it('surfaces engine validation messages for toolbar disabled states', () => {
+    const store = usePatternStore.getState();
+
+    expect(store.addScDisabledReason).toContain('foundation chain');
+    expect(store.newRowDisabledReason).toContain('foundation chain');
+
+    store.addFoundationChain(2);
+    store.startNewRow();
+    store.addSingleCrochet();
+    store.addSingleCrochet();
+    store.startNewRow();
+
+    const state = usePatternStore.getState();
+    expect(state.addScDisabledReason).toBeNull();
+    expect(state.newRowDisabledReason).toContain('no stitches');
+  });
+
   it('clears all bridged state on reset', () => {
     const store = usePatternStore.getState();
     store.addFoundationChain(2);

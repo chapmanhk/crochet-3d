@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow';
 import { usePatternStore } from '@store/patternStore';
 import {
   getNextStep,
@@ -6,17 +7,25 @@ import {
 } from './infoPanelState';
 
 export function InfoPanel() {
-  const stitches = usePatternStore((state) => state.stitches);
-  const currentRow = usePatternStore((state) => state.currentRow);
-  const foundationChainLength = usePatternStore(
-    (state) => state.foundationChainLength,
+  const {
+    stitches,
+    currentRow,
+    foundationChainLength,
+    currentRowStitchCount,
+    instructions,
+    lastError,
+    clearError,
+  } = usePatternStore(
+    useShallow((state) => ({
+      stitches: state.stitches,
+      currentRow: state.currentRow,
+      foundationChainLength: state.foundationChainLength,
+      currentRowStitchCount: state.currentRowStitchCount,
+      instructions: state.instructions,
+      lastError: state.lastError,
+      clearError: state.clearError,
+    })),
   );
-  const currentRowStitchCount = usePatternStore(
-    (state) => state.currentRowStitchCount,
-  );
-  const instructions = usePatternStore((state) => state.instructions);
-  const lastError = usePatternStore((state) => state.lastError);
-  const clearError = usePatternStore((state) => state.clearError);
 
   const rowLabel = getRowLabel(foundationChainLength, currentRow);
   const rowProgress = getRowProgress(
@@ -57,7 +66,9 @@ export function InfoPanel() {
 
       <h3>Instructions</h3>
       {instructions.length === 0 ? (
-        <p className="muted">Start with a foundation chain.</p>
+        <p className="muted">
+          Start with a foundation chain. Choose <strong>New Chain</strong> in the toolbar.
+        </p>
       ) : (
         <ol className="instructions">
           {instructions.map((line, index) => (
@@ -69,7 +80,12 @@ export function InfoPanel() {
       {lastError ? (
         <div className="error-banner" role="alert">
           <p>{lastError}</p>
-          <button type="button" className="btn subtle" onClick={clearError}>
+          <button
+            type="button"
+            className="btn subtle"
+            onClick={clearError}
+            aria-label="Dismiss error"
+          >
             Dismiss
           </button>
         </div>

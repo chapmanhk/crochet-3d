@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { Pattern, resetIdCounter, StitchType } from '@engine/index';
 import { buildYarnSegments, getYarnSegmentManifests, measureSegmentsHeight, VISUAL_ROW_HEIGHT } from '../../src/scene/stitchGeometry';
+import { ROW_HEIGHT } from '@engine/index';
 
 function stitchesFromPattern(setup: (pattern: Pattern) => void) {
   resetIdCounter();
@@ -164,5 +165,34 @@ describe('stitchGeometry', () => {
 
     disposeSegments(oneRow);
     disposeSegments(twoRows);
+  });
+
+  it('working row geometry is taller than foundation-only geometry', () => {
+    const foundationOnly = buildYarnSegments(
+      stitchesFromPattern((pattern) => {
+        pattern.addFoundationChain(3);
+      }),
+    );
+    const withScRow = buildYarnSegments(
+      stitchesFromPattern((pattern) => {
+        pattern.addFoundationChain(3);
+        pattern.startNewRow();
+        pattern.addSingleCrochet();
+        pattern.addSingleCrochet();
+        pattern.addSingleCrochet();
+      }),
+    );
+
+    expect(measureSegmentsHeight(withScRow)).toBeGreaterThan(
+      measureSegmentsHeight(foundationOnly),
+    );
+
+    disposeSegments(foundationOnly);
+    disposeSegments(withScRow);
+  });
+
+  it('uses scene VISUAL_ROW_HEIGHT instead of engine ROW_HEIGHT for stacking', () => {
+    expect(VISUAL_ROW_HEIGHT).toBeLessThan(ROW_HEIGHT * 0.25);
+    expect(VISUAL_ROW_HEIGHT).toBe(0.22);
   });
 });

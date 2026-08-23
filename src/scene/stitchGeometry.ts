@@ -345,6 +345,14 @@ function joinFingerprint(lowerRow: StitchNode[], upperRow: StitchNode[]): string
   return `join:${lowerEnd.id}->${upperStart.id}`;
 }
 
+function indexStitches(stitches: StitchNode[]) {
+  const stitchById = new Map(stitches.map((stitch) => [stitch.id, stitch]));
+  const byRow = groupStitchesByRow(stitches);
+  const rowNumbers = [...byRow.keys()].sort((left, right) => left - right);
+
+  return { stitchById, byRow, rowNumbers };
+}
+
 function canRenderWorkingRow(
   rowStitches: StitchNode[],
   stitchById: Map<string, StitchNode>,
@@ -370,9 +378,7 @@ export function getYarnSegmentManifests(stitches: StitchNode[]): YarnSegmentMani
     return [];
   }
 
-  const stitchById = new Map(stitches.map((stitch) => [stitch.id, stitch]));
-  const byRow = groupStitchesByRow(stitches);
-  const rowNumbers = [...byRow.keys()].sort((left, right) => left - right);
+  const { stitchById, byRow, rowNumbers } = indexStitches(stitches);
   const manifests: YarnSegmentManifest[] = [];
 
   for (const rowNumber of rowNumbers) {
@@ -412,9 +418,7 @@ export function buildYarnSegmentGeometry(
   key: string,
   stitches: StitchNode[],
 ): THREE.BufferGeometry | null {
-  const stitchById = new Map(stitches.map((stitch) => [stitch.id, stitch]));
-  const byRow = groupStitchesByRow(stitches);
-  const rowNumbers = [...byRow.keys()].sort((left, right) => left - right);
+  const { stitchById, byRow, rowNumbers } = indexStitches(stitches);
 
   if (key.startsWith('row-')) {
     const rowNumber = Number.parseInt(key.slice(4), 10);
