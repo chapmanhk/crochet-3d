@@ -28,7 +28,7 @@ function SceneControls() {
 export function CrochetScene() {
   return (
     <Canvas
-      camera={{ position: [4, 4, 8], fov: 45 }}
+      camera={{ position: [3.2, 2.2, 5.5], fov: 42 }}
       gl={{ antialias: true, alpha: false }}
       style={{ width: '100%', height: '100%', background: SCENE_BACKGROUND }}
     >

@@ -4,7 +4,7 @@ import { toCreasedNormals } from 'three-stdlib';
 export const STITCH_YARN_COLOR = 0xd98952;
 
 // Screen-space stroke width in pixels (approximate).
-const OUTLINE_THICKNESS_PX = 3.5;
+const OUTLINE_THICKNESS_PX = 2.5;
 const OUTLINE_CREASE_ANGLE = Math.PI;
 
 function darkenYarnColor(hex: number): THREE.Color {

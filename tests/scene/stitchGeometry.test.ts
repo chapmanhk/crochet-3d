@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { Pattern, resetIdCounter, StitchType } from '@engine/index';
-import { buildYarnSegments, getYarnSegmentManifests } from '../../src/scene/stitchGeometry';
+import { buildYarnSegments, getYarnSegmentManifests, measureSegmentsHeight, VISUAL_ROW_HEIGHT } from '../../src/scene/stitchGeometry';
 
 function stitchesFromPattern(setup: (pattern: Pattern) => void) {
   resetIdCounter();
@@ -128,5 +128,41 @@ describe('stitchGeometry', () => {
     expect(keys).toContain('row-0');
     expect(keys).toContain('join-1');
     expect(keys).not.toContain('row-1');
+  });
+
+  it('stacks each working row by a consistent visual height', () => {
+    const oneRow = buildYarnSegments(
+      stitchesFromPattern((pattern) => {
+        pattern.addFoundationChain(5);
+        pattern.startNewRow();
+        for (let index = 0; index < 5; index += 1) {
+          pattern.addSingleCrochet();
+        }
+      }),
+    );
+
+    const twoRows = buildYarnSegments(
+      stitchesFromPattern((pattern) => {
+        pattern.addFoundationChain(5);
+        pattern.startNewRow();
+        for (let index = 0; index < 5; index += 1) {
+          pattern.addSingleCrochet();
+        }
+        pattern.startNewRow();
+        for (let index = 0; index < 5; index += 1) {
+          pattern.addSingleCrochet();
+        }
+      }),
+    );
+
+    const oneRowHeight = measureSegmentsHeight(oneRow);
+    const twoRowHeight = measureSegmentsHeight(twoRows);
+    const addedHeight = twoRowHeight - oneRowHeight;
+
+    expect(addedHeight).toBeGreaterThan(VISUAL_ROW_HEIGHT * 0.85);
+    expect(addedHeight).toBeLessThan(VISUAL_ROW_HEIGHT * 1.2);
+
+    disposeSegments(oneRow);
+    disposeSegments(twoRows);
   });
 });
