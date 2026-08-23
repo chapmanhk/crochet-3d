@@ -349,6 +349,60 @@ button {
   margin-top: 20px;
 }
 
+.foundation-mode-toggle,
+.stitch-type-selector {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.yarn-color-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.yarn-color-field input[type='color'] {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid #d9d2c7;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.template-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.template-card {
+  width: 100%;
+  min-height: 44px;
+  padding: 12px;
+  border: 1px solid #d9d2c7;
+  border-radius: 8px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.template-card strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.template-card span {
+  color: #5f6c7b;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 960px) {
   .toolbar {
     left: 16px;

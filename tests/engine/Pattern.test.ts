@@ -212,8 +212,8 @@ describe('Pattern', () => {
   it('exposes validation messages for toolbar disabled states', () => {
     const pattern = new Pattern();
 
-    expect(pattern.getAddSingleCrochetError()).toContain('foundation chain');
-    expect(pattern.getStartNewRowError()).toContain('foundation chain');
+    expect(pattern.getAddSingleCrochetError()).toContain('foundation');
+    expect(pattern.getStartNewRowError()).toContain('foundation');
 
     pattern.addFoundationChain(2);
     expect(pattern.getAddSingleCrochetError()).toContain('row 1');
@@ -237,6 +237,7 @@ describe('Pattern', () => {
     expect(snapshot.currentRow).toBe(1);
     expect(snapshot.stitches).toHaveLength(3);
     expect(snapshot.rowDirections).toEqual({ 1: 'left_to_right' });
+    expect(snapshot.foundationType).toBe('chain');
   });
 
   it('resets the pattern', () => {

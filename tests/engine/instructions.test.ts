@@ -17,7 +17,7 @@ describe('generateInstructions', () => {
 
     expect(generateInstructions(stitches)).toEqual([
       'Foundation: ch 2',
-      'Row 1: sc in each st across (2 sc)',
+      'Row 1: work across (2 sc)',
     ]);
   });
 
@@ -32,8 +32,8 @@ describe('generateInstructions', () => {
 
     expect(generateInstructions(stitches)).toEqual([
       'Foundation: ch 2',
-      'Row 1: sc in each st across (2 sc)',
-      'Row 2: sc in each st across (1 sc)',
+      'Row 1: work across (2 sc)',
+      'Row 2: work across (1 sc)',
     ]);
   });
 
@@ -47,7 +47,7 @@ describe('generateInstructions', () => {
 
     expect(generateInstructions(stitches)).toEqual([
       'Foundation: ch 2',
-      'Row 1: sc in each st across (2 sc)',
+      'Row 1: work across (2 sc)',
     ]);
   });
 });

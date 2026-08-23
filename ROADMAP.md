@@ -32,7 +32,7 @@ The 3D canvas is primary; panels explain status and next steps in plain crochet 
 
 ---
 
-## Phase 1 — Interaction & polish (next)
+## Phase 1 — Interaction & polish
 
 Make the designer feel like a **creative tool**, not just a button-driven demo.
 
@@ -48,7 +48,7 @@ Make the designer feel like a **creative tool**, not just a button-driven demo.
 
 ---
 
-## Shipped — v0.2 Phase 1 (current)
+## Shipped — v0.2 Phase 1
 
 | Capability | Specs | Notes |
 |------------|-------|-------|
@@ -60,7 +60,7 @@ Make the designer feel like a **creative tool**, not just a button-driven demo.
 
 ---
 
-## Phase 2 — Pattern richness (next)
+## Phase 2 — Pattern richness
 
 Expand what patterns can express while keeping the engine testable.
 
@@ -76,7 +76,19 @@ Expand what patterns can express while keeping the engine testable.
 
 ---
 
-## Phase 3 — Persistence & sharing
+## Shipped — v0.3 Phase 2 (current)
+
+| Capability | Specs | Notes |
+|------------|-------|-------|
+| Half double crochet and double crochet | `stitch-types.feature` | Stitch type selector, dynamic Add button |
+| Increase / decrease shaping | `stitch-types.feature` | Slot-based row completion; Inc/Dec toolbar |
+| Magic ring foundation | `foundation-chain.feature` | Chain / magic ring tabs in Start foundation dialog |
+| Pattern templates (coaster, swatch) | `templates.feature` | Pre-built multi-row examples |
+| Yarn color picker | `app-shell.feature` | Info panel color input; scene yarn tint |
+
+---
+
+## Phase 3 — Persistence & sharing (next)
 
 Let users keep and revisit work.
 
@@ -167,6 +179,7 @@ When pulling an item from this roadmap into development:
 
 | Date | Change |
 |------|--------|
+| 2026-08-23 | Phase 2 shipped: HDC/DC, inc/dec, magic ring, templates, yarn color picker |
 | 2026-08-23 | Phase 1 shipped: click-to-place, undo/redo, row turn direction, onboarding, collapsible panels |
 | 2026-08-23 | Illustrated scene style shipped; SC V-stitch topology, flat background, outline stroke, UI/UX accessibility pass |
 | 2026-08-22 | Engineering backlog items completed (validation unify, geometry dispose, store tests) |

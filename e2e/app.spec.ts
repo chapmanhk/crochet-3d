@@ -13,6 +13,9 @@ import {
   chainLengthInput,
   startRowOne,
   toolbarButton,
+  loadTemplate,
+  selectStitchType,
+  createMagicRing,
 } from './helpers';
 
 test.beforeEach(async ({ page }) => {
@@ -251,13 +254,13 @@ test.describe('Single crochet rows', () => {
     await toolbarButton(page, 'Add SC').click();
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('4');
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('1/3');
-    await expect(panel.getByText('Row 1: sc in each st across (1 sc)')).toBeVisible();
-    await expect(panel.getByText('Place 2 more single crochet stitches on row 1.')).toBeVisible();
+    await expect(panel.getByText('Row 1: work across (1 sc)')).toBeVisible();
+    await expect(panel.getByText('Place 2 more sc parent stitches on row 1.')).toBeVisible();
 
     await completeRow(page, 2);
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('6');
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('3/3');
-    await expect(panel.getByText('Row 1: sc in each st across (3 sc)')).toBeVisible();
+    await expect(panel.getByText('Row 1: work across (3 sc)')).toBeVisible();
     await expect(panel.getByText('Row 1 is complete. Choose New Row to continue.')).toBeVisible();
   });
 
@@ -275,7 +278,7 @@ test.describe('Single crochet rows', () => {
 
     await toolbarButton(page, 'Add SC').click();
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('7');
-    await expect(panel.getByText('Row 2: sc in each st across (1 sc)')).toBeVisible();
+    await expect(panel.getByText('Row 2: work across (1 sc)')).toBeVisible();
   });
 });
 
@@ -429,6 +432,104 @@ test.describe('Responsive panels', () => {
     await toggle.click();
     await expect(infoPanel(page).getByRole('button', { name: 'Show panel' })).toBeVisible();
     await expect(infoPanel(page).locator('dt:text("Status")')).toBeHidden();
+  });
+});
+
+test.describe('Stitch types', () => {
+  test('Place half double crochet stitches', async ({ page }) => {
+    await page.goto('/');
+
+    await createFoundationChain(page, 3);
+    await toolbarButton(page, 'New Row').click();
+    await selectStitchType(page, 'HDC');
+    await toolbarButton(page, 'Add HDC').click();
+
+    const panel = infoPanel(page);
+    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('4');
+    await expect(panel.locator('.instructions').getByText('Row 1: work across (1 hdc)')).toBeVisible();
+  });
+
+  test('Place double crochet stitches', async ({ page }) => {
+    await page.goto('/');
+
+    await createFoundationChain(page, 3);
+    await toolbarButton(page, 'New Row').click();
+    await selectStitchType(page, 'DC');
+    await toolbarButton(page, 'Add DC').click();
+
+    const panel = infoPanel(page);
+    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('4');
+    await expect(panel.locator('.instructions').getByText('Row 1: work across (1 dc)')).toBeVisible();
+  });
+});
+
+test.describe('Pattern templates', () => {
+  test('Load a coaster template', async ({ page }) => {
+    await page.goto('/');
+
+    await loadTemplate(page, 'Coaster');
+
+    const panel = infoPanel(page);
+    await expect(panel.locator('dt:text("Stitches") + dd')).not.toHaveText('0');
+    await expect(panel.locator('.instructions li').first()).toBeVisible();
+  });
+
+  test('Load a swatch template', async ({ page }) => {
+    await page.goto('/');
+
+    await loadTemplate(page, 'Swatch');
+
+    await expect(infoPanel(page).locator('.instructions').getByText(/hdc/i)).toBeVisible();
+  });
+});
+
+test.describe('Magic ring foundation', () => {
+  test('Create a magic ring foundation', async ({ page }) => {
+    await page.goto('/');
+
+    await createMagicRing(page, 6);
+
+    const panel = infoPanel(page);
+    await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Magic ring');
+    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('6');
+    await expect(panel.getByText('Foundation: magic ring, 6 sc')).toBeVisible();
+    await expect(panel.getByText('Choose New Row to work into the magic ring stitches.')).toBeVisible();
+  });
+});
+
+test.describe('Increase and decrease', () => {
+  test('Increase places two stitches in one parent slot', async ({ page }) => {
+    await page.goto('/');
+    await startRowOne(page, 3);
+
+    await toolbarButton(page, 'Inc').click();
+
+    const panel = infoPanel(page);
+    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('5');
+    await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('2 sts (1/3 slots)');
+  });
+
+  test('Decrease consumes two parent slots', async ({ page }) => {
+    await page.goto('/');
+    await startRowOne(page, 4);
+    await toolbarButton(page, 'Add SC').click();
+    await toolbarButton(page, 'Add SC').click();
+    await toolbarButton(page, 'Dec').click();
+
+    const panel = infoPanel(page);
+    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('7');
+    await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('3 sts (4/4 slots)');
+  });
+});
+
+test.describe('Yarn color', () => {
+  test('Yarn color picker updates the selected color', async ({ page }) => {
+    await page.goto('/');
+
+    const colorInput = infoPanel(page).locator('#yarn-color');
+    await colorInput.fill('#336699');
+
+    await expect(colorInput).toHaveValue('#336699');
   });
 });
 

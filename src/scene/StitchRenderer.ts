@@ -9,6 +9,8 @@ import {
   createStitchFillMaterial,
   createStitchOutlineMaterial,
   disposeOutlinedStitch,
+  updateFillMaterialColor,
+  updateOutlineMaterialColor,
   updateOutlineMaterialSize,
 } from './stitchMaterials';
 
@@ -55,6 +57,12 @@ export class StitchRenderer {
 
   updateOutlineSize(): void {
     updateOutlineMaterialSize(this.outlineMaterial);
+  }
+
+  setYarnColor(hexColor: string): void {
+    const color = Number.parseInt(hexColor.replace('#', ''), 16);
+    updateFillMaterialColor(this.fillMaterial, color);
+    updateOutlineMaterialColor(this.outlineMaterial, color);
   }
 
   private upsertSegment(key: string, geometry: THREE.BufferGeometry): void {

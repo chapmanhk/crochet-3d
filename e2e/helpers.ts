@@ -12,15 +12,19 @@ export function infoPanel(page: Page) {
 }
 
 export function chainDialog(page: Page) {
-  return page.getByRole('dialog', { name: 'Foundation chain' });
+  return page.getByRole('dialog', { name: 'Start foundation' });
 }
 
 export function confirmDialog(page: Page) {
   return page.getByRole('alertdialog');
 }
 
+export function foundationLengthInput(page: Page) {
+  return chainDialog(page).getByRole('spinbutton');
+}
+
 export function chainLengthInput(page: Page) {
-  return chainDialog(page).getByRole('spinbutton', { name: 'Chain length' });
+  return foundationLengthInput(page);
 }
 
 export function toolbarButton(page: Page, name: string | RegExp) {
@@ -56,8 +60,32 @@ export { MIN_CHAIN_LENGTH, MAX_CHAIN_LENGTH } from '../src/engine/Pattern';
 
 export async function completeRow(page: Page, stitchCount: number) {
   for (let index = 0; index < stitchCount; index += 1) {
-    await toolbarButton(page, 'Add SC').click();
+    await toolbarButton(page, /Add SC/).click();
   }
+}
+
+export async function selectStitchType(page: Page, type: 'SC' | 'HDC' | 'DC') {
+  await page
+    .getByRole('group', { name: 'Stitch type' })
+    .getByRole('button', { name: type, exact: true })
+    .click();
+}
+
+export async function openTemplateDialog(page: Page) {
+  await toolbarButton(page, 'Templates').click();
+  await expect(page.getByRole('dialog', { name: 'Pattern templates' })).toBeVisible();
+}
+
+export async function loadTemplate(page: Page, name: string) {
+  await openTemplateDialog(page);
+  await page.getByRole('button', { name: new RegExp(name, 'i') }).click();
+}
+
+export async function createMagicRing(page: Page, stitchCount: number) {
+  await openChainDialog(page);
+  await chainDialog(page).getByRole('tab', { name: 'Magic ring' }).click();
+  await chainLengthInput(page).fill(String(stitchCount));
+  await chainDialog(page).getByRole('button', { name: 'Create magic ring' }).click();
 }
 
 export async function startRowOne(page: Page, chainLength: number) {

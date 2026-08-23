@@ -30,7 +30,7 @@ describe('patternStore', () => {
     expect(store.addFoundationChain(5)).toBe(false);
 
     const state = usePatternStore.getState();
-    expect(state.lastError).toContain('Foundation chain already exists');
+    expect(state.lastError).toContain('Foundation already exists');
     expect(state.stitches).toHaveLength(3);
     expect(state.foundationChainLength).toBe(3);
   });
@@ -99,8 +99,8 @@ describe('patternStore', () => {
   it('surfaces engine validation messages for toolbar disabled states', () => {
     const store = usePatternStore.getState();
 
-    expect(store.addScDisabledReason).toContain('foundation chain');
-    expect(store.newRowDisabledReason).toContain('foundation chain');
+    expect(store.addScDisabledReason).toContain('foundation');
+    expect(store.newRowDisabledReason).toContain('foundation');
 
     store.addFoundationChain(2);
     store.startNewRow();

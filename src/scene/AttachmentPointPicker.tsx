@@ -7,14 +7,14 @@ export function AttachmentPointPicker() {
   const {
     stitches,
     nextAttachmentTargetId,
-    addSingleCrochetAt,
+    addWorkingStitchAt,
     canAddSingleCrochet,
   } = usePatternStore(
     useShallow((state) => ({
       stitches: state.stitches,
       nextAttachmentTargetId: state.nextAttachmentTargetId,
-      addSingleCrochetAt: state.addSingleCrochetAt,
-      canAddSingleCrochet: state.canAddSingleCrochet,
+      addWorkingStitchAt: state.addWorkingStitchAt,
+      canAddSingleCrochet: state.canAddStitch,
     })),
   );
 
@@ -40,7 +40,7 @@ export function AttachmentPointPicker() {
         className="attachment-point"
         data-testid="attachment-point"
         aria-label="Place next single crochet stitch"
-        onClick={() => addSingleCrochetAt(attachmentPoint.attachToId)}
+        onClick={() => addWorkingStitchAt(attachmentPoint.attachToId)}
       />
     </Html>
   );

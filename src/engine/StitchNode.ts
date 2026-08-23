@@ -1,6 +1,5 @@
-import type { StitchNode } from './types';
-import { StitchType } from './types';
-import { layoutPosition } from './layout';
+import type { StitchNode, StitchType } from './types';
+import { PlacementKind } from './types';
 
 let nextId = 1;
 
@@ -28,17 +27,29 @@ export function createStitchNode(
   row: number,
   column: number,
   attachToId: string | null = null,
+  placementKind: PlacementKind = PlacementKind.NORMAL,
+  secondaryAttachToId: string | null = null,
 ): StitchNode {
-  return {
+  const stitch: StitchNode = {
     id: createId(),
     type,
     row,
     column,
     attachToId,
-    position: layoutPosition(type, row, column),
+    placementKind,
+    position: { x: 0, y: 0, z: 0 },
   };
+
+  if (secondaryAttachToId) {
+    stitch.secondaryAttachToId = secondaryAttachToId;
+  }
+
+  return stitch;
 }
 
 export function cloneStitchNode(stitch: StitchNode): StitchNode {
-  return { ...stitch, position: { ...stitch.position } };
+  return {
+    ...stitch,
+    position: { ...stitch.position },
+  };
 }

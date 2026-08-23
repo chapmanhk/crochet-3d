@@ -1,27 +1,39 @@
 import { useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { type TemplateId } from '@engine/index';
 import { usePatternStore } from '@store/patternStore';
-import { ChainLengthDialog } from './ChainLengthDialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import {
   CONFIRM_DIALOG_COPY,
   type ConfirmAction,
 } from './confirmDialogCopy';
+import { FoundationStartDialog } from './FoundationStartDialog';
+import { getAddStitchButtonLabel } from './infoPanelState';
+import { StitchTypeSelector } from './StitchTypeSelector';
+import { TemplateDialog } from './TemplateDialog';
 import { ToolbarActionButton } from './ToolbarActionButton';
 import { getResetDisabledReason } from './toolbarState';
 
 export function Toolbar() {
   const {
     addFoundationChain,
-    addSingleCrochet,
+    addMagicRing,
+    addWorkingStitch,
+    addIncrease,
+    addDecrease,
     startNewRow,
     resetPattern,
     undo,
     redo,
+    loadTemplate,
     clearError,
     lastError,
     foundationChainLength,
-    addScDisabledReason,
+    selectedStitchType,
+    setSelectedStitchType,
+    addStitchDisabledReason,
+    addIncreaseDisabledReason,
+    addDecreaseDisabledReason,
     newRowDisabledReason,
     undoDisabledReason,
     redoDisabledReason,
@@ -29,15 +41,23 @@ export function Toolbar() {
   } = usePatternStore(
     useShallow((state) => ({
       addFoundationChain: state.addFoundationChain,
-      addSingleCrochet: state.addSingleCrochet,
+      addMagicRing: state.addMagicRing,
+      addWorkingStitch: state.addWorkingStitch,
+      addIncrease: state.addIncrease,
+      addDecrease: state.addDecrease,
       startNewRow: state.startNewRow,
       resetPattern: state.resetPattern,
       undo: state.undo,
       redo: state.redo,
+      loadTemplate: state.loadTemplate,
       clearError: state.clearError,
       lastError: state.lastError,
       foundationChainLength: state.foundationChainLength,
-      addScDisabledReason: state.addScDisabledReason,
+      selectedStitchType: state.selectedStitchType,
+      setSelectedStitchType: state.setSelectedStitchType,
+      addStitchDisabledReason: state.addStitchDisabledReason,
+      addIncreaseDisabledReason: state.addIncreaseDisabledReason,
+      addDecreaseDisabledReason: state.addDecreaseDisabledReason,
       newRowDisabledReason: state.newRowDisabledReason,
       undoDisabledReason: state.undoDisabledReason,
       redoDisabledReason: state.redoDisabledReason,
@@ -45,15 +65,17 @@ export function Toolbar() {
     })),
   );
 
-  const [chainDialogOpen, setChainDialogOpen] = useState(false);
+  const [foundationDialogOpen, setFoundationDialogOpen] = useState(false);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const newChainRef = useRef<HTMLButtonElement>(null);
 
   const resetDisabledReason = getResetDisabledReason(stitches.length);
+  const addStitchLabel = getAddStitchButtonLabel(selectedStitchType);
 
-  const openChainDialog = () => {
+  const openFoundationDialog = () => {
     clearError();
-    setChainDialogOpen(true);
+    setFoundationDialogOpen(true);
   };
 
   const handleNewChain = () => {
@@ -62,20 +84,7 @@ export function Toolbar() {
       return;
     }
 
-    openChainDialog();
-  };
-
-  const handleChainSubmit = (length: number): boolean => {
-    clearError();
-    const success = addFoundationChain(length);
-    if (success) {
-      setChainDialogOpen(false);
-    }
-    return success;
-  };
-
-  const handleReset = () => {
-    setConfirmAction('reset');
+    openFoundationDialog();
   };
 
   const handleConfirm = () => {
@@ -89,8 +98,16 @@ export function Toolbar() {
 
     if (action === 'new-chain') {
       resetPattern();
-      openChainDialog();
+      openFoundationDialog();
     }
+  };
+
+  const handleTemplateSelect = (templateId: TemplateId) => {
+    if (foundationChainLength > 0) {
+      resetPattern();
+    }
+    loadTemplate(templateId);
+    setTemplateDialogOpen(false);
   };
 
   const confirmCopy = confirmAction ? CONFIRM_DIALOG_COPY[confirmAction] : null;
@@ -106,10 +123,31 @@ export function Toolbar() {
         >
           New Chain
         </button>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => setTemplateDialogOpen(true)}
+        >
+          Templates
+        </button>
+        <StitchTypeSelector
+          value={selectedStitchType}
+          onChange={setSelectedStitchType}
+        />
         <ToolbarActionButton
-          label="Add SC"
-          disabledReason={addScDisabledReason}
-          onClick={addSingleCrochet}
+          label={addStitchLabel}
+          disabledReason={addStitchDisabledReason}
+          onClick={addWorkingStitch}
+        />
+        <ToolbarActionButton
+          label="Inc"
+          disabledReason={addIncreaseDisabledReason}
+          onClick={addIncrease}
+        />
+        <ToolbarActionButton
+          label="Dec"
+          disabledReason={addDecreaseDisabledReason}
+          onClick={addDecrease}
         />
         <ToolbarActionButton
           label="New Row"
@@ -131,19 +169,40 @@ export function Toolbar() {
         <ToolbarActionButton
           label="Reset"
           disabledReason={resetDisabledReason}
-          onClick={handleReset}
+          onClick={() => setConfirmAction('reset')}
           variant="subtle"
         />
       </div>
 
-      <ChainLengthDialog
-        open={chainDialogOpen}
-        serverError={chainDialogOpen ? lastError : null}
+      <FoundationStartDialog
+        open={foundationDialogOpen}
+        serverError={foundationDialogOpen ? lastError : null}
         onClose={() => {
-          setChainDialogOpen(false);
+          setFoundationDialogOpen(false);
           newChainRef.current?.focus();
         }}
-        onSubmit={handleChainSubmit}
+        onSubmitChain={(length) => {
+          clearError();
+          const success = addFoundationChain(length);
+          if (success) {
+            setFoundationDialogOpen(false);
+          }
+          return success;
+        }}
+        onSubmitMagicRing={(stitchCount) => {
+          clearError();
+          const success = addMagicRing(stitchCount);
+          if (success) {
+            setFoundationDialogOpen(false);
+          }
+          return success;
+        }}
+      />
+
+      <TemplateDialog
+        open={templateDialogOpen}
+        onClose={() => setTemplateDialogOpen(false)}
+        onSelect={handleTemplateSelect}
       />
 
       {confirmCopy ? (

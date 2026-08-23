@@ -16,6 +16,16 @@ export function layoutPosition(
   return { x, y, z };
 }
 
+export function layoutMagicRingPosition(index: number, count: number): Vec3 {
+  const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
+  const radius = STITCH_SPACING * 0.45;
+  return {
+    x: Math.cos(angle) * radius,
+    y: 0,
+    z: Math.sin(angle) * radius * 0.35 + 0.12,
+  };
+}
+
 export function layoutStitchPositions(
   stitches: Array<{ type: StitchType; row: number; column: number }>,
 ): Vec3[] {

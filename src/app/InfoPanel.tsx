@@ -29,7 +29,12 @@ export function InfoPanel() {
     stitches,
     currentRow,
     foundationChainLength,
+    foundationType,
     currentRowStitchCount,
+    currentRowSlotsConsumed,
+    selectedStitchType,
+    yarnColor,
+    setYarnColor,
     instructions,
     lastError,
     clearError,
@@ -38,23 +43,32 @@ export function InfoPanel() {
       stitches: state.stitches,
       currentRow: state.currentRow,
       foundationChainLength: state.foundationChainLength,
+      foundationType: state.foundationType,
       currentRowStitchCount: state.currentRowStitchCount,
+      currentRowSlotsConsumed: state.currentRowSlotsConsumed,
+      selectedStitchType: state.selectedStitchType,
+      yarnColor: state.yarnColor,
+      setYarnColor: state.setYarnColor,
       instructions: state.instructions,
       lastError: state.lastError,
       clearError: state.clearError,
     })),
   );
 
-  const rowLabel = getRowLabel(foundationChainLength, currentRow);
+  const rowLabel = getRowLabel(foundationChainLength, currentRow, foundationType);
   const rowProgress = getRowProgress(
     currentRow,
     foundationChainLength,
     currentRowStitchCount,
+    currentRowSlotsConsumed,
   );
   const nextStep = getNextStep(
     foundationChainLength,
     currentRow,
     currentRowStitchCount,
+    currentRowSlotsConsumed,
+    selectedStitchType,
+    foundationType,
   );
 
   return (
@@ -100,6 +114,16 @@ export function InfoPanel() {
             </div>
           </dl>
           <p className="next-step muted">{nextStep}</p>
+        </div>
+
+        <div className="yarn-color-field">
+          <label htmlFor="yarn-color">Yarn color</label>
+          <input
+            id="yarn-color"
+            type="color"
+            value={yarnColor}
+            onChange={(event) => setYarnColor(event.target.value)}
+          />
         </div>
 
         <h3>Instructions</h3>
