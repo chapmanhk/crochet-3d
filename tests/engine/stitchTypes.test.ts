@@ -3,11 +3,8 @@ import {
   Pattern,
   PlacementKind,
   StitchType,
+  magicRingRadialDistance,
 } from '@engine/index';
-
-function radialDistance(position: { x: number; z: number }): number {
-  return Math.hypot(position.x, (position.z - 0.12) / 0.35);
-}
 
 describe('stitch types', () => {
   it('adds half double crochet stitches', () => {
@@ -144,17 +141,17 @@ describe('magic ring', () => {
     }
 
     const rowOne = pattern.getStitches().filter((stitch) => stitch.row === 1);
-    const parentRadius = radialDistance(ring[0]!.position);
+    const parentRadius = magicRingRadialDistance(ring[0]!.position);
 
     for (const stitch of rowOne) {
-      expect(radialDistance(stitch.position)).toBeGreaterThan(parentRadius);
+      expect(magicRingRadialDistance(stitch.position)).toBeGreaterThan(parentRadius);
     }
 
     pattern.startNewRow();
     pattern.addWorkingStitch(StitchType.SINGLE_CROCHET);
     const rowTwoFirst = pattern.getStitches().find((stitch) => stitch.row === 2)!;
-    const rowOneRadius = radialDistance(rowOne[0]!.position);
-    const rowTwoRadius = radialDistance(rowTwoFirst.position);
+    const rowOneRadius = magicRingRadialDistance(rowOne[0]!.position);
+    const rowTwoRadius = magicRingRadialDistance(rowTwoFirst.position);
     expect(rowTwoRadius).toBeGreaterThan(rowOneRadius);
   });
 });

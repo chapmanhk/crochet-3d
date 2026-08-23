@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateInstructions, getStitchLabel, StitchType } from '@engine/index';
+import { FoundationType, generateInstructions, getStitchLabel, StitchType } from '@engine/index';
 import { createStitchNode } from '@engine/StitchNode';
 
 describe('generateInstructions', () => {
@@ -37,17 +37,17 @@ describe('generateInstructions', () => {
     ]);
   });
 
-  it('sorts stitches by row and column before generating text', () => {
+  it('uses round wording for magic ring working rows', () => {
     const stitches = [
-      createStitchNode(StitchType.SINGLE_CROCHET, 1, 1),
-      createStitchNode(StitchType.CHAIN, 0, 1),
-      createStitchNode(StitchType.CHAIN, 0, 0),
+      createStitchNode(StitchType.SINGLE_CROCHET, 0, 0),
+      createStitchNode(StitchType.SINGLE_CROCHET, 0, 1),
       createStitchNode(StitchType.SINGLE_CROCHET, 1, 0),
+      createStitchNode(StitchType.SINGLE_CROCHET, 1, 1),
     ];
 
-    expect(generateInstructions(stitches)).toEqual([
-      'Foundation: ch 2',
-      'Row 1: work across (2 sc)',
+    expect(generateInstructions(stitches, FoundationType.MAGIC_RING)).toEqual([
+      'Foundation: magic ring, 2 sc',
+      'Round 1: work around (2 sc)',
     ]);
   });
 });

@@ -51,6 +51,18 @@ describe('Pattern', () => {
     expectPlacementError(() => pattern.addFoundationChain(501), 'INVALID_CHAIN_LENGTH');
   });
 
+  it('rejects invalid magic ring stitch counts', () => {
+    const pattern = new Pattern();
+    expectPlacementError(() => pattern.addMagicRing(1), 'INVALID_MAGIC_RING_COUNT');
+    expectPlacementError(() => pattern.addMagicRing(51), 'INVALID_MAGIC_RING_COUNT');
+  });
+
+  it('rejects duplicate magic rings', () => {
+    const pattern = new Pattern();
+    pattern.addMagicRing(6);
+    expectPlacementError(() => pattern.addMagicRing(6), 'FOUNDATION_EXISTS');
+  });
+
   it('rejects duplicate foundation chains', () => {
     const pattern = new Pattern();
     pattern.addFoundationChain(3);

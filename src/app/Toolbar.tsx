@@ -8,7 +8,7 @@ import {
   type ConfirmAction,
 } from './confirmDialogCopy';
 import { FoundationStartDialog } from './FoundationStartDialog';
-import { getAddStitchButtonLabel } from './infoPanelState';
+import { getAddStitchButtonLabel, getAdvanceActionLabel, relabelForFoundationType } from './infoPanelState';
 import { StitchTypeSelector } from './StitchTypeSelector';
 import { TemplateDialog } from './TemplateDialog';
 import { ToolbarActionButton } from './ToolbarActionButton';
@@ -29,6 +29,7 @@ export function Toolbar() {
     clearError,
     lastError,
     foundationChainLength,
+    foundationType,
     selectedStitchType,
     setSelectedStitchType,
     addStitchDisabledReason,
@@ -53,6 +54,7 @@ export function Toolbar() {
       clearError: state.clearError,
       lastError: state.lastError,
       foundationChainLength: state.foundationChainLength,
+      foundationType: state.foundationType,
       selectedStitchType: state.selectedStitchType,
       setSelectedStitchType: state.setSelectedStitchType,
       addStitchDisabledReason: state.addStitchDisabledReason,
@@ -73,6 +75,8 @@ export function Toolbar() {
 
   const resetDisabledReason = getResetDisabledReason(stitches.length);
   const addStitchLabel = getAddStitchButtonLabel(selectedStitchType);
+  const advanceActionLabel = getAdvanceActionLabel(foundationType);
+  const newRowReason = relabelForFoundationType(newRowDisabledReason, foundationType);
 
   const openFoundationDialog = () => {
     clearError();
@@ -163,8 +167,8 @@ export function Toolbar() {
           onClick={addDecrease}
         />
         <ToolbarActionButton
-          label="New Row"
-          disabledReason={newRowDisabledReason}
+          label={advanceActionLabel}
+          disabledReason={newRowReason}
           onClick={startNewRow}
         />
         <ToolbarActionButton

@@ -46,7 +46,7 @@ export function OnboardingDialog() {
       <h2 id={titleId}>Welcome to Crochet 3D</h2>
       <p id={descriptionId}>
         Design crochet patterns visually in 3D. Start with a foundation chain or magic ring,
-        pick a template, and work rows in single crochet, half double crochet, or double crochet.
+        pick a template, and work rows or rounds in single crochet, half double crochet, or double crochet.
         Click attachment points in the canvas or use the toolbar to place stitches.
       </p>
       <div className="dialog-actions">

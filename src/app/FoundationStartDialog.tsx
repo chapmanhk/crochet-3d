@@ -69,12 +69,13 @@ export function FoundationStartDialog({
       return;
     }
 
-    setMode('chain');
-    setValue(String(DEFAULT_CHAIN_LENGTH));
+    setValue(
+      String(mode === 'chain' ? DEFAULT_CHAIN_LENGTH : DEFAULT_MAGIC_RING_STITCHES),
+    );
     setLocalError(null);
     inputRef.current?.focus();
     inputRef.current?.select();
-  }, [open]);
+  }, [open, mode]);
 
   if (!open) {
     return null;
@@ -86,6 +87,7 @@ export function FoundationStartDialog({
       String(nextMode === 'chain' ? DEFAULT_CHAIN_LENGTH : DEFAULT_MAGIC_RING_STITCHES),
     );
     setLocalError(null);
+    inputRef.current?.focus();
   };
 
   const handleChange = (raw: string) => {
@@ -134,10 +136,10 @@ export function FoundationStartDialog({
       onBackdropClick={onClose}
     >
       <h2 id={titleId}>Start foundation</h2>
-      <p id={descriptionId} className="muted">
+      <p id={descriptionId} className="muted" aria-live="polite">
         {mode === 'chain'
           ? 'How many chains should the foundation row have?'
-          : 'How many single crochet stitches should the magic ring start with?'}
+          : 'How many single crochet stitches should the magic ring start with? Magic ring foundations always use single crochet; choose other stitch types after the first round.'}
       </p>
 
       <div className="foundation-mode-toggle" role="group" aria-label="Foundation type">
@@ -185,7 +187,6 @@ export function FoundationStartDialog({
             aria-valuemin={min}
             aria-valuemax={max}
             aria-valuenow={numericValue ?? undefined}
-            aria-label={fieldLabel}
             aria-invalid={displayError ? true : undefined}
             aria-describedby={describedBy}
             value={value}

@@ -5,6 +5,42 @@ import {
   type WorkingStitchType,
 } from '@engine/index';
 
+function isMagicRing(foundationType: FoundationType): boolean {
+  return foundationType === FoundationType.MAGIC_RING;
+}
+
+export function getAdvanceActionLabel(
+  foundationType: FoundationType = FoundationType.CHAIN,
+): string {
+  return isMagicRing(foundationType) ? 'New Round' : 'New Row';
+}
+
+export function getProgressLabel(
+  foundationType: FoundationType = FoundationType.CHAIN,
+): string {
+  return isMagicRing(foundationType) ? 'Round progress' : 'Row progress';
+}
+
+export function getFoundationStatLabel(
+  foundationType: FoundationType = FoundationType.CHAIN,
+): string {
+  return isMagicRing(foundationType) ? 'Stitches in ring' : 'Chain length';
+}
+
+export function relabelForFoundationType(
+  message: string | null,
+  foundationType: FoundationType = FoundationType.CHAIN,
+): string | null {
+  if (!message || !isMagicRing(foundationType)) {
+    return message;
+  }
+
+  return message
+    .replace(/\bRow\b/g, 'Round')
+    .replace(/\brow\b/g, 'round')
+    .replace(/\bNew row\b/g, 'New Round');
+}
+
 export function getRowLabel(
   foundationChainLength: number,
   currentRow: number,
@@ -15,7 +51,11 @@ export function getRowLabel(
   }
 
   if (currentRow === 0) {
-    return foundationType === FoundationType.MAGIC_RING ? 'Magic ring' : 'Foundation';
+    return isMagicRing(foundationType) ? 'Magic ring' : 'Foundation';
+  }
+
+  if (isMagicRing(foundationType)) {
+    return `Round ${currentRow}`;
   }
 
   return `Row ${currentRow}`;
@@ -49,25 +89,31 @@ export function getNextStep(
   selectedStitchType: WorkingStitchType = StitchType.SINGLE_CROCHET,
   foundationType: FoundationType = FoundationType.CHAIN,
 ): string {
+  const advanceAction = getAdvanceActionLabel(foundationType);
+  const workUnit = isMagicRing(foundationType) ? 'round' : 'row';
+
   if (foundationChainLength === 0) {
     return 'Choose New foundation or Templates to start your pattern.';
   }
 
   if (currentRow === 0) {
-    if (foundationType === FoundationType.MAGIC_RING) {
-      return 'Choose New Row to work into the magic ring stitches.';
+    if (isMagicRing(foundationType)) {
+      return `Choose ${advanceAction} to work into the magic ring stitches.`;
     }
-    return 'Choose New Row to begin the first working row.';
+    return `Choose ${advanceAction} to begin the first working row.`;
   }
 
   const remainingSlots = rowWidthTarget - currentRowSlotsConsumed;
   if (remainingSlots > 0) {
     const stitchName = getWorkingStitchName(selectedStitchType);
     const stitchWord = remainingSlots === 1 ? 'stitch' : 'stitches';
-    return `Place ${remainingSlots} more ${stitchName} ${stitchWord} on row ${currentRow}.`;
+    return `Place ${remainingSlots} more ${stitchName} ${stitchWord} in ${workUnit} ${currentRow}.`;
   }
 
-  return `Row ${currentRow} is complete. Choose New Row to continue.`;
+  const completeLabel = isMagicRing(foundationType)
+    ? `Round ${currentRow}`
+    : `Row ${currentRow}`;
+  return `${completeLabel} is complete. Choose ${advanceAction} to continue.`;
 }
 
 export function getAddStitchButtonLabel(selectedStitchType: WorkingStitchType): string {

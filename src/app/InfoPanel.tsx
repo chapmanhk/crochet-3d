@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePatternStore } from '@store/patternStore';
 import {
+  getFoundationStatLabel,
   getNextStep,
+  getProgressLabel,
   getRowLabel,
   getRowProgress,
 } from './infoPanelState';
@@ -58,6 +60,8 @@ export function InfoPanel() {
   );
 
   const rowLabel = getRowLabel(foundationChainLength, currentRow, foundationType);
+  const progressLabel = getProgressLabel(foundationType);
+  const foundationStatLabel = getFoundationStatLabel(foundationType);
   const rowProgress = getRowProgress(
     currentRow,
     foundationChainLength,
@@ -93,10 +97,6 @@ export function InfoPanel() {
         </button>
       </div>
 
-      <div className="visually-hidden" aria-live="polite" aria-atomic="true">
-        {rowLabel}. {stitches.length} stitches. Row progress {rowProgress}.
-      </div>
-
       <div id="info-panel-content" className="info-content" hidden={collapsed}>
         <div aria-live="polite" aria-atomic="true" className="info-live-region">
           <dl className="info-grid">
@@ -109,11 +109,11 @@ export function InfoPanel() {
               <dd>{stitches.length}</dd>
             </div>
             <div>
-              <dt>Foundation</dt>
+              <dt>{foundationStatLabel}</dt>
               <dd>{foundationChainLength || '—'}</dd>
             </div>
             <div>
-              <dt>Row progress</dt>
+              <dt>{progressLabel}</dt>
               <dd>{rowProgress}</dd>
             </div>
           </dl>

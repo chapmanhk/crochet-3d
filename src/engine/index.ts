@@ -14,6 +14,7 @@ export {
   MAGIC_RING_RADIUS_GROWTH,
   MAGIC_RING_Z_CENTER,
   MAGIC_RING_Z_SCALE,
+  magicRingRadialDistance,
 } from './layout';
 export type { MagicRingWorkingLayoutOptions } from './layout';
 export {

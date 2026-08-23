@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { Pattern, resetIdCounter, StitchType } from '@engine/index';
+import { Pattern, FoundationType, resetIdCounter, StitchType } from '@engine/index';
 import { buildYarnSegments, getYarnSegmentManifests, measureSegmentsHeight, VISUAL_ROW_HEIGHT } from '../../src/scene/stitchGeometry';
 import { ROW_HEIGHT } from '@engine/index';
 
@@ -204,13 +204,13 @@ describe('stitchGeometry', () => {
       pattern.addSingleCrochet();
     });
 
-    expect(getYarnSegmentManifests(stitches).map((manifest) => manifest.key)).toEqual([
+    expect(getYarnSegmentManifests(stitches, FoundationType.MAGIC_RING).map((manifest) => manifest.key)).toEqual([
       'row-0',
       'row-1',
       'join-1',
     ]);
 
-    const segments = buildYarnSegments(stitches);
+    const segments = buildYarnSegments(stitches, FoundationType.MAGIC_RING);
     expect(segments).toHaveLength(3);
     disposeSegments(segments);
   });
@@ -228,10 +228,10 @@ describe('stitchGeometry', () => {
       }
     });
 
-    const keys = getYarnSegmentManifests(stitches).map((manifest) => manifest.key);
+    const keys = getYarnSegmentManifests(stitches, FoundationType.MAGIC_RING).map((manifest) => manifest.key);
     expect(keys).toEqual(['row-0', 'row-1', 'row-2', 'join-1', 'join-2']);
 
-    const segments = buildYarnSegments(stitches);
+    const segments = buildYarnSegments(stitches, FoundationType.MAGIC_RING);
     expect(segments).toHaveLength(5);
     expect(measureSegmentsHeight(segments)).toBeGreaterThan(VISUAL_ROW_HEIGHT * 1.5);
     disposeSegments(segments);

@@ -392,18 +392,23 @@ export class Pattern {
   ) {
     if (this.foundationType === FoundationType.MAGIC_RING && this.currentRow >= 1) {
       const parent = this.graph.get(attachToId);
-      if (parent) {
-        const secondaryParent = options.secondaryAttachToId
-          ? this.graph.get(options.secondaryAttachToId)
-          : null;
-
-        return layoutMagicRingWorkingPosition({
-          row: this.currentRow,
-          parentPosition: parent.position,
-          secondaryParentPosition: secondaryParent?.position ?? null,
-          placementKind: options.placementKind ?? PlacementKind.NORMAL,
-        });
+      if (!parent) {
+        throw new PlacementError(
+          'NO_TARGET_STITCH',
+          'Could not resolve parent stitch for round placement.',
+        );
       }
+
+      const secondaryParent = options.secondaryAttachToId
+        ? this.graph.get(options.secondaryAttachToId)
+        : null;
+
+      return layoutMagicRingWorkingPosition({
+        row: this.currentRow,
+        parentPosition: parent.position,
+        secondaryParentPosition: secondaryParent?.position ?? null,
+        placementKind: options.placementKind ?? PlacementKind.NORMAL,
+      });
     }
 
     return layoutPosition(type, this.currentRow, stitchIndex);

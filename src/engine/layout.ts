@@ -37,6 +37,17 @@ function midpointAngle(left: number, right: number): number {
   return left + delta / 2;
 }
 
+function magicRingIncreaseAngleOffset(radius: number): number {
+  return Math.min(MAGIC_RING_INCREASE_ANGLE_OFFSET, (STITCH_SPACING * 0.4) / radius);
+}
+
+export function magicRingRadialDistance(position: Vec3): number {
+  return Math.hypot(
+    position.x,
+    (position.z - MAGIC_RING_Z_CENTER) / MAGIC_RING_Z_SCALE,
+  );
+}
+
 export function layoutPosition(
   type: StitchType,
   row: number,
@@ -71,7 +82,10 @@ export function layoutMagicRingWorkingPosition(
     placementKind = PlacementKind.NORMAL,
   } = options;
 
-  if (placementKind === PlacementKind.DECREASE && secondaryParentPosition) {
+  if (placementKind === PlacementKind.DECREASE) {
+    if (!secondaryParentPosition) {
+      throw new Error('Decrease layout requires secondaryParentPosition');
+    }
     const angle = midpointAngle(
       positionAngle(parentPosition),
       positionAngle(secondaryParentPosition),
@@ -81,7 +95,8 @@ export function layoutMagicRingWorkingPosition(
 
   let angle = positionAngle(parentPosition);
   if (placementKind === PlacementKind.INCREASE_SECOND) {
-    angle += MAGIC_RING_INCREASE_ANGLE_OFFSET;
+    const radius = MAGIC_RING_BASE_RADIUS + row * MAGIC_RING_RADIUS_GROWTH;
+    angle += magicRingIncreaseAngleOffset(radius);
   }
 
   return radialMagicRingPosition(angle, row);

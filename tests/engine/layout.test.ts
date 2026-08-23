@@ -6,6 +6,7 @@ import {
   layoutStitchPositions,
   MAGIC_RING_BASE_RADIUS,
   MAGIC_RING_RADIUS_GROWTH,
+  magicRingRadialDistance,
   PlacementKind,
   StitchType,
 } from '@engine/index';
@@ -35,10 +36,6 @@ describe('layoutPosition', () => {
   });
 });
 
-function radialDistance(position: { x: number; z: number }): number {
-  return Math.hypot(position.x, (position.z - 0.12) / 0.35);
-}
-
 describe('layoutMagicRingPosition', () => {
   it('places foundation stitches on a circle', () => {
     const stitches = Array.from({ length: 6 }, (_, index) =>
@@ -46,7 +43,7 @@ describe('layoutMagicRingPosition', () => {
     );
 
     for (const position of stitches) {
-      expect(radialDistance(position)).toBeCloseTo(MAGIC_RING_BASE_RADIUS, 5);
+      expect(magicRingRadialDistance(position)).toBeCloseTo(MAGIC_RING_BASE_RADIUS, 5);
     }
   });
 });
@@ -59,8 +56,8 @@ describe('layoutMagicRingWorkingPosition', () => {
       parentPosition: parent,
     });
 
-    const parentRadius = radialDistance(parent);
-    const childRadius = radialDistance(child);
+    const parentRadius = magicRingRadialDistance(parent);
+    const childRadius = magicRingRadialDistance(child);
 
     expect(childRadius).toBeGreaterThan(parentRadius);
     expect(childRadius).toBeCloseTo(MAGIC_RING_BASE_RADIUS + MAGIC_RING_RADIUS_GROWTH, 5);
@@ -92,11 +89,20 @@ describe('layoutMagicRingWorkingPosition', () => {
       placementKind: PlacementKind.DECREASE,
     });
 
-    const decreaseRadius = radialDistance(decrease);
-    expect(decreaseRadius).toBeCloseTo(
+    expect(magicRingRadialDistance(decrease)).toBeCloseTo(
       MAGIC_RING_BASE_RADIUS + 2 * MAGIC_RING_RADIUS_GROWTH,
       5,
     );
+  });
+
+  it('throws when decrease layout lacks a secondary parent', () => {
+    expect(() =>
+      layoutMagicRingWorkingPosition({
+        row: 2,
+        parentPosition: layoutMagicRingPosition(0, 6),
+        placementKind: PlacementKind.DECREASE,
+      }),
+    ).toThrow('secondaryParentPosition');
   });
 });
 

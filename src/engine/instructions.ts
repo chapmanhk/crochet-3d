@@ -30,7 +30,11 @@ function summarizeRowStitches(rowStitches: StitchNode[]): string {
   return parts.join(', ');
 }
 
-function rowInstruction(row: number, rowStitches: StitchNode[]): string {
+function rowInstruction(
+  row: number,
+  rowStitches: StitchNode[],
+  foundationType: FoundationType,
+): string {
   const increases = rowStitches.filter(
     (stitch) => getPlacementKind(stitch) === PlacementKind.INCREASE_SECOND,
   ).length;
@@ -48,7 +52,10 @@ function rowInstruction(row: number, rowStitches: StitchNode[]): string {
   }
 
   const noteText = notes.length > 0 ? `; ${notes.join(', ')}` : '';
-  return `Row ${row}: work across (${summary})${noteText}`;
+  const unit = foundationType === FoundationType.MAGIC_RING ? 'Round' : 'Row';
+  const direction =
+    foundationType === FoundationType.MAGIC_RING ? 'work around' : 'work across';
+  return `${unit} ${row}: ${direction} (${summary})${noteText}`;
 }
 
 export function generateInstructions(
@@ -73,7 +80,7 @@ export function generateInstructions(
     );
 
     if (workingStitches.length > 0) {
-      instructions.push(rowInstruction(row, workingStitches));
+      instructions.push(rowInstruction(row, workingStitches, foundationType));
     }
   }
 

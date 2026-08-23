@@ -68,8 +68,8 @@ test.describe('Foundation chain', () => {
 
     const panel = infoPanel(page);
     await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Foundation');
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('3');
-    await expect(panel.locator('dt:text("Foundation") + dd')).toHaveText('3');
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('3');
+    await expect(panel.locator('dt:text("Chain length") + dd')).toHaveText('3');
     await expect(panel.getByText('Foundation: ch 3')).toBeVisible();
     await expect(panel.getByText('Choose New Row to begin the first working row.')).toBeVisible();
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('—');
@@ -156,7 +156,7 @@ test.describe('Foundation chain', () => {
     await input.press('Enter');
 
     await expect(chainDialog(page)).toBeHidden();
-    await expect(infoPanel(page).locator('dt:text("Foundation") + dd')).toHaveText('4');
+    await expect(infoPanel(page).locator('dt:text("Chain length") + dd')).toHaveText('4');
   });
 
   test('Out-of-range chain length shows an error in the dialog', async ({ page }) => {
@@ -191,7 +191,7 @@ test.describe('Foundation chain', () => {
     await chainDialog(page).getByRole('button', { name: 'Cancel' }).click();
 
     await expect(chainDialog(page)).toBeHidden();
-    await expect(infoPanel(page).locator('dt:text("Stitches") + dd')).toHaveText('0');
+    await expect(infoPanel(page).locator('dt:text-is("Stitches") + dd')).toHaveText('0');
   });
 
   test('Escape closes the chain dialog without creating a chain', async ({ page }) => {
@@ -201,7 +201,7 @@ test.describe('Foundation chain', () => {
     await page.keyboard.press('Escape');
 
     await expect(chainDialog(page)).toBeHidden();
-    await expect(infoPanel(page).locator('dt:text("Stitches") + dd')).toHaveText('0');
+    await expect(infoPanel(page).locator('dt:text-is("Stitches") + dd')).toHaveText('0');
   });
 
   test('Declining New foundation reset keeps the existing pattern', async ({ page }) => {
@@ -212,7 +212,7 @@ test.describe('Foundation chain', () => {
     await dismissConfirm(page);
 
     await expect(chainDialog(page)).toBeHidden();
-    await expect(infoPanel(page).locator('dt:text("Stitches") + dd')).toHaveText('3');
+    await expect(infoPanel(page).locator('dt:text-is("Stitches") + dd')).toHaveText('3');
   });
 
   test('Confirming New foundation reset replaces the pattern', async ({ page }) => {
@@ -225,8 +225,8 @@ test.describe('Foundation chain', () => {
     await chainDialog(page).getByRole('button', { name: 'Create foundation chain' }).click();
 
     const panel = infoPanel(page);
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('5');
-    await expect(panel.locator('dt:text("Foundation") + dd')).toHaveText('5');
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('5');
+    await expect(panel.locator('dt:text("Chain length") + dd')).toHaveText('5');
   });
 });
 
@@ -252,13 +252,13 @@ test.describe('Single crochet rows', () => {
     await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Row 1');
 
     await toolbarButton(page, 'Add single crochet').click();
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('4');
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('4');
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('1/3');
     await expect(panel.getByText('Row 1: work across (1 sc)')).toBeVisible();
-    await expect(panel.getByText('Place 2 more single crochet stitches on row 1.')).toBeVisible();
+    await expect(panel.getByText('Place 2 more single crochet stitches in row 1.')).toBeVisible();
 
     await completeRow(page, 2);
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('6');
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('6');
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('3/3');
     await expect(panel.getByText('Row 1: work across (3 sc)')).toBeVisible();
     await expect(panel.getByText('Row 1 is complete. Choose New Row to continue.')).toBeVisible();
@@ -277,7 +277,7 @@ test.describe('Single crochet rows', () => {
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('0/3');
 
     await toolbarButton(page, 'Add single crochet').click();
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('7');
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('7');
     await expect(panel.getByText('Row 2: work across (1 sc)')).toBeVisible();
   });
 });
@@ -342,7 +342,7 @@ test.describe('Click-to-place single crochet', () => {
     await attachmentPoint(page).click();
 
     const panel = infoPanel(page);
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('4');
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('4');
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('1/3');
   });
 
@@ -374,7 +374,7 @@ test.describe('Pattern editing', () => {
     await toolbarButton(page, 'Undo').click();
 
     const panel = infoPanel(page);
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('4');
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('4');
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('1/3');
   });
 
@@ -387,7 +387,7 @@ test.describe('Pattern editing', () => {
     await toolbarButton(page, 'Undo').click();
     await toolbarButton(page, 'Redo').click();
 
-    await expect(infoPanel(page).locator('dt:text("Stitches") + dd')).toHaveText('5');
+    await expect(infoPanel(page).locator('dt:text-is("Stitches") + dd')).toHaveText('5');
   });
 
   test('Undo is disabled with nothing to undo', async ({ page }) => {
@@ -445,7 +445,7 @@ test.describe('Stitch types', () => {
     await toolbarButton(page, 'Add half double crochet').click();
 
     const panel = infoPanel(page);
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('4');
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('4');
     await expect(panel.locator('.instructions').getByText('Row 1: work across (1 hdc)')).toBeVisible();
   });
 
@@ -458,7 +458,7 @@ test.describe('Stitch types', () => {
     await toolbarButton(page, 'Add double crochet').click();
 
     const panel = infoPanel(page);
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('4');
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('4');
     await expect(panel.locator('.instructions').getByText('Row 1: work across (1 dc)')).toBeVisible();
   });
 });
@@ -470,7 +470,7 @@ test.describe('Pattern templates', () => {
     await loadTemplate(page, 'Coaster');
 
     const panel = infoPanel(page);
-    await expect(panel.locator('dt:text("Stitches") + dd')).not.toHaveText('0');
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).not.toHaveText('0');
     await expect(panel.locator('.instructions li').first()).toBeVisible();
   });
 
@@ -491,29 +491,29 @@ test.describe('Magic ring foundation', () => {
 
     const panel = infoPanel(page);
     await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Magic ring');
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('6');
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('6');
     await expect(panel.getByText('Foundation: magic ring, 6 sc')).toBeVisible();
-    await expect(panel.getByText('Choose New Row to work into the magic ring stitches.')).toBeVisible();
+    await expect(panel.getByText('Choose New Round to work into the magic ring stitches.')).toBeVisible();
   });
 
   test('Work multiple rounds on a magic ring', async ({ page }) => {
     await page.goto('/');
 
     await createMagicRing(page, 4);
-    await toolbarButton(page, 'New Row').click();
+    await toolbarButton(page, 'New Round').click();
 
     const panel = infoPanel(page);
-    await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Row 1');
+    await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Round 1');
     await completeRow(page, 4);
-    await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('4/4');
-    await expect(panel.getByText('Row 1 is complete. Choose New Row to continue.')).toBeVisible();
+    await expect(panel.locator('dt:text("Round progress") + dd')).toHaveText('4/4');
+    await expect(panel.getByText('Round 1 is complete. Choose New Round to continue.')).toBeVisible();
 
-    await toolbarButton(page, 'New Row').click();
-    await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Row 2');
+    await toolbarButton(page, 'New Round').click();
+    await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Round 2');
     await completeRow(page, 4);
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('12');
-    await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('4/4');
-    await expect(panel.getByText('Row 2: work across (4 sc)')).toBeVisible();
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('12');
+    await expect(panel.locator('dt:text("Round progress") + dd')).toHaveText('4/4');
+    await expect(panel.getByText('Round 2: work around (4 sc)')).toBeVisible();
   });
 });
 
@@ -525,7 +525,7 @@ test.describe('Increase and decrease', () => {
     await toolbarButton(page, 'Increase').click();
 
     const panel = infoPanel(page);
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('5');
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('5');
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText(
       '2 stitches (uses 1 of 3 stitches)',
     );
@@ -539,7 +539,7 @@ test.describe('Increase and decrease', () => {
     await toolbarButton(page, 'Decrease').click();
 
     const panel = infoPanel(page);
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('7');
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('7');
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText(
       '3 stitches (uses 4 of 4 stitches)',
     );
@@ -564,12 +564,12 @@ test.describe('Reset pattern', () => {
     await createFoundationChain(page, 2);
 
     const panel = infoPanel(page);
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('2');
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('2');
 
     await page.getByRole('button', { name: 'Reset' }).click();
     await acceptConfirm(page, 'Reset pattern');
     await expect(panel.locator('dt:text("Status") + dd')).toHaveText('No pattern');
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('0');
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('0');
     await expect(panel.getByText(/Start with a foundation chain or magic ring/)).toBeVisible();
   });
 
@@ -583,6 +583,6 @@ test.describe('Reset pattern', () => {
     await dismissConfirm(page);
 
     await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Foundation');
-    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('2');
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('2');
   });
 });

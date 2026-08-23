@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { Pattern, resetIdCounter } from '@engine/index';
+import { Pattern, FoundationType, resetIdCounter } from '@engine/index';
 import { StitchRenderer } from '../../src/scene/StitchRenderer';
 
 describe('StitchRenderer', () => {
@@ -13,7 +13,7 @@ describe('StitchRenderer', () => {
 
   it('sync with empty stitches leaves the group empty', () => {
     renderer = new StitchRenderer();
-    renderer.sync([]);
+    renderer.sync([], FoundationType.CHAIN);
     expect(renderer.group.children).toHaveLength(0);
   });
 
@@ -23,7 +23,7 @@ describe('StitchRenderer', () => {
     pattern.addFoundationChain(3);
 
     renderer = new StitchRenderer();
-    renderer.sync(pattern.getStitches());
+    renderer.sync(pattern.getStitches(), FoundationType.CHAIN);
 
     expect(renderer.group.children).toHaveLength(1);
     expect((renderer.group.children[0] as THREE.Group).children).toHaveLength(2);
@@ -37,10 +37,10 @@ describe('StitchRenderer', () => {
     pattern.addSingleCrochet();
 
     renderer = new StitchRenderer();
-    renderer.sync(pattern.getStitches());
+    renderer.sync(pattern.getStitches(), FoundationType.CHAIN);
     expect(renderer.group.children.length).toBeGreaterThan(1);
 
-    renderer.sync(pattern.getStitches().filter((stitch) => stitch.row === 0));
+    renderer.sync(pattern.getStitches().filter((stitch) => stitch.row === 0), FoundationType.CHAIN);
     expect(renderer.group.children).toHaveLength(1);
   });
 
@@ -51,10 +51,10 @@ describe('StitchRenderer', () => {
     const stitches = pattern.getStitches();
 
     renderer = new StitchRenderer();
-    renderer.sync(stitches);
+    renderer.sync(stitches, FoundationType.CHAIN);
     const firstGeometry = (renderer.group.children[0] as THREE.Group).children[0] as THREE.Mesh;
 
-    renderer.sync(stitches);
+    renderer.sync(stitches, FoundationType.CHAIN);
     const secondGeometry = (renderer.group.children[0] as THREE.Group).children[0] as THREE.Mesh;
 
     expect(secondGeometry.geometry).toBe(firstGeometry.geometry);
@@ -66,7 +66,7 @@ describe('StitchRenderer', () => {
     pattern.addFoundationChain(2);
 
     renderer = new StitchRenderer();
-    renderer.sync(pattern.getStitches());
+    renderer.sync(pattern.getStitches(), FoundationType.CHAIN);
     renderer.dispose();
 
     expect(renderer.group.children).toHaveLength(0);
