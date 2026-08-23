@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import type { StitchNode, Vec3 } from '@engine/index';
 import {
   groupStitchesByRow,
-  ROW_HEIGHT,
   StitchDefinitions,
   StitchType,
   STITCH_SPACING,
@@ -17,13 +16,13 @@ const TUBE_SEGMENTS_PER_POINT = 8;
 
 const CHAIN_CROWN_Z = 0.13;
 const CHAIN_LOOP_SPAN_SCALE = 0.34;
-const SC_HEIGHT = ROW_HEIGHT * 0.17;
-const SC_V_HALF_WIDTH = 0.04;
-const SC_TOP_Z = 0.06;
+const SC_HEIGHT = 0.095;
+const SC_V_HALF_WIDTH = 0.036;
+const SC_TOP_FORWARD = 0.028;
 const SC_HOOK_Y_LIFT = 0.02;
 const SC_ROW_EXIT_X = 0.12;
-const SC_ROW_EXIT_Y = 0.14;
-const SC_ROW_EXIT_Z = 0.08;
+const SC_ROW_EXIT_Y = 0.11;
+const SC_ROW_EXIT_Z = 0.06;
 
 export interface YarnSegmentManifest {
   key: string;
@@ -159,69 +158,59 @@ function buildWorkingRowYarnPath(
 
     const position = stitch.position;
     const hook = hookPointForStitch(parent, 'attach');
-    const leftTop = new THREE.Vector3(
-      position.x - SC_V_HALF_WIDTH,
-      position.y + SC_HEIGHT,
-      position.z + SC_TOP_Z,
-    );
-    const rightTop = new THREE.Vector3(
-      position.x + SC_V_HALF_WIDTH,
-      position.y + SC_HEIGHT,
-      position.z + SC_TOP_Z,
-    );
-    const crown = new THREE.Vector3(
-      position.x,
-      position.y + SC_HEIGHT + 0.018,
-      position.z + SC_TOP_Z + 0.015,
-    );
+    const topY = hook.y + SC_HEIGHT;
+    const topZ = hook.z + SC_TOP_FORWARD;
+    const leftTop = new THREE.Vector3(position.x - SC_V_HALF_WIDTH, topY, topZ);
+    const rightTop = new THREE.Vector3(position.x + SC_V_HALF_WIDTH, topY, topZ);
+    const crown = new THREE.Vector3(position.x, topY + 0.012, topZ + 0.01);
+    const through = new THREE.Vector3(position.x, hook.y + SC_HEIGHT * 0.35, topZ * 0.65);
 
     if (index === 0) {
       points.push(
-        new THREE.Vector3(
-          position.x - 0.18,
-          position.y + SC_HEIGHT * 0.45,
-          position.z + 0.03,
-        ),
+        new THREE.Vector3(position.x - 0.14, hook.y + SC_HEIGHT * 0.55, hook.z + 0.015),
       );
     } else {
       const previous = rowStitches[index - 1]!;
+      const previousHook = hookPointForStitch(
+        stitchById.get(previous.attachToId ?? '')!,
+        'attach',
+      );
+      const previousTopY = previousHook.y + SC_HEIGHT;
       points.push(
         new THREE.Vector3(
           (previous.position.x + position.x) / 2,
-          previous.position.y + SC_HEIGHT + 0.02,
-          (previous.position.z + position.z) / 2 + 0.07,
+          (previousTopY + topY) / 2 + 0.01,
+          (previousHook.z + hook.z) / 2 + SC_TOP_FORWARD + 0.01,
         ),
       );
     }
 
-    points.push(
-      new THREE.Vector3(
-        (hook.x + position.x) / 2,
-        (hook.y + position.y) / 2 - 0.02,
-        (hook.z + position.z) / 2,
-      ),
-      hook,
-      new THREE.Vector3(position.x, position.y - 0.01, position.z + 0.02),
-      leftTop,
-      crown,
-      rightTop,
-    );
+    points.push(hook, through, leftTop, crown, rightTop);
 
     if (index < rowStitches.length - 1) {
       const next = rowStitches[index + 1]!;
+      const nextParent = stitchById.get(next.attachToId ?? '');
+      const nextHook = nextParent ? hookPointForStitch(nextParent, 'attach') : hook;
+      const nextTopY = nextHook.y + SC_HEIGHT;
       points.push(
         new THREE.Vector3(
           (position.x + next.position.x) / 2,
-          position.y + SC_HEIGHT + 0.02,
-          (position.z + next.position.z) / 2 + 0.07,
+          (topY + nextTopY) / 2 + 0.01,
+          (hook.z + nextHook.z) / 2 + SC_TOP_FORWARD + 0.01,
         ),
       );
     }
   }
 
-  const last = rowStitches[rowStitches.length - 1]!.position;
+  const last = rowStitches[rowStitches.length - 1]!;
+  const lastParent = stitchById.get(last.attachToId ?? '');
+  const lastHook = lastParent ? hookPointForStitch(lastParent, 'attach') : new THREE.Vector3();
   points.push(
-    new THREE.Vector3(last.x + 0.16, last.y + SC_HEIGHT + 0.02, last.z + SC_TOP_Z + 0.015),
+    new THREE.Vector3(
+      last.position.x + 0.14,
+      lastHook.y + SC_HEIGHT + 0.015,
+      lastHook.z + SC_TOP_FORWARD + 0.01,
+    ),
   );
 
   return dedupePoints(points);
