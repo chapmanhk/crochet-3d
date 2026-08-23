@@ -16,11 +16,15 @@ export function Toolbar() {
     addSingleCrochet,
     startNewRow,
     resetPattern,
+    undo,
+    redo,
     clearError,
     lastError,
     foundationChainLength,
     addScDisabledReason,
     newRowDisabledReason,
+    undoDisabledReason,
+    redoDisabledReason,
     stitches,
   } = usePatternStore(
     useShallow((state) => ({
@@ -28,11 +32,15 @@ export function Toolbar() {
       addSingleCrochet: state.addSingleCrochet,
       startNewRow: state.startNewRow,
       resetPattern: state.resetPattern,
+      undo: state.undo,
+      redo: state.redo,
       clearError: state.clearError,
       lastError: state.lastError,
       foundationChainLength: state.foundationChainLength,
       addScDisabledReason: state.addScDisabledReason,
       newRowDisabledReason: state.newRowDisabledReason,
+      undoDisabledReason: state.undoDisabledReason,
+      redoDisabledReason: state.redoDisabledReason,
       stitches: state.stitches,
     })),
   );
@@ -107,6 +115,18 @@ export function Toolbar() {
           label="New Row"
           disabledReason={newRowDisabledReason}
           onClick={startNewRow}
+        />
+        <ToolbarActionButton
+          label="Undo"
+          disabledReason={undoDisabledReason}
+          onClick={undo}
+          variant="subtle"
+        />
+        <ToolbarActionButton
+          label="Redo"
+          disabledReason={redoDisabledReason}
+          onClick={redo}
+          variant="subtle"
         />
         <ToolbarActionButton
           label="Reset"

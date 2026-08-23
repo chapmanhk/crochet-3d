@@ -36,6 +36,8 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | `single-crochet-rows.feature` | New row, adding SC, instructions |
 | `pattern-validation.feature` | Input errors, placement guards |
 | `reset-pattern.feature` | Clearing the pattern |
+| `click-to-place.feature` | Click attachment points in 3D canvas to place SC |
+| `pattern-editing.feature` | Undo and redo stitch placements |
 | `deferred.feature` | Roadmap items tagged `@deferred` (not yet implemented) |
 
 ## Scenario index
@@ -76,14 +78,22 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | Reset clears an existing pattern | `e2e/app.spec.ts` — Reset clears… |
 | Declining reset keeps the existing pattern | `e2e/app.spec.ts` — Declining reset… |
 | Scene visual contract (see Scope) | `tests/scene/stitchGeometry.test.ts`, `stitchMaterials.test.ts`, `StitchRenderer.test.ts`, `sceneConstants.test.ts` |
+| Next attachment point is available when SC can be placed | `e2e/app.spec.ts` — Click-to-place… |
+| Clicking the attachment point places the next SC | `e2e/app.spec.ts` — Clicking the attachment point… |
+| Click-to-place matches Add SC toolbar behavior | `e2e/app.spec.ts` — Click-to-place matches… |
+| Reject placement on an invalid attachment target | `tests/engine/Pattern.test.ts` — rejects placement on a non-next attachment target |
+| Undo removes the last placed single crochet | `e2e/app.spec.ts` — Undo removes… |
+| Redo restores an undone placement | `e2e/app.spec.ts` — Redo restores… |
+| Undo after startNewRow reverts row increment | `tests/engine/Pattern.test.ts` — undoes a started row… |
+| First-run onboarding explains how to start a pattern | `e2e/app.spec.ts` — Onboarding… |
+| Info panel can be collapsed on narrow viewports | `e2e/app.spec.ts` — Responsive panels… |
+| Row 2 attaches to far end of row 1 after turning | `tests/engine/Pattern.test.ts` — attaches row 2… |
 
 ## Deferred scenarios
 
 | Spec scenario | Notes |
 |---------------|-------|
-| First-run onboarding explains how to start a pattern | `deferred.feature` — `@deferred` |
 | Reset with no pattern is a no-op | `deferred.feature` — `@deferred` |
-| Click an attachment point to place the next single crochet | `deferred.feature` — `@deferred` |
 | Saved pattern round-trips through JSON export and import | `deferred.feature` — `@deferred @engine` |
 
 ## Tags

@@ -1,5 +1,6 @@
 import { CrochetScene, SCENE_BACKGROUND } from '@scene/CrochetScene';
 import { InfoPanel } from './InfoPanel';
+import { OnboardingDialog } from './OnboardingDialog';
 import { Toolbar } from './Toolbar';
 import './styles.css';
 
@@ -14,6 +15,7 @@ export function App() {
       </a>
       <Toolbar />
       <InfoPanel />
+      <OnboardingDialog />
       <main className="canvas-shell">
         <div
           id="main-canvas"

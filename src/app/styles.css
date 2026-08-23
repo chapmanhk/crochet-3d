@@ -78,6 +78,53 @@ button {
   font-size: 1rem;
 }
 
+.info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.info-header h2 {
+  margin: 0;
+}
+
+.info-toggle {
+  display: none;
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+.info-collapsed .info-content {
+  display: none;
+}
+
+.info-collapsed {
+  width: auto;
+  padding-bottom: 12px;
+}
+
+.attachment-point {
+  width: 44px;
+  height: 44px;
+  border: 2px solid #2563eb;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.2);
+  cursor: pointer;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+}
+
+.attachment-point:hover {
+  background: rgba(37, 99, 235, 0.35);
+}
+
+.attachment-point:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
 .info h3 {
   margin-top: 16px;
   font-size: 0.9rem;
@@ -311,6 +358,10 @@ button {
     justify-content: flex-start;
   }
 
+  .info-toggle {
+    display: inline-flex;
+  }
+
   .info {
     top: auto;
     bottom: 16px;
@@ -318,5 +369,10 @@ button {
     left: 16px;
     width: auto;
     max-height: 40vh;
+  }
+
+  .info-collapsed {
+    max-height: none;
+    overflow: visible;
   }
 }

@@ -1,6 +1,7 @@
 import { OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useSyncExternalStore } from 'react';
+import { AttachmentPointPicker } from './AttachmentPointPicker';
 import { SceneStitchRenderer } from './SceneStitchRenderer';
 
 export const SCENE_BACKGROUND = '#f7f0e6';
@@ -35,6 +36,7 @@ export function CrochetScene() {
       <color attach="background" args={[SCENE_BACKGROUND]} />
       <SceneControls />
       <SceneStitchRenderer />
+      <AttachmentPointPicker />
     </Canvas>
   );
 }

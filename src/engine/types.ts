@@ -24,7 +24,16 @@ export interface PatternSnapshot {
   stitches: StitchNode[];
   currentRow: number;
   foundationChainLength: number;
+  rowDirections: Record<number, WorkingDirection>;
 }
+
+export const WorkingDirection = {
+  LEFT_TO_RIGHT: 'left_to_right',
+  RIGHT_TO_LEFT: 'right_to_left',
+} as const;
+
+export type WorkingDirection =
+  (typeof WorkingDirection)[keyof typeof WorkingDirection];
 
 export interface StitchDefinition {
   name: string;
@@ -53,6 +62,7 @@ export type PlacementErrorCode =
   | 'INVALID_CHAIN_LENGTH'
   | 'FOUNDATION_EXISTS'
   | 'NO_TARGET_STITCH'
+  | 'INVALID_ATTACHMENT_TARGET'
   | 'ROW_FULL'
   | 'CANNOT_START_ROW';
 

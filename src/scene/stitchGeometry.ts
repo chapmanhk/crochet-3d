@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import type { StitchNode, Vec3 } from '@engine/index';
+import type { StitchNode, Vec3, WorkingDirection } from '@engine/index';
 import {
+  defaultDirectionForRow,
   groupStitchesByRow,
   StitchDefinitions,
   StitchType,
   STITCH_SPACING,
+  WorkingDirection as WorkingDirectionEnum,
 } from '@engine/index';
 
 // Scene-only crochet fabric scale (engine layout Y is not used for stitch height).
@@ -236,31 +238,43 @@ function buildSingleCrochetGeometry(
 }
 
 function buildWorkingYarnGeometry(
-  fromRightTop: THREE.Vector3,
-  toLeftTop: THREE.Vector3,
+  from: THREE.Vector3,
+  to: THREE.Vector3,
 ): THREE.TubeGeometry {
-  const midX = (fromRightTop.x + toLeftTop.x) / 2;
-  const topY = fromRightTop.y;
+  const midX = (from.x + to.x) / 2;
+  const topY = from.y;
 
   return createTube(
     [
-      fromRightTop,
-      new THREE.Vector3(midX, topY + 0.004, fromRightTop.z - 0.018),
-      toLeftTop,
+      from,
+      new THREE.Vector3(midX, topY + 0.004, from.z - 0.018),
+      to,
     ],
     8,
     0.05,
   );
 }
 
+function workingYarnEndpoints(
+  previousPoints: ReturnType<typeof scStitchPoints>,
+  currentPoints: ReturnType<typeof scStitchPoints>,
+  direction: WorkingDirection,
+): [THREE.Vector3, THREE.Vector3] {
+  return direction === WorkingDirectionEnum.LEFT_TO_RIGHT
+    ? [previousPoints.rightTop, currentPoints.leftTop]
+    : [previousPoints.leftTop, currentPoints.rightTop];
+}
+
 function buildWorkingRowGeometry(
   rowStitches: StitchNode[],
   stitchById: Map<string, StitchNode>,
+  rowNumber: number,
 ): THREE.BufferGeometry | null {
   if (rowStitches.length === 0) {
     return null;
   }
 
+  const direction = defaultDirectionForRow(rowNumber);
   const tubes: THREE.TubeGeometry[] = [];
 
   for (let index = 0; index < rowStitches.length; index += 1) {
@@ -279,9 +293,8 @@ function buildWorkingRowGeometry(
       const previousInsertion = scInsertionPoint(previous, previousParent);
       const previousPoints = scStitchPoints(previous, previousInsertion);
       const currentPoints = scStitchPoints(stitch, insertion);
-      tubes.push(
-        buildWorkingYarnGeometry(previousPoints.rightTop, currentPoints.leftTop),
-      );
+      const [from, to] = workingYarnEndpoints(previousPoints, currentPoints, direction);
+      tubes.push(buildWorkingYarnGeometry(from, to));
     }
   }
 
@@ -429,7 +442,7 @@ export function buildYarnSegmentGeometry(
 
     return rowNumber === 0
       ? buildFoundationRowGeometry(rowStitches)
-      : buildWorkingRowGeometry(rowStitches, stitchById);
+      : buildWorkingRowGeometry(rowStitches, stitchById, rowNumber);
   }
 
   if (key.startsWith('join-')) {

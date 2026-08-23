@@ -1,7 +1,12 @@
 import type { PatternSnapshot, StitchNode } from './types';
-import { PlacementError, StitchType } from './types';
+import { PlacementError, StitchType, WorkingDirection } from './types';
 import { StitchGraph } from './StitchGraph';
-import { createStitchNode, resetIdCounter } from './StitchNode';
+import { createStitchNode, resetIdCounter, restoreIdCounter } from './StitchNode';
+import { layoutPosition } from './layout';
+import {
+  defaultDirectionForRow,
+  resolveAttachColumn,
+} from './workingDirection';
 
 const MIN_CHAIN_LENGTH = 1;
 const MAX_CHAIN_LENGTH = 500;
@@ -12,10 +17,23 @@ export function formatChainLengthError(): string {
   return `Chain length must be between ${MIN_CHAIN_LENGTH} and ${MAX_CHAIN_LENGTH}.`;
 }
 
+function cloneSnapshot(snapshot: PatternSnapshot): PatternSnapshot {
+  return {
+    stitches: snapshot.stitches.map((stitch) => ({
+      ...stitch,
+      position: { ...stitch.position },
+    })),
+    currentRow: snapshot.currentRow,
+    foundationChainLength: snapshot.foundationChainLength,
+    rowDirections: { ...snapshot.rowDirections },
+  };
+}
+
 export class Pattern {
   private readonly graph = new StitchGraph();
   private currentRow = 0;
   private foundationChainLength = 0;
+  private rowDirections: Record<number, WorkingDirection> = {};
 
   addFoundationChain(length: number): StitchNode[] {
     const error = this.validateFoundationChain(length);
@@ -32,28 +50,79 @@ export class Pattern {
 
     this.foundationChainLength = length;
     this.currentRow = 0;
+    this.rowDirections = {};
     return stitches;
   }
 
   addSingleCrochet(): StitchNode {
+    const attachTarget = this.getNextAttachmentTarget();
+    if (!attachTarget) {
+      const error = this.validateAddSingleCrochet();
+      if (error) {
+        throw error;
+      }
+      throw new PlacementError(
+        'NO_TARGET_STITCH',
+        'No stitch available to attach the next single crochet.',
+      );
+    }
+
+    return this.addSingleCrochetAt(attachTarget.id);
+  }
+
+  addSingleCrochetAt(attachToId: string): StitchNode {
     const error = this.validateAddSingleCrochet();
     if (error) {
       throw error;
     }
 
+    const expectedTarget = this.getNextAttachmentTarget();
+    if (!expectedTarget || expectedTarget.id !== attachToId) {
+      throw new PlacementError(
+        'INVALID_ATTACHMENT_TARGET',
+        'That attachment point is not the next stitch for the current row.',
+      );
+    }
+
     const rowStitches = this.graph.getByRow(this.currentRow);
-    const column = rowStitches.length;
-    const attachTarget = this.graph.getByRow(this.currentRow - 1)[column]!;
+    const stitchIndex = rowStitches.length;
+    const direction = this.getRowDirection(this.currentRow);
+    const visualColumn = resolveAttachColumn(
+      stitchIndex,
+      this.foundationChainLength,
+      direction,
+    );
 
     const stitch = createStitchNode(
       StitchType.SINGLE_CROCHET,
       this.currentRow,
-      column,
-      attachTarget.id,
+      stitchIndex,
+      attachToId,
+    );
+    stitch.position = layoutPosition(
+      StitchType.SINGLE_CROCHET,
+      this.currentRow,
+      visualColumn,
     );
 
     this.graph.add(stitch);
     return stitch;
+  }
+
+  getNextAttachmentTarget(): StitchNode | null {
+    if (this.validateAddSingleCrochet() !== null) {
+      return null;
+    }
+
+    const rowStitches = this.graph.getByRow(this.currentRow);
+    const stitchIndex = rowStitches.length;
+    const attachColumn = resolveAttachColumn(
+      stitchIndex,
+      this.foundationChainLength,
+      this.getRowDirection(this.currentRow),
+    );
+
+    return this.graph.getByRow(this.currentRow - 1)[attachColumn] ?? null;
   }
 
   startNewRow(): number {
@@ -64,10 +133,12 @@ export class Pattern {
 
     if (this.currentRow === 0) {
       this.currentRow = 1;
+      this.rowDirections[1] = defaultDirectionForRow(1);
       return this.currentRow;
     }
 
     this.currentRow += 1;
+    this.rowDirections[this.currentRow] = defaultDirectionForRow(this.currentRow);
     return this.currentRow;
   }
 
@@ -77,6 +148,10 @@ export class Pattern {
 
   getFoundationChainLength(): number {
     return this.foundationChainLength;
+  }
+
+  getRowDirection(row: number): WorkingDirection {
+    return this.rowDirections[row] ?? defaultDirectionForRow(row);
   }
 
   getStitches(): StitchNode[] {
@@ -104,17 +179,34 @@ export class Pattern {
   }
 
   getSnapshot(): PatternSnapshot {
-    return {
+    return cloneSnapshot({
       stitches: this.getStitches(),
       currentRow: this.currentRow,
       foundationChainLength: this.foundationChainLength,
-    };
+      rowDirections: { ...this.rowDirections },
+    });
+  }
+
+  loadSnapshot(snapshot: PatternSnapshot): void {
+    this.graph.clear();
+    this.currentRow = snapshot.currentRow;
+    this.foundationChainLength = snapshot.foundationChainLength;
+    this.rowDirections = { ...snapshot.rowDirections };
+
+    restoreIdCounter(snapshot.stitches);
+    for (const stitch of snapshot.stitches) {
+      this.graph.add({
+        ...stitch,
+        position: { ...stitch.position },
+      });
+    }
   }
 
   reset(): void {
     this.graph.clear();
     this.currentRow = 0;
     this.foundationChainLength = 0;
+    this.rowDirections = {};
     resetIdCounter();
   }
 
@@ -156,12 +248,17 @@ export class Pattern {
       );
     }
 
-    const column = rowStitches.length;
-    const attachTarget = this.graph.getByRow(this.currentRow - 1)[column];
+    const stitchIndex = rowStitches.length;
+    const attachColumn = resolveAttachColumn(
+      stitchIndex,
+      this.foundationChainLength,
+      this.getRowDirection(this.currentRow),
+    );
+    const attachTarget = this.graph.getByRow(this.currentRow - 1)[attachColumn];
     if (!attachTarget) {
       return new PlacementError(
         'NO_TARGET_STITCH',
-        `No stitch available to attach to in row ${this.currentRow - 1}, column ${column}.`,
+        `No stitch available to attach to in row ${this.currentRow - 1}, column ${attachColumn}.`,
       );
     }
 

@@ -1,5 +1,12 @@
 import { expect, type Page } from '@playwright/test';
 
+export async function gotoApp(page: Page) {
+  await page.addInitScript(() => {
+    window.localStorage.setItem('crochet-3d-onboarding-seen', 'true');
+  });
+  await page.goto('/');
+}
+
 export function infoPanel(page: Page) {
   return page.getByRole('complementary', { name: 'Pattern information' });
 }
@@ -51,4 +58,13 @@ export async function completeRow(page: Page, stitchCount: number) {
   for (let index = 0; index < stitchCount; index += 1) {
     await toolbarButton(page, 'Add SC').click();
   }
+}
+
+export async function startRowOne(page: Page, chainLength: number) {
+  await createFoundationChain(page, chainLength);
+  await toolbarButton(page, 'New Row').click();
+}
+
+export function attachmentPoint(page: Page) {
+  return page.getByTestId('attachment-point');
 }
