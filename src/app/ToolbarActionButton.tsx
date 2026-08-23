@@ -14,25 +14,29 @@ export function ToolbarActionButton({
   variant = 'default',
 }: ToolbarActionButtonProps) {
   const reasonId = useId();
+  const isDisabled = Boolean(disabledReason);
   const className = variant === 'subtle' ? 'btn subtle' : 'btn';
 
   return (
-    <>
-      <button
-        type="button"
-        className={className}
-        disabled={Boolean(disabledReason)}
-        title={disabledReason ?? undefined}
-        aria-describedby={disabledReason ? reasonId : undefined}
-        onClick={onClick}
-      >
-        {label}
-      </button>
-      {disabledReason ? (
+    <button
+      type="button"
+      className={className}
+      aria-disabled={isDisabled || undefined}
+      aria-describedby={isDisabled ? reasonId : undefined}
+      onClick={(event) => {
+        if (isDisabled) {
+          event.preventDefault();
+          return;
+        }
+        onClick();
+      }}
+    >
+      {label}
+      {isDisabled ? (
         <span id={reasonId} className="visually-hidden">
           {disabledReason}
         </span>
       ) : null}
-    </>
+    </button>
   );
 }

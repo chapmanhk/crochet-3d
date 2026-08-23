@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { Pattern, resetIdCounter } from '@engine/index';
 import { StitchRenderer } from '../../src/scene/StitchRenderer';
@@ -70,5 +70,21 @@ describe('StitchRenderer', () => {
     renderer.dispose();
 
     expect(renderer.group.children).toHaveLength(0);
+  });
+
+  it('updateOutlineSize refreshes the outline shader size uniform', () => {
+    renderer = new StitchRenderer();
+    const material = (renderer as unknown as { outlineMaterial: THREE.ShaderMaterial })
+      .outlineMaterial;
+    const size = material.uniforms.size!.value as THREE.Vector2;
+
+    vi.stubGlobal('window', { innerWidth: 1024, innerHeight: 768 });
+    renderer.updateOutlineSize();
+
+    expect(size.x).toBe(1024);
+    expect(size.y).toBe(768);
+
+    renderer.dispose();
+    vi.unstubAllGlobals();
   });
 });

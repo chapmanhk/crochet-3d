@@ -96,6 +96,23 @@ describe('patternStore', () => {
     expect(state.currentRowStitchCount).toBe(2);
   });
 
+  it('surfaces engine validation messages for toolbar disabled states', () => {
+    const store = usePatternStore.getState();
+
+    expect(store.addScDisabledReason).toContain('foundation chain');
+    expect(store.newRowDisabledReason).toContain('foundation chain');
+
+    store.addFoundationChain(2);
+    store.startNewRow();
+    store.addSingleCrochet();
+    store.addSingleCrochet();
+    store.startNewRow();
+
+    const state = usePatternStore.getState();
+    expect(state.addScDisabledReason).toBeNull();
+    expect(state.newRowDisabledReason).toContain('no stitches');
+  });
+
   it('clears all bridged state on reset', () => {
     const store = usePatternStore.getState();
     store.addFoundationChain(2);
@@ -112,6 +129,48 @@ describe('patternStore', () => {
     expect(state.canStartNewRow).toBe(false);
     expect(state.instructions).toEqual([]);
     expect(state.lastError).toBeNull();
+    expect(state.canUndo).toBe(false);
+    expect(state.canRedo).toBe(false);
+  });
+
+  it('supports undo and redo for stitch placement', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(3);
+    store.startNewRow();
+    store.addSingleCrochet();
+    store.addSingleCrochet();
+
+    expect(store.undo()).toBe(true);
+    expect(usePatternStore.getState().stitches).toHaveLength(4);
+    expect(usePatternStore.getState().currentRowStitchCount).toBe(1);
+
+    expect(store.redo()).toBe(true);
+    expect(usePatternStore.getState().stitches).toHaveLength(5);
+    expect(usePatternStore.getState().currentRowStitchCount).toBe(2);
+  });
+
+  it('clears redo history after a new action', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(3);
+    store.startNewRow();
+    store.addSingleCrochet();
+    store.undo();
+
+    expect(usePatternStore.getState().canRedo).toBe(true);
+    store.addSingleCrochet();
+    expect(usePatternStore.getState().canRedo).toBe(false);
+  });
+
+  it('exposes the next attachment target id when SC can be placed', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(3);
+    store.startNewRow();
+
+    const targetId = usePatternStore.getState().nextAttachmentTargetId;
+    expect(targetId).toBeTruthy();
+    expect(usePatternStore.getState().stitches.some((stitch) => stitch.id === targetId)).toBe(
+      true,
+    );
   });
 
   it('clears lastError when clearError is called', () => {

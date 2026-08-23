@@ -1,29 +1,31 @@
 import * as THREE from 'three';
-import type { StitchNode, Vec3 } from '@engine/index';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import type { StitchNode, Vec3, WorkingDirection } from '@engine/index';
 import {
+  defaultDirectionForRow,
   groupStitchesByRow,
-  ROW_HEIGHT,
   StitchDefinitions,
   StitchType,
   STITCH_SPACING,
+  WorkingDirection as WorkingDirectionEnum,
 } from '@engine/index';
 
-// Visual tuning — derived from engine layout, not placement rules.
-const YARN_RADIUS = 0.068;
+// Scene-only crochet fabric scale (engine layout Y is not used for stitch height).
+const VISUAL_ROW_HEIGHT = 0.22;
+const YARN_RADIUS = 0.048;
 const TUBE_RADIAL = 8;
-const TUBE_SEGMENTS_MIN = 24;
-const TUBE_SEGMENTS_MAX = 192;
-const TUBE_SEGMENTS_PER_POINT = 8;
+const TUBE_SEGMENTS_MIN = 10;
+const TUBE_SEGMENTS_MAX = 40;
+const CURVE_TENSION = 0.08;
 
-const CHAIN_CROWN_Z = 0.13;
-const CHAIN_LOOP_SPAN_SCALE = 0.34;
-const SC_HEIGHT = ROW_HEIGHT * 0.17;
-const SC_V_HALF_WIDTH = 0.04;
-const SC_TOP_Z = 0.06;
-const SC_HOOK_Y_LIFT = 0.02;
-const SC_ROW_EXIT_X = 0.12;
-const SC_ROW_EXIT_Y = 0.14;
-const SC_ROW_EXIT_Z = 0.08;
+const CHAIN_CROWN_Z = 0.1;
+const CHAIN_LOOP_SPAN_SCALE = 0.36;
+const CHAIN_SPINE_Z = 0.015;
+const CHAIN_HOOK_Y_LIFT = 0.012;
+
+const SC_V_HALF_WIDTH = 0.1;
+const SC_TOP_Z_BASE = 0.07;
+const SC_TOP_Z_PER_ROW = 0.035;
 
 export interface YarnSegmentManifest {
   key: string;
@@ -44,64 +46,138 @@ function stitchFingerprint(stitch: StitchNode): string {
   return `${stitch.id}:${stitch.column}:${stitch.attachToId ?? ''}:${x},${y},${z}`;
 }
 
-function dedupePoints(points: THREE.Vector3[], epsilon = 1e-4): THREE.Vector3[] {
-  if (points.length === 0) {
-    return points;
-  }
-
-  const deduped = [points[0]!];
-  for (let index = 1; index < points.length; index += 1) {
-    const previous = deduped[deduped.length - 1]!;
-    const current = points[index]!;
-    if (previous.distanceTo(current) > epsilon) {
-      deduped.push(current);
-    }
-  }
-
-  return deduped;
+function scRowTopY(row: number): number {
+  return row * VISUAL_ROW_HEIGHT;
 }
 
-function createTube(points: THREE.Vector3[]): THREE.TubeGeometry {
-  const curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.42);
-  const tubularSegments = Math.min(
-    TUBE_SEGMENTS_MAX,
-    Math.max(TUBE_SEGMENTS_MIN, points.length * TUBE_SEGMENTS_PER_POINT),
-  );
-  return new THREE.TubeGeometry(curve, tubularSegments, YARN_RADIUS, TUBE_RADIAL, false);
+function scRowTopZ(row: number): number {
+  return SC_TOP_Z_BASE + row * SC_TOP_Z_PER_ROW;
+}
+
+function scInsertionY(parent: StitchNode): number {
+  if (parent.type === StitchType.CHAIN) {
+    return 0;
+  }
+
+  return scRowTopY(parent.row);
 }
 
 function chainLoopCrown(position: Vec3): THREE.Vector3 {
   return new THREE.Vector3(position.x, position.y, position.z + CHAIN_CROWN_Z);
 }
 
-function hookPointForStitch(
-  stitch: StitchNode,
-  role: 'attach' | 'rowExit',
-): THREE.Vector3 {
-  if (stitch.type === StitchType.CHAIN) {
-    return chainLoopCrown(stitch.position);
-  }
+function scInsertionPoint(stitch: StitchNode, parent: StitchNode): THREE.Vector3 {
+  const x = stitch.position.x;
+  const y = scInsertionY(parent);
+  const z =
+    parent.type === StitchType.CHAIN
+      ? CHAIN_CROWN_Z - 0.015
+      : scRowTopZ(parent.row) - 0.01;
 
-  const xOffset = role === 'rowExit' ? SC_ROW_EXIT_X : 0;
-  return new THREE.Vector3(
-    stitch.position.x + xOffset,
-    stitch.position.y + SC_ROW_EXIT_Y,
-    stitch.position.z + SC_ROW_EXIT_Z,
+  return new THREE.Vector3(x, y, z);
+}
+
+function scStitchPoints(stitch: StitchNode, insertion: THREE.Vector3) {
+  const x = stitch.position.x;
+  const topY = scRowTopY(stitch.row);
+  const topZ = scRowTopZ(stitch.row);
+  const midY = (insertion.y + topY) * 0.48;
+
+  return {
+    insertion,
+    leftTop: new THREE.Vector3(x - SC_V_HALF_WIDTH, topY, topZ),
+    rightTop: new THREE.Vector3(x + SC_V_HALF_WIDTH, topY, topZ),
+    crown: new THREE.Vector3(x, topY + 0.008, topZ + 0.006),
+    leftMid: new THREE.Vector3(x - SC_V_HALF_WIDTH * 0.55, midY, topZ - 0.02),
+    rightMid: new THREE.Vector3(x + SC_V_HALF_WIDTH * 0.55, midY, topZ - 0.02),
+    centerMid: new THREE.Vector3(x, midY, insertion.z + 0.01),
+  };
+}
+
+function createTube(
+  points: THREE.Vector3[],
+  segments = TUBE_SEGMENTS_MIN,
+  tension = CURVE_TENSION,
+): THREE.TubeGeometry {
+  const curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', tension);
+  const tubularSegments = Math.min(
+    TUBE_SEGMENTS_MAX,
+    Math.max(TUBE_SEGMENTS_MIN, segments),
+  );
+  return new THREE.TubeGeometry(curve, tubularSegments, YARN_RADIUS, TUBE_RADIAL, false);
+}
+
+function mergeTubes(tubes: THREE.TubeGeometry[]): THREE.BufferGeometry {
+  const merged = mergeGeometries(tubes, false);
+  for (const tube of tubes) {
+    tube.dispose();
+  }
+  return merged ?? tubes[0]!;
+}
+
+function buildChainLoopGeometry(
+  position: Vec3,
+  leftAnchor: THREE.Vector3,
+  rightAnchor: THREE.Vector3,
+): THREE.TubeGeometry {
+  const crown = chainLoopCrown(position);
+
+  return createTube(
+    [
+      leftAnchor,
+      new THREE.Vector3(
+        (leftAnchor.x + crown.x) / 2,
+        position.y + CHAIN_HOOK_Y_LIFT,
+        (leftAnchor.z + crown.z) / 2,
+      ),
+      crown,
+      new THREE.Vector3(
+        (rightAnchor.x + crown.x) / 2,
+        position.y + CHAIN_HOOK_Y_LIFT,
+        (rightAnchor.z + crown.z) / 2,
+      ),
+      rightAnchor,
+    ],
+    14,
   );
 }
 
-function buildFoundationYarnPath(chainStitches: StitchNode[]): THREE.Vector3[] {
+function buildChainSpineGeometry(
+  left: THREE.Vector3,
+  right: THREE.Vector3,
+): THREE.TubeGeometry {
+  return createTube(
+    [
+      left,
+      new THREE.Vector3((left.x + right.x) / 2, left.y, (left.z + right.z) / 2),
+      right,
+    ],
+    6,
+    0.04,
+  );
+}
+
+function buildFoundationRowGeometry(chainStitches: StitchNode[]): THREE.BufferGeometry | null {
   if (chainStitches.length === 0) {
-    return [];
+    return null;
   }
 
   const span =
     STITCH_SPACING * StitchDefinitions[StitchType.CHAIN].width * CHAIN_LOOP_SPAN_SCALE;
-  const points: THREE.Vector3[] = [];
+  const tubes: THREE.TubeGeometry[] = [];
   const first = chainStitches[0]!.position;
   const last = chainStitches[chainStitches.length - 1]!.position;
 
-  points.push(new THREE.Vector3(first.x - span * 1.1, first.y, first.z + 0.02));
+  tubes.push(
+    createTube(
+      [
+        new THREE.Vector3(first.x - span * 1.05, first.y, first.z + CHAIN_SPINE_Z),
+        new THREE.Vector3(first.x - span * 0.5, first.y, first.z + CHAIN_SPINE_Z),
+      ],
+      6,
+      0.04,
+    ),
+  );
 
   for (let index = 0; index < chainStitches.length; index += 1) {
     const stitch = chainStitches[index]!;
@@ -111,44 +187,95 @@ function buildFoundationYarnPath(chainStitches: StitchNode[]): THREE.Vector3[] {
 
     const leftAnchor = previous
       ? midpoint(previous.position, position)
-      : new THREE.Vector3(position.x - span * 0.55, position.y, position.z + 0.02);
+      : new THREE.Vector3(position.x - span * 0.5, position.y, position.z + CHAIN_SPINE_Z);
 
     const rightAnchor = next
       ? midpoint(position, next.position)
-      : new THREE.Vector3(position.x + span * 0.55, position.y, position.z + 0.02);
+      : new THREE.Vector3(position.x + span * 0.5, position.y, position.z + CHAIN_SPINE_Z);
 
-    const crown = chainLoopCrown(position);
+    tubes.push(buildChainLoopGeometry(position, leftAnchor, rightAnchor));
 
-    points.push(
-      new THREE.Vector3(leftAnchor.x, leftAnchor.y, leftAnchor.z),
-      new THREE.Vector3(
-        (leftAnchor.x + crown.x) / 2,
-        position.y + SC_HOOK_Y_LIFT,
-        (leftAnchor.z + crown.z) / 2,
-      ),
-      crown,
-      new THREE.Vector3(
-        (rightAnchor.x + crown.x) / 2,
-        position.y + SC_HOOK_Y_LIFT,
-        (rightAnchor.z + crown.z) / 2,
-      ),
-      new THREE.Vector3(rightAnchor.x, rightAnchor.y, rightAnchor.z),
-    );
+    if (next) {
+      tubes.push(buildChainSpineGeometry(rightAnchor, midpoint(position, next.position)));
+    }
   }
 
-  points.push(new THREE.Vector3(last.x + span * 1.1, last.y, last.z + 0.02));
-  return dedupePoints(points);
+  tubes.push(
+    createTube(
+      [
+        new THREE.Vector3(last.x + span * 0.5, last.y, last.z + CHAIN_SPINE_Z),
+        new THREE.Vector3(last.x + span * 1.05, last.y, last.z + CHAIN_SPINE_Z),
+      ],
+      6,
+      0.04,
+    ),
+  );
+
+  return mergeTubes(tubes);
 }
 
-function buildWorkingRowYarnPath(
+function buildSingleCrochetGeometry(
+  stitch: StitchNode,
+  insertion: THREE.Vector3,
+): THREE.TubeGeometry[] {
+  const points = scStitchPoints(stitch, insertion);
+
+  const topArc = createTube([points.leftTop, points.crown, points.rightTop], 8, 0.04);
+
+  const leftLeg = createTube(
+    [points.leftTop, points.leftMid, points.centerMid, points.insertion],
+    10,
+    0.1,
+  );
+
+  const rightLeg = createTube(
+    [points.rightTop, points.rightMid, points.centerMid, points.insertion],
+    10,
+    0.1,
+  );
+
+  return [topArc, leftLeg, rightLeg];
+}
+
+function buildWorkingYarnGeometry(
+  from: THREE.Vector3,
+  to: THREE.Vector3,
+): THREE.TubeGeometry {
+  const midX = (from.x + to.x) / 2;
+  const topY = from.y;
+
+  return createTube(
+    [
+      from,
+      new THREE.Vector3(midX, topY + 0.004, from.z - 0.018),
+      to,
+    ],
+    8,
+    0.05,
+  );
+}
+
+function workingYarnEndpoints(
+  previousPoints: ReturnType<typeof scStitchPoints>,
+  currentPoints: ReturnType<typeof scStitchPoints>,
+  direction: WorkingDirection,
+): [THREE.Vector3, THREE.Vector3] {
+  return direction === WorkingDirectionEnum.LEFT_TO_RIGHT
+    ? [previousPoints.rightTop, currentPoints.leftTop]
+    : [previousPoints.leftTop, currentPoints.rightTop];
+}
+
+function buildWorkingRowGeometry(
   rowStitches: StitchNode[],
   stitchById: Map<string, StitchNode>,
-): THREE.Vector3[] | null {
+  rowNumber: number,
+): THREE.BufferGeometry | null {
   if (rowStitches.length === 0) {
     return null;
   }
 
-  const points: THREE.Vector3[] = [];
+  const direction = defaultDirectionForRow(rowNumber);
+  const tubes: THREE.TubeGeometry[] = [];
 
   for (let index = 0; index < rowStitches.length; index += 1) {
     const stitch = rowStitches[index]!;
@@ -157,74 +284,33 @@ function buildWorkingRowYarnPath(
       return null;
     }
 
-    const position = stitch.position;
-    const hook = hookPointForStitch(parent, 'attach');
-    const leftTop = new THREE.Vector3(
-      position.x - SC_V_HALF_WIDTH,
-      position.y + SC_HEIGHT,
-      position.z + SC_TOP_Z,
-    );
-    const rightTop = new THREE.Vector3(
-      position.x + SC_V_HALF_WIDTH,
-      position.y + SC_HEIGHT,
-      position.z + SC_TOP_Z,
-    );
-    const crown = new THREE.Vector3(
-      position.x,
-      position.y + SC_HEIGHT + 0.018,
-      position.z + SC_TOP_Z + 0.015,
-    );
+    const insertion = scInsertionPoint(stitch, parent);
+    tubes.push(...buildSingleCrochetGeometry(stitch, insertion));
 
-    if (index === 0) {
-      points.push(
-        new THREE.Vector3(
-          position.x - 0.18,
-          position.y + SC_HEIGHT * 0.45,
-          position.z + 0.03,
-        ),
-      );
-    } else {
+    if (index > 0) {
       const previous = rowStitches[index - 1]!;
-      points.push(
-        new THREE.Vector3(
-          (previous.position.x + position.x) / 2,
-          previous.position.y + SC_HEIGHT + 0.02,
-          (previous.position.z + position.z) / 2 + 0.07,
-        ),
-      );
-    }
-
-    points.push(
-      new THREE.Vector3(
-        (hook.x + position.x) / 2,
-        (hook.y + position.y) / 2 - 0.02,
-        (hook.z + position.z) / 2,
-      ),
-      hook,
-      new THREE.Vector3(position.x, position.y - 0.01, position.z + 0.02),
-      leftTop,
-      crown,
-      rightTop,
-    );
-
-    if (index < rowStitches.length - 1) {
-      const next = rowStitches[index + 1]!;
-      points.push(
-        new THREE.Vector3(
-          (position.x + next.position.x) / 2,
-          position.y + SC_HEIGHT + 0.02,
-          (position.z + next.position.z) / 2 + 0.07,
-        ),
-      );
+      const previousParent = stitchById.get(previous.attachToId ?? '')!;
+      const previousInsertion = scInsertionPoint(previous, previousParent);
+      const previousPoints = scStitchPoints(previous, previousInsertion);
+      const currentPoints = scStitchPoints(stitch, insertion);
+      const [from, to] = workingYarnEndpoints(previousPoints, currentPoints, direction);
+      tubes.push(buildWorkingYarnGeometry(from, to));
     }
   }
 
-  const last = rowStitches[rowStitches.length - 1]!.position;
-  points.push(
-    new THREE.Vector3(last.x + 0.16, last.y + SC_HEIGHT + 0.02, last.z + SC_TOP_Z + 0.015),
-  );
+  return mergeTubes(tubes);
+}
 
-  return dedupePoints(points);
+function hookPointForRowEnd(stitch: StitchNode, role: 'attach' | 'rowExit'): THREE.Vector3 {
+  if (stitch.type === StitchType.CHAIN) {
+    return chainLoopCrown(stitch.position);
+  }
+
+  const topY = scRowTopY(stitch.row);
+  const topZ = scRowTopZ(stitch.row);
+  const xOffset = role === 'rowExit' ? 0.08 : 0;
+
+  return new THREE.Vector3(stitch.position.x + xOffset, topY, topZ);
 }
 
 function buildRowJoinPath(
@@ -239,24 +325,24 @@ function buildRowJoinPath(
   const lowerEnd = lowerRow[lowerRow.length - 1]!;
   const upperStart = upperRow[0]!;
 
-  const lowerExit = hookPointForStitch(
+  const lowerExit = hookPointForRowEnd(
     lowerEnd,
     lowerEnd.type === StitchType.CHAIN ? 'attach' : 'rowExit',
   );
 
   const upperParent = stitchById.get(upperStart.attachToId ?? '');
   const upperEntry = upperParent
-    ? hookPointForStitch(upperParent, 'attach')
+    ? scInsertionPoint(upperStart, upperParent)
     : new THREE.Vector3(
         upperStart.position.x,
-        upperStart.position.y,
-        upperStart.position.z,
+        scRowTopY(upperStart.row - 1),
+        scRowTopZ(upperStart.row),
       );
 
   const turn = new THREE.Vector3(
-    (lowerExit.x + upperEntry.x) / 2 + 0.08,
-    (lowerExit.y + upperEntry.y) / 2,
-    (lowerExit.z + upperEntry.z) / 2 + 0.05,
+    (lowerExit.x + upperEntry.x) / 2 + 0.05,
+    (lowerExit.y + upperEntry.y) / 2 + VISUAL_ROW_HEIGHT * 0.2,
+    (lowerExit.z + upperEntry.z) / 2 - 0.03,
   );
 
   return [lowerExit, turn, upperEntry];
@@ -272,21 +358,46 @@ function joinFingerprint(lowerRow: StitchNode[], upperRow: StitchNode[]): string
   return `join:${lowerEnd.id}->${upperStart.id}`;
 }
 
+function indexStitches(stitches: StitchNode[]) {
+  const stitchById = new Map(stitches.map((stitch) => [stitch.id, stitch]));
+  const byRow = groupStitchesByRow(stitches);
+  const rowNumbers = [...byRow.keys()].sort((left, right) => left - right);
+
+  return { stitchById, byRow, rowNumbers };
+}
+
+function canRenderWorkingRow(
+  rowStitches: StitchNode[],
+  stitchById: Map<string, StitchNode>,
+): boolean {
+  return rowStitches.every((stitch) => stitchById.has(stitch.attachToId ?? ''));
+}
+
+export function measureSegmentsHeight(segments: YarnSegment[]): number {
+  const bounds = new THREE.Box3();
+
+  for (const segment of segments) {
+    segment.geometry.computeBoundingBox();
+    if (segment.geometry.boundingBox) {
+      bounds.union(segment.geometry.boundingBox);
+    }
+  }
+
+  return bounds.max.y - bounds.min.y;
+}
+
 export function getYarnSegmentManifests(stitches: StitchNode[]): YarnSegmentManifest[] {
   if (stitches.length === 0) {
     return [];
   }
 
-  const stitchById = new Map(stitches.map((stitch) => [stitch.id, stitch]));
-  const byRow = groupStitchesByRow(stitches);
-  const rowNumbers = [...byRow.keys()].sort((left, right) => left - right);
+  const { stitchById, byRow, rowNumbers } = indexStitches(stitches);
   const manifests: YarnSegmentManifest[] = [];
 
   for (const rowNumber of rowNumbers) {
     const rowStitches = byRow.get(rowNumber)!;
     const canRenderRow =
-      rowNumber === 0 ||
-      buildWorkingRowYarnPath(rowStitches, stitchById) !== null;
+      rowNumber === 0 || canRenderWorkingRow(rowStitches, stitchById);
 
     if (!canRenderRow) {
       continue;
@@ -320,9 +431,7 @@ export function buildYarnSegmentGeometry(
   key: string,
   stitches: StitchNode[],
 ): THREE.BufferGeometry | null {
-  const stitchById = new Map(stitches.map((stitch) => [stitch.id, stitch]));
-  const byRow = groupStitchesByRow(stitches);
-  const rowNumbers = [...byRow.keys()].sort((left, right) => left - right);
+  const { stitchById, byRow, rowNumbers } = indexStitches(stitches);
 
   if (key.startsWith('row-')) {
     const rowNumber = Number.parseInt(key.slice(4), 10);
@@ -331,16 +440,9 @@ export function buildYarnSegmentGeometry(
       return null;
     }
 
-    const points =
-      rowNumber === 0
-        ? buildFoundationYarnPath(rowStitches)
-        : buildWorkingRowYarnPath(rowStitches, stitchById);
-
-    if (!points || points.length < 2) {
-      return null;
-    }
-
-    return createTube(points);
+    return rowNumber === 0
+      ? buildFoundationRowGeometry(rowStitches)
+      : buildWorkingRowGeometry(rowStitches, stitchById, rowNumber);
   }
 
   if (key.startsWith('join-')) {
@@ -358,7 +460,7 @@ export function buildYarnSegmentGeometry(
       return null;
     }
 
-    return createTube(joinPoints);
+    return createTube(joinPoints, 10, 0.15);
   }
 
   return null;
@@ -374,3 +476,5 @@ export function buildYarnSegments(stitches: StitchNode[]): YarnSegment[] {
     return [{ key: manifest.key, geometry }];
   });
 }
+
+export { VISUAL_ROW_HEIGHT };

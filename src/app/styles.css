@@ -2,6 +2,7 @@
   color: #1f2933;
   background: #f4f1ea;
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --scene-background: #f7f0e6;
 }
 
 * {
@@ -26,12 +27,14 @@ button {
 .canvas-shell {
   width: 100%;
   height: 100%;
+  background: var(--scene-background);
 }
 
 .canvas-focus-target {
   width: 100%;
   height: 100%;
   outline: none;
+  background: var(--scene-background);
 }
 
 .canvas-focus-target:focus-visible {
@@ -75,6 +78,53 @@ button {
   font-size: 1rem;
 }
 
+.info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.info-header h2 {
+  margin: 0;
+}
+
+.info-toggle {
+  display: none;
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+.info-collapsed .info-content {
+  display: none;
+}
+
+.info-collapsed {
+  width: auto;
+  padding-bottom: 12px;
+}
+
+.attachment-point {
+  width: 44px;
+  height: 44px;
+  border: 2px solid #2563eb;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.2);
+  cursor: pointer;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+}
+
+.attachment-point:hover {
+  background: rgba(37, 99, 235, 0.35);
+}
+
+.attachment-point:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
 .info h3 {
   margin-top: 16px;
   font-size: 0.9rem;
@@ -108,7 +158,7 @@ button {
 
 .muted {
   margin: 0;
-  color: #7b8794;
+  color: #5f6c7b;
 }
 
 .btn {
@@ -131,7 +181,9 @@ button {
 }
 
 .btn.primary:focus-visible {
-  outline-color: #fff;
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.35);
 }
 
 .btn.primary {
@@ -148,16 +200,19 @@ button {
   background: transparent;
 }
 
-.btn:disabled {
+.btn:disabled,
+.btn[aria-disabled='true'] {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-.btn:disabled:hover {
+.btn:disabled:hover,
+.btn[aria-disabled='true']:hover {
   background: #fff;
 }
 
-.btn.primary:disabled:hover {
+.btn.primary:disabled:hover,
+.btn.primary[aria-disabled='true']:hover {
   background: #2563eb;
 }
 
@@ -171,6 +226,7 @@ button {
   border-radius: 8px;
   background: #fff1f0;
   border: 1px solid #f5c2c0;
+  color: #7a271a;
 }
 
 .error-banner p {
@@ -182,6 +238,10 @@ button {
   left: -9999px;
   top: 8px;
   z-index: 10;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   padding: 8px 12px;
   background: #111827;
   color: #fff;
@@ -189,8 +249,10 @@ button {
   border-radius: 6px;
 }
 
-.skip-link:focus {
+.skip-link:focus-visible {
   left: 8px;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 .visually-hidden {
@@ -285,4 +347,32 @@ button {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 20px;
+}
+
+@media (max-width: 960px) {
+  .toolbar {
+    left: 16px;
+    right: 16px;
+    transform: none;
+    max-width: none;
+    justify-content: flex-start;
+  }
+
+  .info-toggle {
+    display: inline-flex;
+  }
+
+  .info {
+    top: auto;
+    bottom: 16px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+    max-height: 40vh;
+  }
+
+  .info-collapsed {
+    max-height: none;
+    overflow: visible;
+  }
 }

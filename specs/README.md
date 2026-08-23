@@ -11,7 +11,21 @@ Gherkin feature files describe **what crochet-3d should do** from a crocheter's 
 
 ## Scope
 
-**3D appearance** (yarn style, tube geometry, colors, lighting) is **not** acceptance-tested in behavioral specs. Only canvas presence, focus/skip-link, and pattern panel text/counts are normative.
+**Behavioral specs** (`*.feature`) cover crocheter-observable UI: toolbar, panels, dialogs, status text, counts, and guidance. They do **not** assert yarn topology, colors, outline stroke, or canvas fill — those are scene-layer concerns.
+
+**Scene visual contract** (implemented in `src/scene/`, verified in `tests/scene/`):
+
+| Constant / behavior | Value / rule | Source |
+|---------------------|--------------|--------|
+| Canvas background | `#f7f0e6` warm flat fill (no perspective grid) | `SCENE_BACKGROUND` in `CrochetScene.tsx`, `--scene-background` in `styles.css` |
+| Yarn fill color | `0xd98952` | `STITCH_YARN_COLOR` in `stitchMaterials.ts` |
+| Outline style | Screen-space stroke (~2.5 px), darker yarn tone, creased normals | `createStitchOutlineMaterial()` shader |
+| Visual row height | `0.22` scene units per working row (engine `ROW_HEIGHT` = 1.2 is **not** used for stitch height) | `VISUAL_ROW_HEIGHT` in `stitchGeometry.ts` |
+| SC topology | Inverted-V arc + two legs per stitch; top working-yarn bridge between neighbors | `buildSingleCrochetGeometry()` |
+| Foundation topology | Chain loops + spine segments per chain stitch | `buildFoundationRowGeometry()` |
+| Segment sync | Row-level yarn segments + join segments; fingerprint diff | `StitchRenderer.sync()` |
+
+Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 
 ## Files
 
@@ -22,6 +36,8 @@ Gherkin feature files describe **what crochet-3d should do** from a crocheter's 
 | `single-crochet-rows.feature` | New row, adding SC, instructions |
 | `pattern-validation.feature` | Input errors, placement guards |
 | `reset-pattern.feature` | Clearing the pattern |
+| `click-to-place.feature` | Click attachment points in 3D canvas to place SC |
+| `pattern-editing.feature` | Undo and redo stitch placements |
 | `deferred.feature` | Roadmap items tagged `@deferred` (not yet implemented) |
 
 ## Scenario index
@@ -31,7 +47,7 @@ Gherkin feature files describe **what crochet-3d should do** from a crocheter's 
 | App loads with toolbar, info panel, and 3D canvas | `e2e/app.spec.ts` — App loads… |
 | Empty pattern shows guidance | `e2e/app.spec.ts` — Empty pattern… |
 | Skip link focuses the 3D canvas region | `e2e/app.spec.ts` — Skip link… |
-| Foundation chain shows next-step guidance | `e2e/app.spec.ts` — Create a foundation chain |
+| Foundation chain shows next-step guidance | `e2e/app.spec.ts` — Foundation chain shows next-step guidance |
 | Create a foundation chain | `e2e/app.spec.ts` — Create a foundation chain |
 | Chain length dialog opens with a default of 10 | `e2e/app.spec.ts` — Chain length dialog… |
 | Chain length can be typed directly | `e2e/app.spec.ts` — Chain length can be typed… |
@@ -61,14 +77,23 @@ Gherkin feature files describe **what crochet-3d should do** from a crocheter's 
 | Cannot start a new row with no stitches on the current row | `tests/engine/Pattern.test.ts` — rejects starting a new row when the current row has no stitches |
 | Reset clears an existing pattern | `e2e/app.spec.ts` — Reset clears… |
 | Declining reset keeps the existing pattern | `e2e/app.spec.ts` — Declining reset… |
+| Scene visual contract (see Scope) | `tests/scene/stitchGeometry.test.ts`, `stitchMaterials.test.ts`, `StitchRenderer.test.ts`, `sceneConstants.test.ts` |
+| Next attachment point is available when SC can be placed | `e2e/app.spec.ts` — Click-to-place… |
+| Clicking the attachment point places the next SC | `e2e/app.spec.ts` — Clicking the attachment point… |
+| Click-to-place matches Add SC toolbar behavior | `e2e/app.spec.ts` — Click-to-place matches… |
+| Reject placement on an invalid attachment target | `tests/engine/Pattern.test.ts` — rejects placement on a non-next attachment target |
+| Undo removes the last placed single crochet | `e2e/app.spec.ts` — Undo removes… |
+| Redo restores an undone placement | `e2e/app.spec.ts` — Redo restores… |
+| Undo after startNewRow reverts row increment | `tests/engine/Pattern.test.ts` — undoes a started row… |
+| First-run onboarding explains how to start a pattern | `e2e/app.spec.ts` — Onboarding… |
+| Info panel can be collapsed on narrow viewports | `e2e/app.spec.ts` — Responsive panels… |
+| Row 2 attaches to far end of row 1 after turning | `tests/engine/Pattern.test.ts` — attaches row 2… |
 
 ## Deferred scenarios
 
 | Spec scenario | Notes |
 |---------------|-------|
-| First-run onboarding explains how to start a pattern | `deferred.feature` — `@deferred` |
 | Reset with no pattern is a no-op | `deferred.feature` — `@deferred` |
-| Click an attachment point to place the next single crochet | `deferred.feature` — `@deferred` |
 | Saved pattern round-trips through JSON export and import | `deferred.feature` — `@deferred @engine` |
 
 ## Tags

@@ -64,14 +64,14 @@ Feature: Foundation chain
     Given I have no pattern
     When I open the new chain dialog
     And I clear the chain length field
-    And I choose "Create chain"
+    And I choose "Create foundation chain"
     Then I should see an error "Enter a chain length."
 
   Scenario: Out-of-range chain length shows an error in the dialog
     Given I have no pattern
     When I open the new chain dialog
     And I enter 501 in the chain length field
-    And I choose "Create chain"
+    And I choose "Create foundation chain"
     Then I should see an error "Chain length must be between 1 and 500."
 
   Scenario: Cancel closes the chain dialog without creating a chain
@@ -97,7 +97,7 @@ Feature: Foundation chain
     When I choose "New Chain"
     And I confirm starting a new foundation chain
     And I enter 5 in the chain length field
-    And I choose "Create chain"
+    And I choose "Create foundation chain"
     Then the stitch count should be 5
     And the foundation length should be 5
 

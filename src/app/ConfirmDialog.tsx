@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react';
+import { DialogShell } from './DialogShell';
 import { useDialogFocusTrap } from './dialogUtils';
 
 interface ConfirmDialogProps {
@@ -23,7 +24,7 @@ export function ConfirmDialog({
   const titleId = useId();
   const descriptionId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
-  const confirmRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   useDialogFocusTrap(open, dialogRef, onCancel);
 
@@ -32,7 +33,7 @@ export function ConfirmDialog({
       return;
     }
 
-    confirmRef.current?.focus();
+    cancelRef.current?.focus();
   }, [open]);
 
   if (!open) {
@@ -40,34 +41,26 @@ export function ConfirmDialog({
   }
 
   return (
-    <div className="dialog-backdrop">
-      <div
-        ref={dialogRef}
-        className="dialog panel"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-      >
-        <h2 id={titleId}>{title}</h2>
-        <p id={descriptionId} className="muted">
-          {description}
-        </p>
+    <DialogShell
+      dialogRef={dialogRef}
+      role="alertdialog"
+      titleId={titleId}
+      descriptionId={descriptionId}
+      onBackdropClick={onCancel}
+    >
+      <h2 id={titleId}>{title}</h2>
+      <p id={descriptionId} className="muted">
+        {description}
+      </p>
 
-        <div className="dialog-actions">
-          <button type="button" className="btn subtle" onClick={onCancel}>
-            {cancelLabel}
-          </button>
-          <button
-            ref={confirmRef}
-            type="button"
-            className="btn primary"
-            onClick={onConfirm}
-          >
-            {confirmLabel}
-          </button>
-        </div>
+      <div className="dialog-actions">
+        <button ref={cancelRef} type="button" className="btn subtle" onClick={onCancel}>
+          {cancelLabel}
+        </button>
+        <button type="button" className="btn primary" onClick={onConfirm}>
+          {confirmLabel}
+        </button>
       </div>
-    </div>
+    </DialogShell>
   );
 }

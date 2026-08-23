@@ -1,15 +1,25 @@
 import { expect, test } from '@playwright/test';
 import {
   acceptConfirm,
+  attachmentPoint,
   completeRow,
   createFoundationChain,
   dismissConfirm,
   infoPanel,
+  MAX_CHAIN_LENGTH,
+  MIN_CHAIN_LENGTH,
   openChainDialog,
   chainDialog,
   chainLengthInput,
+  startRowOne,
   toolbarButton,
 } from './helpers';
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem('crochet-3d-onboarding-seen', 'true');
+  });
+});
 
 test.describe('App shell', () => {
   test('App loads with toolbar, info panel, and 3D canvas', async ({ page }) => {
@@ -113,10 +123,10 @@ test.describe('Foundation chain', () => {
     const decrease = dialog.getByRole('button', { name: 'Decrease chain length' });
     const increase = dialog.getByRole('button', { name: 'Increase chain length' });
 
-    await chainLengthInput(page).fill('1');
+    await chainLengthInput(page).fill(String(MIN_CHAIN_LENGTH));
     await expect(decrease).toBeDisabled();
 
-    await chainLengthInput(page).fill('500');
+    await chainLengthInput(page).fill(String(MAX_CHAIN_LENGTH));
     await expect(increase).toBeDisabled();
   });
 
@@ -151,11 +161,11 @@ test.describe('Foundation chain', () => {
 
     await openChainDialog(page);
     const dialog = chainDialog(page);
-    await chainLengthInput(page).fill('501');
-    await dialog.getByRole('button', { name: 'Create chain' }).click();
+    await chainLengthInput(page).fill(String(MAX_CHAIN_LENGTH + 1));
+    await dialog.getByRole('button', { name: 'Create foundation chain' }).click();
 
     await expect(dialog.getByRole('alert')).toContainText(
-      'Chain length must be between 1 and 500.',
+      `Chain length must be between ${MIN_CHAIN_LENGTH} and ${MAX_CHAIN_LENGTH}.`,
     );
   });
 
@@ -165,7 +175,7 @@ test.describe('Foundation chain', () => {
     await openChainDialog(page);
     const dialog = chainDialog(page);
     await chainLengthInput(page).fill('');
-    await dialog.getByRole('button', { name: 'Create chain' }).click();
+    await dialog.getByRole('button', { name: 'Create foundation chain' }).click();
 
     await expect(dialog.getByRole('alert')).toContainText('Enter a chain length.');
     await expect(chainDialog(page)).toBeVisible();
@@ -209,7 +219,7 @@ test.describe('Foundation chain', () => {
     await page.getByRole('button', { name: 'New Chain' }).click();
     await acceptConfirm(page, 'Start new chain');
     await chainLengthInput(page).fill('5');
-    await chainDialog(page).getByRole('button', { name: 'Create chain' }).click();
+    await chainDialog(page).getByRole('button', { name: 'Create foundation chain' }).click();
 
     const panel = infoPanel(page);
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('5');
@@ -311,6 +321,114 @@ test.describe('Pattern validation', () => {
     const addSc = toolbarButton(page, 'Add SC');
     await expect(addSc).toBeDisabled();
     await expect(addSc).toHaveAttribute('aria-describedby', /.+/);
+  });
+});
+
+test.describe('Click-to-place single crochet', () => {
+  test('Next attachment point is available when SC can be placed', async ({ page }) => {
+    await page.goto('/');
+    await startRowOne(page, 3);
+
+    await expect(attachmentPoint(page)).toBeVisible();
+  });
+
+  test('Clicking the attachment point places the next SC', async ({ page }) => {
+    await page.goto('/');
+    await startRowOne(page, 3);
+
+    await attachmentPoint(page).click();
+
+    const panel = infoPanel(page);
+    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('4');
+    await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('1/3');
+  });
+
+  test('No attachment point when SC cannot be placed', async ({ page }) => {
+    await page.goto('/');
+
+    await expect(attachmentPoint(page)).toHaveCount(0);
+  });
+
+  test('Click-to-place matches Add SC toolbar behavior', async ({ page }) => {
+    await page.goto('/');
+    await startRowOne(page, 3);
+
+    await attachmentPoint(page).click();
+    await attachmentPoint(page).click();
+    await attachmentPoint(page).click();
+
+    await expect(infoPanel(page).locator('dt:text("Row progress") + dd')).toHaveText('3/3');
+  });
+});
+
+test.describe('Pattern editing', () => {
+  test('Undo removes the last placed single crochet', async ({ page }) => {
+    await page.goto('/');
+    await startRowOne(page, 3);
+    await toolbarButton(page, 'Add SC').click();
+    await toolbarButton(page, 'Add SC').click();
+
+    await toolbarButton(page, 'Undo').click();
+
+    const panel = infoPanel(page);
+    await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('4');
+    await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('1/3');
+  });
+
+  test('Redo restores an undone placement', async ({ page }) => {
+    await page.goto('/');
+    await startRowOne(page, 3);
+    await toolbarButton(page, 'Add SC').click();
+    await toolbarButton(page, 'Add SC').click();
+
+    await toolbarButton(page, 'Undo').click();
+    await toolbarButton(page, 'Redo').click();
+
+    await expect(infoPanel(page).locator('dt:text("Stitches") + dd')).toHaveText('5');
+  });
+
+  test('Undo is disabled with nothing to undo', async ({ page }) => {
+    await page.goto('/');
+
+    await expect(toolbarButton(page, /Undo/)).toBeDisabled();
+  });
+
+  test('Reset clears undo and redo history', async ({ page }) => {
+    await page.goto('/');
+    await startRowOne(page, 3);
+    await toolbarButton(page, 'Add SC').click();
+    await toolbarButton(page, 'Undo').click();
+
+    await page.getByRole('button', { name: 'Reset' }).click();
+    await acceptConfirm(page, 'Reset pattern');
+
+    await expect(toolbarButton(page, /Undo/)).toBeDisabled();
+  });
+});
+
+test.describe('Onboarding', () => {
+  test('First-run onboarding explains how to start a pattern', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.removeItem('crochet-3d-onboarding-seen');
+    });
+    await page.goto('/');
+
+    await expect(page.getByRole('dialog')).toContainText('foundation chain');
+    await page.getByRole('button', { name: 'Get started' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+});
+
+test.describe('Responsive panels', () => {
+  test('Info panel can be collapsed on narrow viewports', async ({ page }) => {
+    await page.setViewportSize({ width: 768, height: 900 });
+    await page.goto('/');
+
+    const toggle = infoPanel(page).getByRole('button', { name: 'Hide panel' });
+    await expect(toggle).toBeVisible();
+    await toggle.click();
+    await expect(infoPanel(page).getByRole('button', { name: 'Show panel' })).toBeVisible();
+    await expect(infoPanel(page).locator('dt:text("Status")')).toBeHidden();
   });
 });
 

@@ -209,6 +209,23 @@ describe('Pattern', () => {
     expectPlacementError(() => pattern.startNewRow(), 'CANNOT_START_ROW');
   });
 
+  it('exposes validation messages for toolbar disabled states', () => {
+    const pattern = new Pattern();
+
+    expect(pattern.getAddSingleCrochetError()).toContain('foundation chain');
+    expect(pattern.getStartNewRowError()).toContain('foundation chain');
+
+    pattern.addFoundationChain(2);
+    expect(pattern.getAddSingleCrochetError()).toContain('row 1');
+    expect(pattern.getStartNewRowError()).toBeNull();
+
+    pattern.startNewRow();
+    pattern.addSingleCrochet();
+    pattern.addSingleCrochet();
+    expect(pattern.getAddSingleCrochetError()).toContain('already has');
+    expect(pattern.getStartNewRowError()).toBeNull();
+  });
+
   it('exposes pattern state through getSnapshot', () => {
     const pattern = new Pattern();
     pattern.addFoundationChain(2);
@@ -219,6 +236,7 @@ describe('Pattern', () => {
     expect(snapshot.foundationChainLength).toBe(2);
     expect(snapshot.currentRow).toBe(1);
     expect(snapshot.stitches).toHaveLength(3);
+    expect(snapshot.rowDirections).toEqual({ 1: 'left_to_right' });
   });
 
   it('resets the pattern', () => {
@@ -245,7 +263,7 @@ describe('Pattern', () => {
     expect(pattern.getRowStitchCount(2)).toBe(0);
   });
 
-  it('attaches row 2 single crochet to row 1 stitches', () => {
+  it('attaches row 2 single crochet to the far end of row 1 after turning', () => {
     const pattern = new Pattern();
     pattern.addFoundationChain(2);
     pattern.startNewRow();
@@ -253,8 +271,69 @@ describe('Pattern', () => {
     pattern.startNewRow();
 
     const rowTwoFirst = pattern.addSingleCrochet();
-    expect(rowTwoFirst.attachToId).toBe(rowOne[0].id);
+    expect(rowTwoFirst.attachToId).toBe(rowOne[1]!.id);
     expect(rowTwoFirst.row).toBe(2);
+  });
+
+  it('rejects placement on a non-next attachment target', () => {
+    const pattern = new Pattern();
+    const chains = pattern.addFoundationChain(3);
+    pattern.startNewRow();
+    pattern.addSingleCrochet();
+
+    expectPlacementError(
+      () => pattern.addSingleCrochetAt(chains[2]!.id),
+      'INVALID_ATTACHMENT_TARGET',
+    );
+  });
+
+  it('exposes the next attachment target for click-to-place', () => {
+    const pattern = new Pattern();
+    const chains = pattern.addFoundationChain(3);
+    pattern.startNewRow();
+
+    expect(pattern.getNextAttachmentTarget()?.id).toBe(chains[0]!.id);
+    pattern.addSingleCrochet();
+    expect(pattern.getNextAttachmentTarget()?.id).toBe(chains[1]!.id);
+  });
+
+  it('restores pattern state from a snapshot', () => {
+    const pattern = new Pattern();
+    pattern.addFoundationChain(2);
+    pattern.startNewRow();
+    pattern.addSingleCrochet();
+    const snapshot = pattern.getSnapshot();
+
+    const restored = new Pattern();
+    restored.loadSnapshot(snapshot);
+
+    expect(restored.getSnapshot()).toEqual(snapshot);
+    expect(restored.getStitches()).toHaveLength(3);
+    expect(restored.getCurrentRow()).toBe(1);
+  });
+
+  it('includes row directions in snapshots', () => {
+    const pattern = new Pattern();
+    pattern.addFoundationChain(2);
+    pattern.startNewRow();
+
+    const snapshot = pattern.getSnapshot();
+    expect(snapshot.rowDirections[1]).toBe('left_to_right');
+  });
+
+  it('undoes a started row by restoring the previous snapshot', () => {
+    const pattern = new Pattern();
+    pattern.addFoundationChain(3);
+    pattern.startNewRow();
+    pattern.addSingleCrochet();
+    pattern.addSingleCrochet();
+    pattern.addSingleCrochet();
+    const beforeNewRow = pattern.getSnapshot();
+    pattern.startNewRow();
+
+    expect(pattern.getCurrentRow()).toBe(2);
+    pattern.loadSnapshot(beforeNewRow);
+    expect(pattern.getCurrentRow()).toBe(1);
   });
 
   it('restarts stitch ids after reset', () => {

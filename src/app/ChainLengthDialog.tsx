@@ -4,9 +4,10 @@ import {
   MAX_CHAIN_LENGTH,
   MIN_CHAIN_LENGTH,
 } from '@engine/index';
+import { DialogShell } from './DialogShell';
 import { useDialogFocusTrap } from './dialogUtils';
 
-export const DEFAULT_CHAIN_LENGTH = 10;
+const DEFAULT_CHAIN_LENGTH = 10;
 
 interface ChainLengthDialogProps {
   open: boolean;
@@ -36,7 +37,9 @@ export function ChainLengthDialog({
 }: ChainLengthDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
+  const labelId = useId();
   const inputId = useId();
+  const errorId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState(String(DEFAULT_CHAIN_LENGTH));
@@ -94,98 +97,101 @@ export function ChainLengthDialog({
     }
   };
 
+  const describedBy = displayError ? `${descriptionId} ${errorId}` : descriptionId;
+
   return (
-    <div className="dialog-backdrop">
-      <div
-        ref={dialogRef}
-        className="dialog panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-      >
-        <h2 id={titleId}>Foundation chain</h2>
-        <p id={descriptionId} className="muted">
-          How many chains should the foundation row have?
-        </p>
+    <DialogShell
+      dialogRef={dialogRef}
+      role="dialog"
+      titleId={titleId}
+      descriptionId={descriptionId}
+      onBackdropClick={onClose}
+    >
+      <h2 id={titleId}>Foundation chain</h2>
+      <p id={descriptionId} className="muted">
+        How many chains should the foundation row have?
+      </p>
 
-        <div className="dialog-field">
-          <label htmlFor={inputId}>Chain length</label>
-          <div className="chain-stepper" role="group" aria-labelledby={inputId}>
-            <button
-              type="button"
-              className="btn stepper-btn"
-              aria-label="Decrease chain length"
-              disabled={!canDecrease}
-              onClick={() => adjustLength(-1)}
-            >
-              −
-            </button>
-            <input
-              ref={inputRef}
-              id={inputId}
-              className="dialog-input stepper-input"
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              autoComplete="off"
-              role="spinbutton"
-              aria-valuemin={MIN_CHAIN_LENGTH}
-              aria-valuemax={MAX_CHAIN_LENGTH}
-              aria-valuenow={numericValue ?? undefined}
-              aria-label="Chain length"
-              value={value}
-              onChange={(event) => handleChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  handleSubmit();
-                }
-                if (event.key === 'ArrowUp') {
-                  event.preventDefault();
-                  if (canIncrease) {
-                    adjustLength(1);
-                  }
-                }
-                if (event.key === 'ArrowDown') {
-                  event.preventDefault();
-                  if (canDecrease) {
-                    adjustLength(-1);
-                  }
-                }
-              }}
-            />
-            <button
-              type="button"
-              className="btn stepper-btn"
-              aria-label="Increase chain length"
-              disabled={!canIncrease}
-              onClick={() => adjustLength(1)}
-            >
-              +
-            </button>
-          </div>
-        </div>
-
-        <p className="dialog-hint muted">
-          Between {MIN_CHAIN_LENGTH} and {MAX_CHAIN_LENGTH} chains.
-        </p>
-
-        {displayError ? (
-          <p className="dialog-error" role="alert">
-            {displayError}
-          </p>
-        ) : null}
-
-        <div className="dialog-actions">
-          <button type="button" className="btn subtle" onClick={onClose}>
-            Cancel
+      <div className="dialog-field">
+        <label id={labelId} htmlFor={inputId}>
+          Chain length
+        </label>
+        <div className="chain-stepper" role="group" aria-labelledby={labelId}>
+          <button
+            type="button"
+            className="btn stepper-btn"
+            aria-label="Decrease chain length"
+            disabled={!canDecrease}
+            onClick={() => adjustLength(-1)}
+          >
+            −
           </button>
-          <button type="button" className="btn primary" onClick={handleSubmit}>
-            Create chain
+          <input
+            ref={inputRef}
+            id={inputId}
+            className="dialog-input stepper-input"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            autoComplete="off"
+            role="spinbutton"
+            aria-valuemin={MIN_CHAIN_LENGTH}
+            aria-valuemax={MAX_CHAIN_LENGTH}
+            aria-valuenow={numericValue ?? undefined}
+            aria-label="Chain length"
+            aria-invalid={displayError ? true : undefined}
+            aria-describedby={describedBy}
+            value={value}
+            onChange={(event) => handleChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                handleSubmit();
+              }
+              if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (canIncrease) {
+                  adjustLength(1);
+                }
+              }
+              if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                if (canDecrease) {
+                  adjustLength(-1);
+                }
+              }
+            }}
+          />
+          <button
+            type="button"
+            className="btn stepper-btn"
+            aria-label="Increase chain length"
+            disabled={!canIncrease}
+            onClick={() => adjustLength(1)}
+          >
+            +
           </button>
         </div>
       </div>
-    </div>
+
+      <p className="dialog-hint muted">
+        Between {MIN_CHAIN_LENGTH} and {MAX_CHAIN_LENGTH} chains.
+      </p>
+
+      {displayError ? (
+        <p id={errorId} className="dialog-error" role="alert">
+          {displayError}
+        </p>
+      ) : null}
+
+      <div className="dialog-actions">
+        <button type="button" className="btn subtle" onClick={onClose}>
+          Cancel
+        </button>
+        <button type="button" className="btn primary" onClick={handleSubmit}>
+          Create foundation chain
+        </button>
+      </div>
+    </DialogShell>
   );
 }
