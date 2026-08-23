@@ -1,4 +1,9 @@
-import { StitchType, WORKING_STITCH_TYPES, getWorkingStitchLabel } from '@engine/index';
+import {
+  StitchDefinitions,
+  StitchType,
+  WORKING_STITCH_TYPES,
+  getWorkingStitchLabel,
+} from '@engine/index';
 import type { WorkingStitchType } from '@engine/index';
 
 interface StitchTypeSelectorProps {
@@ -15,6 +20,8 @@ export function StitchTypeSelector({ value, onChange }: StitchTypeSelectorProps)
           type="button"
           className={`btn${value === type ? ' primary' : ''}`}
           aria-pressed={value === type}
+          aria-label={StitchDefinitions[type].name}
+          title={StitchDefinitions[type].name}
           onClick={() => onChange(type)}
         >
           {getWorkingStitchLabel(type).toUpperCase()}

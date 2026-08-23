@@ -31,7 +31,7 @@ test.describe('App shell', () => {
     await expect(page.getByRole('toolbar', { name: 'Pattern tools' })).toBeVisible();
     await expect(infoPanel(page)).toBeVisible();
     await expect(page.locator('#main-canvas')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'New Chain' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'New foundation' })).toBeVisible();
   });
 
   test('Empty pattern shows guidance', async ({ page }) => {
@@ -39,8 +39,8 @@ test.describe('App shell', () => {
 
     const panel = infoPanel(page);
     await expect(panel.locator('dt:text("Status") + dd')).toHaveText('No pattern');
-    await expect(panel.getByText('Start with a foundation chain.')).toBeVisible();
-    await expect(panel.getByText('Choose New Chain to start your foundation.')).toBeVisible();
+    await expect(panel.getByText(/Start with a foundation chain or magic ring/)).toBeVisible();
+    await expect(panel.getByText('Choose New foundation or Templates to start your pattern.')).toBeVisible();
   });
 
   test('Skip link focuses the 3D canvas region', async ({ page }) => {
@@ -204,23 +204,23 @@ test.describe('Foundation chain', () => {
     await expect(infoPanel(page).locator('dt:text("Stitches") + dd')).toHaveText('0');
   });
 
-  test('Declining New Chain reset keeps the existing pattern', async ({ page }) => {
+  test('Declining New foundation reset keeps the existing pattern', async ({ page }) => {
     await page.goto('/');
 
     await createFoundationChain(page, 3);
-    await page.getByRole('button', { name: 'New Chain' }).click();
+    await page.getByRole('button', { name: 'New foundation' }).click();
     await dismissConfirm(page);
 
     await expect(chainDialog(page)).toBeHidden();
     await expect(infoPanel(page).locator('dt:text("Stitches") + dd')).toHaveText('3');
   });
 
-  test('Confirming New Chain reset replaces the pattern', async ({ page }) => {
+  test('Confirming New foundation reset replaces the pattern', async ({ page }) => {
     await page.goto('/');
 
     await createFoundationChain(page, 3);
-    await page.getByRole('button', { name: 'New Chain' }).click();
-    await acceptConfirm(page, 'Start new chain');
+    await page.getByRole('button', { name: 'New foundation' }).click();
+    await acceptConfirm(page, 'Start new foundation');
     await chainLengthInput(page).fill('5');
     await chainDialog(page).getByRole('button', { name: 'Create foundation chain' }).click();
 
@@ -251,11 +251,11 @@ test.describe('Single crochet rows', () => {
     await toolbarButton(page, 'New Row').click();
     await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Row 1');
 
-    await toolbarButton(page, 'Add SC').click();
+    await toolbarButton(page, 'Add single crochet').click();
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('4');
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('1/3');
     await expect(panel.getByText('Row 1: work across (1 sc)')).toBeVisible();
-    await expect(panel.getByText('Place 2 more sc parent stitches on row 1.')).toBeVisible();
+    await expect(panel.getByText('Place 2 more single crochet stitches on row 1.')).toBeVisible();
 
     await completeRow(page, 2);
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('6');
@@ -276,7 +276,7 @@ test.describe('Single crochet rows', () => {
     await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Row 2');
     await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('0/3');
 
-    await toolbarButton(page, 'Add SC').click();
+    await toolbarButton(page, 'Add single crochet').click();
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('7');
     await expect(panel.getByText('Row 2: work across (1 sc)')).toBeVisible();
   });
@@ -286,7 +286,7 @@ test.describe('Pattern validation', () => {
   test('Add SC is disabled without a foundation chain', async ({ page }) => {
     await page.goto('/');
 
-    await expect(toolbarButton(page, /Add SC/)).toBeDisabled();
+    await expect(toolbarButton(page, /Add single crochet/)).toBeDisabled();
   });
 
   test('New Row is disabled without a foundation chain', async ({ page }) => {
@@ -299,7 +299,7 @@ test.describe('Pattern validation', () => {
     await page.goto('/');
 
     await createFoundationChain(page, 3);
-    await expect(toolbarButton(page, /Add SC/)).toBeDisabled();
+    await expect(toolbarButton(page, /Add single crochet/)).toBeDisabled();
   });
 
   test('New Row is disabled while the current row is incomplete', async ({ page }) => {
@@ -307,7 +307,7 @@ test.describe('Pattern validation', () => {
 
     await createFoundationChain(page, 3);
     await toolbarButton(page, 'New Row').click();
-    await toolbarButton(page, 'Add SC').click();
+    await toolbarButton(page, 'Add single crochet').click();
 
     await expect(toolbarButton(page, /New Row/)).toBeDisabled();
   });
@@ -321,7 +321,7 @@ test.describe('Pattern validation', () => {
   test('Disabled toolbar buttons expose reasons to assistive technology', async ({ page }) => {
     await page.goto('/');
 
-    const addSc = toolbarButton(page, 'Add SC');
+    const addSc = toolbarButton(page, 'Add single crochet');
     await expect(addSc).toBeDisabled();
     await expect(addSc).toHaveAttribute('aria-describedby', /.+/);
   });
@@ -368,8 +368,8 @@ test.describe('Pattern editing', () => {
   test('Undo removes the last placed single crochet', async ({ page }) => {
     await page.goto('/');
     await startRowOne(page, 3);
-    await toolbarButton(page, 'Add SC').click();
-    await toolbarButton(page, 'Add SC').click();
+    await toolbarButton(page, 'Add single crochet').click();
+    await toolbarButton(page, 'Add single crochet').click();
 
     await toolbarButton(page, 'Undo').click();
 
@@ -381,8 +381,8 @@ test.describe('Pattern editing', () => {
   test('Redo restores an undone placement', async ({ page }) => {
     await page.goto('/');
     await startRowOne(page, 3);
-    await toolbarButton(page, 'Add SC').click();
-    await toolbarButton(page, 'Add SC').click();
+    await toolbarButton(page, 'Add single crochet').click();
+    await toolbarButton(page, 'Add single crochet').click();
 
     await toolbarButton(page, 'Undo').click();
     await toolbarButton(page, 'Redo').click();
@@ -399,7 +399,7 @@ test.describe('Pattern editing', () => {
   test('Reset clears undo and redo history', async ({ page }) => {
     await page.goto('/');
     await startRowOne(page, 3);
-    await toolbarButton(page, 'Add SC').click();
+    await toolbarButton(page, 'Add single crochet').click();
     await toolbarButton(page, 'Undo').click();
 
     await page.getByRole('button', { name: 'Reset' }).click();
@@ -442,7 +442,7 @@ test.describe('Stitch types', () => {
     await createFoundationChain(page, 3);
     await toolbarButton(page, 'New Row').click();
     await selectStitchType(page, 'HDC');
-    await toolbarButton(page, 'Add HDC').click();
+    await toolbarButton(page, 'Add half double crochet').click();
 
     const panel = infoPanel(page);
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('4');
@@ -455,7 +455,7 @@ test.describe('Stitch types', () => {
     await createFoundationChain(page, 3);
     await toolbarButton(page, 'New Row').click();
     await selectStitchType(page, 'DC');
-    await toolbarButton(page, 'Add DC').click();
+    await toolbarButton(page, 'Add double crochet').click();
 
     const panel = infoPanel(page);
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('4');
@@ -502,23 +502,27 @@ test.describe('Increase and decrease', () => {
     await page.goto('/');
     await startRowOne(page, 3);
 
-    await toolbarButton(page, 'Inc').click();
+    await toolbarButton(page, 'Increase').click();
 
     const panel = infoPanel(page);
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('5');
-    await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('2 sts (1/3 slots)');
+    await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText(
+      '2 stitches (uses 1 of 3 foundation stitches)',
+    );
   });
 
   test('Decrease consumes two parent slots', async ({ page }) => {
     await page.goto('/');
     await startRowOne(page, 4);
-    await toolbarButton(page, 'Add SC').click();
-    await toolbarButton(page, 'Add SC').click();
-    await toolbarButton(page, 'Dec').click();
+    await toolbarButton(page, 'Add single crochet').click();
+    await toolbarButton(page, 'Add single crochet').click();
+    await toolbarButton(page, 'Decrease').click();
 
     const panel = infoPanel(page);
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('7');
-    await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText('3 sts (4/4 slots)');
+    await expect(panel.locator('dt:text("Row progress") + dd')).toHaveText(
+      '3 stitches (uses 4 of 4 foundation stitches)',
+    );
   });
 });
 
@@ -546,7 +550,7 @@ test.describe('Reset pattern', () => {
     await acceptConfirm(page, 'Reset pattern');
     await expect(panel.locator('dt:text("Status") + dd')).toHaveText('No pattern');
     await expect(panel.locator('dt:text("Stitches") + dd')).toHaveText('0');
-    await expect(panel.getByText('Start with a foundation chain.')).toBeVisible();
+    await expect(panel.getByText(/Start with a foundation chain or magic ring/)).toBeVisible();
   });
 
   test('Declining reset keeps the existing pattern', async ({ page }) => {

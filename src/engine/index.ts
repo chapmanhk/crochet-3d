@@ -2,7 +2,7 @@ export { Pattern, MIN_CHAIN_LENGTH, MAX_CHAIN_LENGTH, MIN_MAGIC_RING_STITCHES, M
 export { StitchGraph } from './StitchGraph';
 export { createStitchNode, resetIdCounter, restoreIdCounter } from './StitchNode';
 export { groupStitchesByRow } from './stitchRows';
-export { generateInstructions, getStitchLabel, getWorkingStitchLabel } from './instructions';
+export { generateInstructions, getStitchLabel, getWorkingStitchLabel, getWorkingStitchName } from './instructions';
 export { layoutPosition, layoutMagicRingPosition, layoutStitchPositions, ROW_HEIGHT, STITCH_SPACING } from './layout';
 export {
   countParentSlotsConsumed,

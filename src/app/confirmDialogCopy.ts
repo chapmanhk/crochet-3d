@@ -5,10 +5,10 @@ export const CONFIRM_DIALOG_COPY: Record<
   { title: string; description: string; confirmLabel: string }
 > = {
   'new-chain': {
-    title: 'Start a new foundation chain?',
+    title: 'Start a new foundation?',
     description:
-      'This will clear your current pattern and open the chain length dialog.',
-    confirmLabel: 'Start new chain',
+      'This will clear your current pattern and open the foundation dialog (chain or magic ring).',
+    confirmLabel: 'Start new foundation',
   },
   'load-template': {
     title: 'Load a template?',

@@ -140,11 +140,10 @@ export function FoundationStartDialog({
           : 'How many single crochet stitches should the magic ring start with?'}
       </p>
 
-      <div className="foundation-mode-toggle" role="tablist" aria-label="Foundation type">
+      <div className="foundation-mode-toggle" role="group" aria-label="Foundation type">
         <button
           type="button"
-          role="tab"
-          aria-selected={mode === 'chain'}
+          aria-pressed={mode === 'chain'}
           className={`btn${mode === 'chain' ? ' primary' : ''}`}
           onClick={() => handleModeChange('chain')}
         >
@@ -152,8 +151,7 @@ export function FoundationStartDialog({
         </button>
         <button
           type="button"
-          role="tab"
-          aria-selected={mode === 'magic_ring'}
+          aria-pressed={mode === 'magic_ring'}
           className={`btn${mode === 'magic_ring' ? ' primary' : ''}`}
           onClick={() => handleModeChange('magic_ring')}
         >

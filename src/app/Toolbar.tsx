@@ -114,6 +114,7 @@ export function Toolbar() {
   const handleTemplateSelect = (templateId: TemplateId) => {
     if (foundationChainLength > 0) {
       setPendingTemplateId(templateId);
+      setTemplateDialogOpen(false);
       setConfirmAction('load-template');
       return;
     }
@@ -133,7 +134,7 @@ export function Toolbar() {
           className="btn primary"
           onClick={handleNewChain}
         >
-          New Chain
+          New foundation
         </button>
         <button
           type="button"
@@ -152,14 +153,12 @@ export function Toolbar() {
           onClick={addWorkingStitch}
         />
         <ToolbarActionButton
-          label="Inc"
-          ariaLabel="Increase stitch"
+          label="Increase"
           disabledReason={addIncreaseDisabledReason}
           onClick={addIncrease}
         />
         <ToolbarActionButton
-          label="Dec"
-          ariaLabel="Decrease stitch"
+          label="Decrease"
           disabledReason={addDecreaseDisabledReason}
           onClick={addDecrease}
         />
@@ -227,6 +226,9 @@ export function Toolbar() {
           confirmLabel={confirmCopy.confirmLabel}
           onConfirm={handleConfirm}
           onCancel={() => {
+            if (pendingTemplateId) {
+              setTemplateDialogOpen(true);
+            }
             setConfirmAction(null);
             setPendingTemplateId(null);
           }}

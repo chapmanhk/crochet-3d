@@ -1,6 +1,6 @@
 import {
   FoundationType,
-  getWorkingStitchLabel,
+  getWorkingStitchName,
   StitchType,
   type WorkingStitchType,
 } from '@engine/index';
@@ -32,7 +32,8 @@ export function getRowProgress(
   }
 
   if (currentRowSlotsConsumed !== currentRowStitchCount) {
-    return `${currentRowStitchCount} sts (${currentRowSlotsConsumed}/${foundationChainLength} slots)`;
+    const stitchWord = currentRowStitchCount === 1 ? 'stitch' : 'stitches';
+    return `${currentRowStitchCount} ${stitchWord} (uses ${currentRowSlotsConsumed} of ${foundationChainLength} foundation stitches)`;
   }
 
   return `${currentRowStitchCount}/${foundationChainLength}`;
@@ -47,7 +48,7 @@ export function getNextStep(
   foundationType: FoundationType = FoundationType.CHAIN,
 ): string {
   if (foundationChainLength === 0) {
-    return 'Choose New Chain to start your foundation.';
+    return 'Choose New foundation or Templates to start your pattern.';
   }
 
   if (currentRow === 0) {
@@ -59,14 +60,14 @@ export function getNextStep(
 
   const remainingSlots = foundationChainLength - currentRowSlotsConsumed;
   if (remainingSlots > 0) {
-    const stitchLabel = getWorkingStitchLabel(selectedStitchType);
+    const stitchName = getWorkingStitchName(selectedStitchType);
     const stitchWord = remainingSlots === 1 ? 'stitch' : 'stitches';
-    return `Place ${remainingSlots} more ${stitchLabel} parent ${stitchWord} on row ${currentRow}.`;
+    return `Place ${remainingSlots} more ${stitchName} ${stitchWord} on row ${currentRow}.`;
   }
 
   return `Row ${currentRow} is complete. Choose New Row to continue.`;
 }
 
 export function getAddStitchButtonLabel(selectedStitchType: WorkingStitchType): string {
-  return `Add ${getWorkingStitchLabel(selectedStitchType).toUpperCase()}`;
+  return `Add ${getWorkingStitchName(selectedStitchType)}`;
 }

@@ -87,3 +87,7 @@ export function getStitchLabel(type: StitchType): string {
 export function getWorkingStitchLabel(type: WorkingStitchType): string {
   return StitchDefinitions[type].abbreviation;
 }
+
+export function getWorkingStitchName(type: WorkingStitchType): string {
+  return StitchDefinitions[type].name.toLowerCase();
+}

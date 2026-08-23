@@ -129,7 +129,9 @@ export function InfoPanel() {
         <h3>Instructions</h3>
         {instructions.length === 0 ? (
           <p className="muted">
-            Start with a foundation chain. Choose <strong>New Chain</strong> in the toolbar.
+            Start with a foundation chain or magic ring, or choose a{' '}
+            <strong>Template</strong> from the toolbar. Use <strong>New foundation</strong> to
+            begin from scratch.
           </p>
         ) : (
           <ol className="instructions">

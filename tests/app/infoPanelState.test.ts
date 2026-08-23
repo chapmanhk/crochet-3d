@@ -17,14 +17,17 @@ describe('infoPanelState', () => {
   it('formats row progress for working rows', () => {
     expect(getRowProgress(0, 3, 0, 0)).toBe('—');
     expect(getRowProgress(1, 3, 2, 2)).toBe('2/3');
-    expect(getRowProgress(1, 3, 3, 2)).toBe('3 sts (2/3 slots)');
+    expect(getRowProgress(1, 3, 3, 2)).toBe(
+      '3 stitches (uses 2 of 3 foundation stitches)',
+    );
   });
 
   it('describes the next step for beginners', () => {
-    expect(getNextStep(0, 0, 0, 0)).toContain('New Chain');
+    expect(getNextStep(0, 0, 0, 0)).toContain('New foundation');
+    expect(getNextStep(0, 0, 0, 0)).toContain('Templates');
     expect(getNextStep(3, 0, 0, 0)).toContain('New Row');
     expect(getNextStep(3, 1, 1, 1, StitchType.HALF_DOUBLE_CROCHET)).toContain(
-      '2 more hdc parent',
+      '2 more half double crochet stitches',
     );
     expect(getNextStep(3, 1, 3, 3)).toContain('is complete');
   });
