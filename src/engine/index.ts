@@ -31,6 +31,22 @@ export {
 } from './templates';
 export type { PatternTemplate, TemplateId } from './templates';
 export {
+  AUTOSAVE_STORAGE_KEY,
+  PATTERN_FILE_VERSION,
+  PatternPersistenceError,
+  buildInstructionsExport,
+  createSavedPatternFile,
+  defaultInstructionsFilename,
+  defaultPatternFilename,
+  formatInstructionsMarkdown,
+  formatInstructionsPlainText,
+  INVALID_PATTERN_FILE_MESSAGE,
+  parsePatternFile,
+  serializePatternFile,
+  validateSavedPatternFile,
+} from './persistence';
+export type { PatternUiState, SavedPatternFile } from './persistence';
+export {
   defaultDirectionForRow,
   resolveAttachColumn,
   WorkingDirection,

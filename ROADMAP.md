@@ -88,22 +88,18 @@ Expand what patterns can express while keeping the engine testable.
 
 ---
 
-## Phase 3 — Persistence & sharing (next)
+## Shipped — v0.4 Phase 3 (current)
 
-Let users keep and revisit work.
-
-| Priority | Feature | Why | Spec target |
-|----------|---------|-----|-------------|
-| P0 | **Save / load pattern (JSON)** | Session continuity | New `persistence.feature` |
-| P1 | **Export instructions** (copy / markdown) | Share patterns outside the app | `persistence.feature` |
-| P2 | **Import from JSON** with validation | Recover files, future mobile sync | `persistence.feature` |
-| P3 | **Cloud sync** | Multi-device — needs auth & backend | Out of scope until Phase 3 design spike |
-
-**Exit criteria:** Round-trip save/load with Vitest fixtures; no data loss on refresh.
+| Capability | Specs | Notes |
+|------------|-------|-------|
+| Save / load pattern JSON | `persistence.feature` | Versioned file format with pattern snapshot + yarn color + stitch type |
+| Export / copy instructions | `persistence.feature` | Markdown download + clipboard plain text |
+| Import validation | `persistence.feature` | Schema version, stitch graph integrity, user-facing errors |
+| Session autosave | `persistence.feature` | `localStorage` restore on refresh |
 
 ---
 
-## Phase 4 — 3D preview at scale
+## Phase 4 — 3D preview at scale (next)
 
 Performance and realism for larger patterns.
 
@@ -179,6 +175,8 @@ When pulling an item from this roadmap into development:
 
 | Date | Change |
 |------|--------|
+| 2026-08-24 | Phase 3 shipped: save/load JSON, export/copy instructions, import validation, autosave |
+| 2026-08-24 | Realism review fixes + per-strand outlines shipped |
 | 2026-08-23 | Phase 2 shipped: HDC/DC, inc/dec, magic ring, templates, yarn color picker |
 | 2026-08-23 | Phase 1 shipped: click-to-place, undo/redo, row turn direction, onboarding, collapsible panels |
 | 2026-08-23 | Illustrated scene style shipped; SC V-stitch topology, flat background, outline stroke, UI/UX accessibility pass |

@@ -58,9 +58,25 @@ button {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
   gap: 10px;
   padding: 10px 12px;
   max-width: calc(100vw - 32px);
+}
+
+.toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  align-self: stretch;
+  min-height: 32px;
+  background: rgba(31, 41, 51, 0.12);
 }
 
 .info {
@@ -221,17 +237,32 @@ button {
   margin: 12px 0 0;
 }
 
-.error-banner {
+.error-banner,
+.notice-banner {
   margin-top: 16px;
   padding: 12px;
   border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.error-banner {
   background: #fff1f0;
   border: 1px solid #f5c2c0;
   color: #7a271a;
 }
 
-.error-banner p {
-  margin: 0 0 8px;
+.notice-banner {
+  background: #eef8ee;
+  border: 1px solid #b9dfbf;
+  color: #245c2a;
+}
+
+.error-banner p,
+.notice-banner p {
+  margin: 0;
 }
 
 .skip-link {

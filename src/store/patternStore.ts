@@ -1,12 +1,21 @@
 import { create } from 'zustand';
 import {
+  AUTOSAVE_STORAGE_KEY,
+  buildInstructionsExport,
+  createSavedPatternFile,
   createTemplateSnapshot,
   FoundationType,
   generateInstructions,
+  INVALID_PATTERN_FILE_MESSAGE,
+  parsePatternFile,
   Pattern,
+  PatternPersistenceError,
   PlacementError,
+  serializePatternFile,
   StitchType,
   type PatternSnapshot,
+  type PatternUiState,
+  type SavedPatternFile,
   type StitchNode,
   type TemplateId,
   type WorkingStitchType,
@@ -41,6 +50,8 @@ interface PatternState {
   undoDisabledReason: string | null;
   redoDisabledReason: string | null;
   lastError: string | null;
+  lastNotice: string | null;
+  setLastError: (message: string) => void;
   addFoundationChain: (length: number) => boolean;
   addMagicRing: (stitchCount: number) => boolean;
   addWorkingStitch: () => boolean;
@@ -52,7 +63,18 @@ interface PatternState {
   setSelectedStitchType: (type: WorkingStitchType) => void;
   setYarnColor: (color: string) => void;
   loadTemplate: (templateId: TemplateId) => boolean;
-  loadSnapshot: (snapshot: PatternSnapshot) => void;
+  loadSnapshot: (snapshot: PatternSnapshot, options?: { clearHistory?: boolean }) => void;
+  importSavedPattern: (file: SavedPatternFile, options?: { clearHistory?: boolean }) => void;
+  importPatternJson: (json: string, options?: { clearHistory?: boolean }) => boolean;
+  exportSavedPattern: () => SavedPatternFile;
+  exportPatternJson: () => string;
+  exportInstructionsMarkdown: () => string;
+  exportInstructionsPlainText: () => string;
+  persistAutosave: () => void;
+  restoreAutosave: () => boolean;
+  clearAutosave: () => void;
+  clearNotice: () => void;
+  setNotice: (message: string) => void;
   startNewRow: () => boolean;
   undo: () => boolean;
   redo: () => boolean;
@@ -143,7 +165,76 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof PlacementError ? error.message : fallback;
 }
 
-function clearHistory(): void {
+function getUiState(get: () => PatternState): PatternUiState {
+  return {
+    yarnColor: get().yarnColor,
+    selectedStitchType: get().selectedStitchType,
+  };
+}
+
+function applySavedPattern(
+  file: SavedPatternFile,
+  options: { clearHistory?: boolean } = {},
+): void {
+  const { clearHistory = true } = options;
+  pattern.loadSnapshot(file.pattern);
+
+  if (clearHistory) {
+    clearHistoryStack();
+  }
+}
+
+function applyHistoryEntry(
+  source: PatternSnapshot[],
+  destination: PatternSnapshot[],
+): boolean {
+  if (source.length === 0) {
+    return false;
+  }
+
+  destination.push(cloneSnapshot(pattern.getSnapshot()));
+  pattern.loadSnapshot(source.pop()!);
+  return true;
+}
+
+function withLocalStorage(run: (storage: Storage) => void): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  run(window.localStorage);
+}
+
+function readAutosave(): SavedPatternFile | null {
+  let saved: SavedPatternFile | null = null;
+
+  withLocalStorage((storage) => {
+    const raw = storage.getItem(AUTOSAVE_STORAGE_KEY);
+    if (!raw) {
+      return;
+    }
+
+    try {
+      saved = parsePatternFile(raw);
+    } catch {
+      storage.removeItem(AUTOSAVE_STORAGE_KEY);
+    }
+  });
+
+  return saved;
+}
+
+function writeAutosave(file: SavedPatternFile): void {
+  withLocalStorage((storage) => {
+    try {
+      storage.setItem(AUTOSAVE_STORAGE_KEY, serializePatternFile(file));
+    } catch {
+      // Ignore quota or storage errors; manual save remains available.
+    }
+  });
+}
+
+function clearHistoryStack(): void {
   historyPast = [];
   historyFuture = [];
 }
@@ -174,7 +265,7 @@ function runPatternAction(
     if (recordHistory) {
       historyPast.pop();
     }
-    set({ lastError: getErrorMessage(error, fallback) });
+    set({ lastError: getErrorMessage(error, fallback), lastNotice: null });
     return false;
   }
 }
@@ -184,6 +275,7 @@ export const usePatternStore = create<PatternState>((set, get) => ({
   selectedStitchType: StitchType.SINGLE_CROCHET,
   yarnColor: DEFAULT_YARN_COLOR,
   lastError: null,
+  lastNotice: null,
 
   addFoundationChain: (length: number) =>
     runPatternAction(
@@ -273,7 +365,7 @@ export const usePatternStore = create<PatternState>((set, get) => ({
   },
 
   setYarnColor: (color: string) => {
-    set({ yarnColor: color });
+    set({ yarnColor: color, lastNotice: null });
   },
 
   loadTemplate: (templateId: TemplateId) =>
@@ -281,14 +373,101 @@ export const usePatternStore = create<PatternState>((set, get) => ({
       set,
       get,
       () => {
-        pattern.loadSnapshot(createTemplateSnapshot(templateId));
+        applySavedPattern(
+          createSavedPatternFile(createTemplateSnapshot(templateId), getUiState(get)),
+          { clearHistory: true },
+        );
       },
       'Failed to load template.',
     ),
 
-  loadSnapshot: (snapshot: PatternSnapshot) => {
+  loadSnapshot: (snapshot: PatternSnapshot, options = {}) => {
     pattern.loadSnapshot(snapshot);
-    set({ ...syncState(get().selectedStitchType), lastError: null });
+    if (options.clearHistory ?? true) {
+      clearHistoryStack();
+    }
+    set({ ...syncState(get().selectedStitchType), lastError: null, lastNotice: null });
+  },
+
+  importSavedPattern: (file: SavedPatternFile, options = {}) => {
+    applySavedPattern(file, options);
+    set({
+      yarnColor: file.ui.yarnColor,
+      selectedStitchType: file.ui.selectedStitchType,
+      ...syncState(file.ui.selectedStitchType),
+      lastError: null,
+      lastNotice: 'Pattern loaded.',
+    });
+  },
+
+  importPatternJson: (json: string, options = {}) => {
+    try {
+      const file = parsePatternFile(json);
+      get().importSavedPattern(file, options);
+      return true;
+    } catch (error) {
+      set({
+        lastError:
+          error instanceof PatternPersistenceError
+            ? error.message
+            : INVALID_PATTERN_FILE_MESSAGE,
+        lastNotice: null,
+      });
+      return false;
+    }
+  },
+
+  exportSavedPattern: () =>
+    createSavedPatternFile(pattern.getSnapshot(), getUiState(get)),
+
+  exportPatternJson: () => serializePatternFile(get().exportSavedPattern()),
+
+  exportInstructionsMarkdown: () =>
+    buildInstructionsExport(pattern.getSnapshot()).markdown,
+
+  exportInstructionsPlainText: () =>
+    buildInstructionsExport(pattern.getSnapshot()).plainText,
+
+  persistAutosave: () => {
+    const snapshot = pattern.getSnapshot();
+    if (snapshot.stitches.length === 0) {
+      get().clearAutosave();
+      return;
+    }
+
+    writeAutosave(createSavedPatternFile(snapshot, getUiState(get)));
+  },
+
+  restoreAutosave: () => {
+    const saved = readAutosave();
+    if (!saved || saved.pattern.stitches.length === 0) {
+      return false;
+    }
+
+    get().importSavedPattern(saved, { clearHistory: true });
+    set({
+      lastNotice: 'Restored your last pattern.',
+      lastError: null,
+    });
+    return true;
+  },
+
+  clearAutosave: () => {
+    withLocalStorage((storage) => {
+      storage.removeItem(AUTOSAVE_STORAGE_KEY);
+    });
+  },
+
+  clearNotice: () => {
+    set({ lastNotice: null });
+  },
+
+  setNotice: (message: string) => {
+    set({ lastNotice: message, lastError: null });
+  },
+
+  setLastError: (message: string) => {
+    set({ lastError: message, lastNotice: null });
   },
 
   startNewRow: () =>
@@ -302,37 +481,34 @@ export const usePatternStore = create<PatternState>((set, get) => ({
     ),
 
   undo: () => {
-    if (historyPast.length === 0) {
+    if (!applyHistoryEntry(historyPast, historyFuture)) {
       set({ lastError: 'Nothing to undo.' });
       return false;
     }
 
-    const current = cloneSnapshot(pattern.getSnapshot());
-    const previous = historyPast.pop()!;
-    historyFuture.push(current);
-    pattern.loadSnapshot(previous);
     set({ ...syncState(get().selectedStitchType), lastError: null });
     return true;
   },
 
   redo: () => {
-    if (historyFuture.length === 0) {
+    if (!applyHistoryEntry(historyFuture, historyPast)) {
       set({ lastError: 'Nothing to redo.' });
       return false;
     }
 
-    const current = cloneSnapshot(pattern.getSnapshot());
-    const next = historyFuture.pop()!;
-    historyPast.push(current);
-    pattern.loadSnapshot(next);
     set({ ...syncState(get().selectedStitchType), lastError: null });
     return true;
   },
 
   resetPattern: () => {
     pattern.reset();
-    clearHistory();
-    set({ ...syncState(get().selectedStitchType), lastError: null });
+    clearHistoryStack();
+    get().clearAutosave();
+    set({
+      ...syncState(get().selectedStitchType),
+      lastError: null,
+      lastNotice: null,
+    });
   },
 
   clearError: () => {
@@ -342,11 +518,15 @@ export const usePatternStore = create<PatternState>((set, get) => ({
 
 export function __resetPatternStoreForTests(): void {
   pattern.reset();
-  clearHistory();
+  clearHistoryStack();
+  withLocalStorage((storage) => {
+    storage.removeItem(AUTOSAVE_STORAGE_KEY);
+  });
   usePatternStore.setState({
     ...syncState(StitchType.SINGLE_CROCHET),
     selectedStitchType: StitchType.SINGLE_CROCHET,
     yarnColor: DEFAULT_YARN_COLOR,
     lastError: null,
+    lastNotice: null,
   });
 }

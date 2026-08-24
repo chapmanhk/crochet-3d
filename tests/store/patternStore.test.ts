@@ -1,4 +1,11 @@
+// @vitest-environment jsdom
+
 import { describe, expect, it, beforeEach } from 'vitest';
+import {
+  AUTOSAVE_STORAGE_KEY,
+  INVALID_PATTERN_FILE_MESSAGE,
+  StitchType,
+} from '@engine/index';
 import {
   __resetPatternStoreForTests,
   usePatternStore,
@@ -180,5 +187,99 @@ describe('patternStore', () => {
     expect(usePatternStore.getState().lastError).not.toBeNull();
     store.clearError();
     expect(usePatternStore.getState().lastError).toBeNull();
+  });
+
+  it('imports and exports saved pattern JSON with UI state', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(2);
+    store.startNewRow();
+    store.addSingleCrochet();
+    store.setYarnColor('#112233');
+    store.setSelectedStitchType(StitchType.HALF_DOUBLE_CROCHET);
+
+    const json = store.exportPatternJson();
+    store.resetPattern();
+    expect(usePatternStore.getState().stitches).toHaveLength(0);
+
+    expect(store.importPatternJson(json)).toBe(true);
+
+    const state = usePatternStore.getState();
+    expect(state.stitches).toHaveLength(3);
+    expect(state.yarnColor).toBe('#112233');
+    expect(state.selectedStitchType).toBe(StitchType.HALF_DOUBLE_CROCHET);
+    expect(state.lastNotice).toBe('Pattern loaded.');
+    expect(state.canUndo).toBe(false);
+  });
+
+  it('surfaces persistence errors for invalid JSON imports', () => {
+    const store = usePatternStore.getState();
+    expect(store.importPatternJson('{')).toBe(false);
+    expect(usePatternStore.getState().lastError).toBe(INVALID_PATTERN_FILE_MESSAGE);
+  });
+
+  it('persists and restores autosave from localStorage', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(2);
+    store.startNewRow();
+    store.addSingleCrochet();
+    store.setYarnColor('#aabbcc');
+
+    store.persistAutosave();
+    const saved = window.localStorage.getItem(AUTOSAVE_STORAGE_KEY);
+    expect(saved).toBeTruthy();
+
+    __resetPatternStoreForTests();
+    if (saved) {
+      window.localStorage.setItem(AUTOSAVE_STORAGE_KEY, saved);
+    }
+
+    expect(usePatternStore.getState().restoreAutosave()).toBe(true);
+    const restored = usePatternStore.getState();
+    expect(restored.stitches).toHaveLength(3);
+    expect(restored.yarnColor).toBe('#aabbcc');
+    expect(restored.lastNotice).toBe('Restored your last pattern.');
+    expect(restored.canUndo).toBe(false);
+  });
+
+  it('rejects unsupported pattern file versions on import', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(2);
+    const json = store.exportPatternJson().replace('"version": 1', '"version": 99');
+
+    expect(store.importPatternJson(json)).toBe(false);
+    expect(usePatternStore.getState().lastError).toContain('not supported');
+  });
+
+  it('exports plain-text instructions for copy to clipboard', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(3);
+
+    const plainText = store.exportInstructionsPlainText();
+    expect(plainText).toContain('Foundation: ch 3');
+  });
+
+  it('exports markdown instructions for download', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(3);
+
+    const markdown = store.exportInstructionsMarkdown();
+    expect(markdown).toContain('# Crochet pattern');
+    expect(markdown).toContain('Foundation: ch 3');
+  });
+
+  it('returns false when restoring autosave with no saved pattern', () => {
+    expect(usePatternStore.getState().restoreAutosave()).toBe(false);
+  });
+
+  it('clears autosave when persisting an empty pattern', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(2);
+    store.persistAutosave();
+    expect(window.localStorage.getItem(AUTOSAVE_STORAGE_KEY)).toBeTruthy();
+
+    store.resetPattern();
+    store.persistAutosave();
+
+    expect(window.localStorage.getItem(AUTOSAVE_STORAGE_KEY)).toBeNull();
   });
 });
