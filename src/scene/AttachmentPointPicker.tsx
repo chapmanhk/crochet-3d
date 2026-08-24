@@ -11,6 +11,7 @@ export function AttachmentPointPicker() {
     addWorkingStitchAt,
     canAddStitch,
     selectedStitchType,
+    foundationType,
   } = usePatternStore(
     useShallow((state) => ({
       stitches: state.stitches,
@@ -18,6 +19,7 @@ export function AttachmentPointPicker() {
       addWorkingStitchAt: state.addWorkingStitchAt,
       canAddStitch: state.canAddStitch,
       selectedStitchType: state.selectedStitchType,
+      foundationType: state.foundationType,
     })),
   );
 
@@ -29,6 +31,7 @@ export function AttachmentPointPicker() {
     stitches,
     nextAttachmentTargetId,
     selectedStitchType,
+    foundationType,
   );
 
   if (!attachmentPoint) {

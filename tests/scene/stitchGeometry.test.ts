@@ -276,4 +276,72 @@ describe('stitchGeometry', () => {
     disposeSegments(hdcRow);
     disposeSegments(dcRow);
   });
+
+  it('changes row fingerprint when increase-pair adjacency changes', () => {
+    const withoutIncrease = stitchesFromPattern((pattern) => {
+      pattern.addFoundationChain(4);
+      pattern.startNewRow();
+      pattern.addSingleCrochet();
+      pattern.addSingleCrochet();
+    });
+
+    const withIncrease = stitchesFromPattern((pattern) => {
+      pattern.addFoundationChain(4);
+      pattern.startNewRow();
+      pattern.addIncrease(StitchType.SINGLE_CROCHET);
+      pattern.addSingleCrochet();
+    });
+
+    const withoutFingerprint = getYarnSegmentManifests(withoutIncrease).find(
+      (manifest) => manifest.key === 'row-1',
+    )!.fingerprint;
+    const withFingerprint = getYarnSegmentManifests(withIncrease).find(
+      (manifest) => manifest.key === 'row-1',
+    )!.fingerprint;
+
+    expect(withoutFingerprint).not.toBe(withFingerprint);
+    expect(withFingerprint).toContain(':1:');
+  });
+
+  it('renders narrower decrease stitches than normal stitches', () => {
+    const normalRow = buildYarnSegments(
+      stitchesFromPattern((pattern) => {
+        pattern.addFoundationChain(4);
+        pattern.startNewRow();
+        pattern.addSingleCrochet();
+        pattern.addSingleCrochet();
+      }),
+    );
+    const decreaseRow = buildYarnSegments(
+      stitchesFromPattern((pattern) => {
+        pattern.addFoundationChain(4);
+        pattern.startNewRow();
+        pattern.addSingleCrochet();
+        pattern.addDecrease(StitchType.SINGLE_CROCHET);
+      }),
+    );
+
+    const normalWidth = measureRowWidth(normalRow, 'row-1');
+    const decreaseWidth = measureRowWidth(decreaseRow, 'row-1');
+
+    expect(decreaseWidth).toBeLessThan(normalWidth);
+
+    disposeSegments(normalRow);
+    disposeSegments(decreaseRow);
+  });
 });
+
+function measureRowWidth(segments: ReturnType<typeof buildYarnSegments>, key: string): number {
+  const segment = segments.find((entry) => entry.key === key);
+  if (!segment) {
+    throw new Error(`Missing segment ${key}`);
+  }
+
+  segment.geometry.computeBoundingBox();
+  const box = segment.geometry.boundingBox;
+  if (!box) {
+    throw new Error(`Missing bounding box for ${key}`);
+  }
+
+  return box.max.x - box.min.x;
+}
