@@ -1,6 +1,6 @@
 # Crochet 3D
 
-Fresh scaffold for a three-layer crochet pattern designer.
+A three-layer crochet pattern designer: build patterns in 3D, read human-friendly instructions, and save or share your work.
 
 ## Stack
 
@@ -23,10 +23,25 @@ CI runs the same test and build commands on every push and pull request to `main
 
 ## MVP flow
 
-1. Click **New Chain** and enter a foundation length
+1. Click **New foundation** and choose a chain or magic ring
 2. Click **New Row** to move to row 1
-3. Click **Add SC** to place single crochet stitches across the row
-4. Repeat **New Row** / **Add SC** for additional rows
+3. Click **Add SC** (or the selected stitch type) to place stitches across the row
+4. Repeat **New Row** / **Add** for additional rows
+
+## Persistence
+
+Save, load, and export patterns from the toolbar **Pattern file** group (`src/engine/persistence.ts`).
+
+| Action | What it does |
+|--------|----------------|
+| **Save pattern** | Downloads a versioned `.json` file with the pattern snapshot plus UI state (yarn color, selected stitch type). Disabled until the pattern has stitches. |
+| **Load pattern** | Opens a file picker for `.json` files saved from this app. If you already have work in progress, confirms before replacing it. Invalid files show a user-facing error. |
+| **Copy instructions** | Copies numbered plain-text instructions to the clipboard. |
+| **Export instructions** | Downloads a `.md` file with the same instructions in markdown. |
+
+**Autosave:** While you work, the app writes the same JSON format to `localStorage` (`crochet-3d-autosave`). After a refresh, your last pattern is restored automatically with a notice. Empty patterns clear autosave. Manual **Save pattern** remains available if storage is unavailable.
+
+**Import validation:** Loaded files must match `PATTERN_FILE_VERSION` (currently `1`). The engine checks stitch graph integrity (ids, parent links, foundation bounds, row/column indices, increase/decrease semantics) and throws `PatternPersistenceError` with readable messages on failure.
 
 ## Spec-first workflow
 
