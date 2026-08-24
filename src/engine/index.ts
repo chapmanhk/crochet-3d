@@ -40,6 +40,7 @@ export {
   defaultPatternFilename,
   formatInstructionsMarkdown,
   formatInstructionsPlainText,
+  INVALID_PATTERN_FILE_MESSAGE,
   parsePatternFile,
   serializePatternFile,
   validateSavedPatternFile,

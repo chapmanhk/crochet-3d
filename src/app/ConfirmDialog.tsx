@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, type RefObject } from 'react';
 import { DialogShell } from './DialogShell';
 import { useDialogFocusTrap } from './dialogUtils';
 
@@ -8,6 +8,7 @@ interface ConfirmDialogProps {
   description: string;
   confirmLabel: string;
   cancelLabel?: string;
+  returnFocusRef?: RefObject<HTMLElement | null>;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -18,6 +19,7 @@ export function ConfirmDialog({
   description,
   confirmLabel,
   cancelLabel = 'Cancel',
+  returnFocusRef,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -35,6 +37,14 @@ export function ConfirmDialog({
 
     cancelRef.current?.focus();
   }, [open]);
+
+  useEffect(() => {
+    if (open || !returnFocusRef?.current) {
+      return;
+    }
+
+    returnFocusRef.current.focus();
+  }, [open, returnFocusRef]);
 
   if (!open) {
     return null;

@@ -29,6 +29,9 @@ export class PatternPersistenceError extends Error {
   }
 }
 
+export const INVALID_PATTERN_FILE_MESSAGE =
+  'Could not load pattern file. Choose a .json file saved from this app.';
+
 const STITCH_TYPES = new Set<string>(Object.values(StitchType));
 const FOUNDATION_TYPES = new Set<string>(Object.values(FoundationType));
 const PLACEMENT_KINDS = new Set<string>(Object.values(PlacementKind));
@@ -38,13 +41,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
 function isVec3(value: unknown): value is { x: number; y: number; z: number } {
-  return (
-    isRecord(value) &&
-    typeof value.x === 'number' &&
-    typeof value.y === 'number' &&
-    typeof value.z === 'number'
-  );
+  return isRecord(value) && isFiniteNumber(value.x) && isFiniteNumber(value.y) && isFiniteNumber(value.z);
 }
 
 function validateStitchNode(value: unknown, index: number): StitchNode {
@@ -60,11 +62,11 @@ function validateStitchNode(value: unknown, index: number): StitchNode {
     throw new PatternPersistenceError(`Stitch ${index} has an unsupported type.`);
   }
 
-  if (typeof value.row !== 'number' || value.row < 0) {
+  if (!isFiniteNumber(value.row) || value.row < 0) {
     throw new PatternPersistenceError(`Stitch ${index} has an invalid row.`);
   }
 
-  if (typeof value.column !== 'number' || value.column < 0) {
+  if (!isFiniteNumber(value.column) || value.column < 0) {
     throw new PatternPersistenceError(`Stitch ${index} has an invalid column.`);
   }
 
@@ -113,11 +115,11 @@ function validatePatternSnapshot(value: unknown): PatternSnapshot {
     throw new PatternPersistenceError('Pattern stitches must be an array.');
   }
 
-  if (typeof value.currentRow !== 'number' || value.currentRow < 0) {
+  if (!isFiniteNumber(value.currentRow) || value.currentRow < 0) {
     throw new PatternPersistenceError('Pattern current row is invalid.');
   }
 
-  if (typeof value.foundationChainLength !== 'number' || value.foundationChainLength < 0) {
+  if (!isFiniteNumber(value.foundationChainLength) || value.foundationChainLength < 0) {
     throw new PatternPersistenceError('Pattern foundation length is invalid.');
   }
 
@@ -130,6 +132,15 @@ function validatePatternSnapshot(value: unknown): PatternSnapshot {
 
   const stitches = value.stitches.map(validateStitchNode);
   const stitchIds = new Set(stitches.map((stitch) => stitch.id));
+
+  if (stitchIds.size !== stitches.length) {
+    throw new PatternPersistenceError('Pattern contains duplicate stitch ids.');
+  }
+
+  const maxRow = stitches.reduce((highest, stitch) => Math.max(highest, stitch.row), 0);
+  if (value.currentRow > maxRow) {
+    throw new PatternPersistenceError('Pattern current row is invalid.');
+  }
 
   for (const stitch of stitches) {
     if (stitch.attachToId && !stitchIds.has(stitch.attachToId)) {
@@ -196,7 +207,7 @@ export function createSavedPatternFile(
 
 export function validateSavedPatternFile(value: unknown): SavedPatternFile {
   if (!isRecord(value)) {
-    throw new PatternPersistenceError('Could not load pattern file.');
+    throw new PatternPersistenceError(INVALID_PATTERN_FILE_MESSAGE);
   }
 
   if (value.version !== PATTERN_FILE_VERSION) {
@@ -223,7 +234,7 @@ export function parsePatternFile(json: string): SavedPatternFile {
   try {
     parsed = JSON.parse(json);
   } catch {
-    throw new PatternPersistenceError('Could not load pattern file.');
+    throw new PatternPersistenceError(INVALID_PATTERN_FILE_MESSAGE);
   }
 
   return validateSavedPatternFile(parsed);

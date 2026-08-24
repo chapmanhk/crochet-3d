@@ -18,7 +18,7 @@ Feature: Pattern persistence
     Given I have a foundation chain of 5
     When I load a saved pattern JSON file for a foundation chain of 2 with one completed row
     And I confirm replacing the current pattern
-    Then the stitch count should be 5
+    Then the stitch count should be 4
     And the instructions should include "Foundation: ch 2"
     And the instructions should include "Row 1: work across (2 sc)"
 
@@ -42,6 +42,15 @@ Feature: Pattern persistence
     Given I have a foundation chain of 3
     When I choose "Export instructions"
     Then an instructions markdown file should be downloaded
+
+  @e2e
+  Scenario: Pattern restores from autosave after refresh
+    Given I have a foundation chain of 3
+    And I am on row 1
+    And I have placed 1 single crochet stitches on the current row
+    When I refresh the app
+    Then the stitch count should be 4
+    And I should see next-step guidance to "Restored your last pattern."
 
   @engine
   Scenario: Saved pattern round-trips through JSON export and import

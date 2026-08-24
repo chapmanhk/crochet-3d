@@ -1,5 +1,11 @@
+// @vitest-environment jsdom
+
 import { describe, expect, it, beforeEach } from 'vitest';
-import { StitchType } from '@engine/index';
+import {
+  AUTOSAVE_STORAGE_KEY,
+  INVALID_PATTERN_FILE_MESSAGE,
+  StitchType,
+} from '@engine/index';
 import {
   __resetPatternStoreForTests,
   usePatternStore,
@@ -208,6 +214,39 @@ describe('patternStore', () => {
   it('surfaces persistence errors for invalid JSON imports', () => {
     const store = usePatternStore.getState();
     expect(store.importPatternJson('{')).toBe(false);
-    expect(usePatternStore.getState().lastError).toBe('Could not load pattern file.');
+    expect(usePatternStore.getState().lastError).toBe(INVALID_PATTERN_FILE_MESSAGE);
+  });
+
+  it('persists and restores autosave from localStorage', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(2);
+    store.startNewRow();
+    store.addSingleCrochet();
+    store.setYarnColor('#aabbcc');
+
+    store.persistAutosave();
+    const saved = window.localStorage.getItem(AUTOSAVE_STORAGE_KEY);
+    expect(saved).toBeTruthy();
+
+    __resetPatternStoreForTests();
+    if (saved) {
+      window.localStorage.setItem(AUTOSAVE_STORAGE_KEY, saved);
+    }
+
+    expect(usePatternStore.getState().restoreAutosave()).toBe(true);
+    const restored = usePatternStore.getState();
+    expect(restored.stitches).toHaveLength(3);
+    expect(restored.yarnColor).toBe('#aabbcc');
+    expect(restored.lastNotice).toBe('Restored your last pattern.');
+    expect(restored.canUndo).toBe(false);
+  });
+
+  it('rejects unsupported pattern file versions on import', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(2);
+    const json = store.exportPatternJson().replace('"version": 1', '"version": 99');
+
+    expect(store.importPatternJson(json)).toBe(false);
+    expect(usePatternStore.getState().lastError).toContain('not supported');
   });
 });

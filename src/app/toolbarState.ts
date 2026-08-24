@@ -21,3 +21,11 @@ export function getCopyInstructionsDisabledReason(stitchesCount: number): string
 
   return null;
 }
+
+export function getExportInstructionsDisabledReason(stitchesCount: number): string | null {
+  if (stitchesCount === 0) {
+    return 'Add stitches before exporting instructions.';
+  }
+
+  return null;
+}

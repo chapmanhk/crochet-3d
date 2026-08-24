@@ -101,6 +101,7 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | Load pattern replaces the current work after confirmation | `e2e/persistence.spec.ts` |
 | Copy instructions places pattern text on the clipboard | `e2e/persistence.spec.ts` |
 | Export instructions downloads a markdown file | `e2e/persistence.spec.ts` |
+| Pattern restores from autosave after refresh | `e2e/persistence.spec.ts` |
 | Reset with no pattern is a no-op | `deferred.feature` — `@deferred` |
 
 ## Tags

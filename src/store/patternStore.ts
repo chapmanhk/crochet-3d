@@ -6,6 +6,7 @@ import {
   createTemplateSnapshot,
   FoundationType,
   generateInstructions,
+  INVALID_PATTERN_FILE_MESSAGE,
   parsePatternFile,
   Pattern,
   PatternPersistenceError,
@@ -50,7 +51,7 @@ interface PatternState {
   redoDisabledReason: string | null;
   lastError: string | null;
   lastNotice: string | null;
-  restoredFromAutosave: boolean;
+  setLastError: (message: string) => void;
   addFoundationChain: (length: number) => boolean;
   addMagicRing: (stitchCount: number) => boolean;
   addWorkingStitch: () => boolean;
@@ -206,7 +207,11 @@ function writeAutosave(file: SavedPatternFile): void {
     return;
   }
 
-  window.localStorage.setItem(AUTOSAVE_STORAGE_KEY, serializePatternFile(file));
+  try {
+    window.localStorage.setItem(AUTOSAVE_STORAGE_KEY, serializePatternFile(file));
+  } catch {
+    // Ignore quota or storage errors; manual save remains available.
+  }
 }
 
 function clearHistoryStack(): void {
@@ -251,7 +256,6 @@ export const usePatternStore = create<PatternState>((set, get) => ({
   yarnColor: DEFAULT_YARN_COLOR,
   lastError: null,
   lastNotice: null,
-  restoredFromAutosave: false,
 
   addFoundationChain: (length: number) =>
     runPatternAction(
@@ -373,7 +377,6 @@ export const usePatternStore = create<PatternState>((set, get) => ({
       ...syncState(file.ui.selectedStitchType),
       lastError: null,
       lastNotice: 'Pattern loaded.',
-      restoredFromAutosave: false,
     });
   },
 
@@ -387,7 +390,7 @@ export const usePatternStore = create<PatternState>((set, get) => ({
         lastError:
           error instanceof PatternPersistenceError
             ? error.message
-            : 'Could not load pattern file.',
+            : INVALID_PATTERN_FILE_MESSAGE,
         lastNotice: null,
       });
       return false;
@@ -423,7 +426,6 @@ export const usePatternStore = create<PatternState>((set, get) => ({
 
     get().importSavedPattern(saved, { clearHistory: true });
     set({
-      restoredFromAutosave: true,
       lastNotice: 'Restored your last pattern.',
       lastError: null,
     });
@@ -437,11 +439,15 @@ export const usePatternStore = create<PatternState>((set, get) => ({
   },
 
   clearNotice: () => {
-    set({ lastNotice: null, restoredFromAutosave: false });
+    set({ lastNotice: null });
   },
 
   setNotice: (message: string) => {
     set({ lastNotice: message, lastError: null });
+  },
+
+  setLastError: (message: string) => {
+    set({ lastError: message, lastNotice: null });
   },
 
   startNewRow: () =>
@@ -490,7 +496,6 @@ export const usePatternStore = create<PatternState>((set, get) => ({
       ...syncState(get().selectedStitchType),
       lastError: null,
       lastNotice: null,
-      restoredFromAutosave: false,
     });
   },
 
@@ -511,6 +516,5 @@ export function __resetPatternStoreForTests(): void {
     yarnColor: DEFAULT_YARN_COLOR,
     lastError: null,
     lastNotice: null,
-    restoredFromAutosave: false,
   });
 }

@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import {
   defaultInstructionsFilename,
   defaultPatternFilename,
+  parsePatternFile,
   type TemplateId,
 } from '@engine/index';
 import { usePatternStore } from '@store/patternStore';
@@ -19,6 +20,7 @@ import { TemplateDialog } from './TemplateDialog';
 import { ToolbarActionButton } from './ToolbarActionButton';
 import {
   getCopyInstructionsDisabledReason,
+  getExportInstructionsDisabledReason,
   getResetDisabledReason,
   getSavePatternDisabledReason,
 } from './toolbarState';
@@ -38,12 +40,12 @@ export function Toolbar() {
     clearError,
     clearNotice,
     setNotice,
+    setLastError,
     lastError,
     exportPatternJson,
     importPatternJson,
     exportInstructionsMarkdown,
     exportInstructionsPlainText,
-    foundationChainLength,
     foundationType,
     selectedStitchType,
     setSelectedStitchType,
@@ -69,12 +71,12 @@ export function Toolbar() {
       clearError: state.clearError,
       clearNotice: state.clearNotice,
       setNotice: state.setNotice,
+      setLastError: state.setLastError,
       lastError: state.lastError,
       exportPatternJson: state.exportPatternJson,
       importPatternJson: state.importPatternJson,
       exportInstructionsMarkdown: state.exportInstructionsMarkdown,
       exportInstructionsPlainText: state.exportInstructionsPlainText,
-      foundationChainLength: state.foundationChainLength,
       foundationType: state.foundationType,
       selectedStitchType: state.selectedStitchType,
       setSelectedStitchType: state.setSelectedStitchType,
@@ -95,10 +97,13 @@ export function Toolbar() {
   const [pendingPatternJson, setPendingPatternJson] = useState<string | null>(null);
   const newChainRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const loadPatternRef = useRef<HTMLButtonElement>(null);
 
   const resetDisabledReason = getResetDisabledReason(stitches.length);
   const savePatternDisabledReason = getSavePatternDisabledReason(stitches.length);
   const copyInstructionsDisabledReason = getCopyInstructionsDisabledReason(stitches.length);
+  const exportInstructionsDisabledReason = getExportInstructionsDisabledReason(stitches.length);
+  const hasPattern = stitches.length > 0;
   const addStitchLabel = getAddStitchButtonLabel(selectedStitchType);
   const advanceActionLabel = getAdvanceActionLabel(foundationType);
   const newRowReason = relabelForFoundationType(newRowDisabledReason, foundationType);
@@ -109,7 +114,7 @@ export function Toolbar() {
   };
 
   const handleNewChain = () => {
-    if (foundationChainLength > 0) {
+    if (hasPattern) {
       setConfirmAction('new-chain');
       return;
     }
@@ -154,7 +159,7 @@ export function Toolbar() {
       exportPatternJson(),
       'application/json',
     );
-    setNotice('Pattern saved.');
+    setNotice('Pattern file downloaded.');
   };
 
   const handleLoadPatternClick = () => {
@@ -169,15 +174,19 @@ export function Toolbar() {
 
     try {
       const json = await readTextFile(file);
-      if (foundationChainLength > 0) {
+      parsePatternFile(json);
+
+      if (hasPattern) {
         setPendingPatternJson(json);
         setConfirmAction('import-pattern');
         return;
       }
 
       importPatternJson(json);
-    } catch {
-      importPatternJson('{');
+    } catch (error) {
+      setLastError(
+        error instanceof Error ? error.message : 'Could not read the selected file.',
+      );
     } finally {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -208,7 +217,7 @@ export function Toolbar() {
   };
 
   const handleTemplateSelect = (templateId: TemplateId) => {
-    if (foundationChainLength > 0) {
+    if (hasPattern) {
       setPendingTemplateId(templateId);
       setTemplateDialogOpen(false);
       setConfirmAction('load-template');
@@ -239,42 +248,50 @@ export function Toolbar() {
         >
           Templates
         </button>
-        <ToolbarActionButton
-          label="Save pattern"
-          disabledReason={savePatternDisabledReason}
-          onClick={handleSavePattern}
-          variant="subtle"
-        />
-        <button
-          type="button"
-          className="btn subtle"
-          onClick={handleLoadPatternClick}
-        >
-          Load pattern
-        </button>
-        <ToolbarActionButton
-          label="Copy instructions"
-          disabledReason={copyInstructionsDisabledReason}
-          onClick={handleCopyInstructions}
-          variant="subtle"
-        />
-        <ToolbarActionButton
-          label="Export instructions"
-          disabledReason={copyInstructionsDisabledReason}
-          onClick={handleExportInstructions}
-          variant="subtle"
-        />
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="application/json,.json"
-          hidden
-          aria-hidden="true"
-          tabIndex={-1}
-          onChange={(event) => {
-            void handlePatternFileSelected(event.target.files?.[0]);
-          }}
-        />
+        <div className="toolbar-group" role="group" aria-label="Pattern file">
+          <ToolbarActionButton
+            label="Save pattern"
+            disabledReason={savePatternDisabledReason}
+            onClick={handleSavePattern}
+            variant="subtle"
+          />
+          <button
+            ref={loadPatternRef}
+            type="button"
+            className="btn subtle"
+            onClick={handleLoadPatternClick}
+            aria-describedby="load-pattern-hint"
+          >
+            Load pattern
+          </button>
+          <span id="load-pattern-hint" className="visually-hidden">
+            Choose a .json pattern file saved from this app.
+          </span>
+          <ToolbarActionButton
+            label="Copy instructions"
+            disabledReason={copyInstructionsDisabledReason}
+            onClick={handleCopyInstructions}
+            variant="subtle"
+          />
+          <ToolbarActionButton
+            label="Export instructions"
+            disabledReason={exportInstructionsDisabledReason}
+            onClick={handleExportInstructions}
+            variant="subtle"
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            hidden
+            aria-hidden="true"
+            tabIndex={-1}
+            onChange={(event) => {
+              void handlePatternFileSelected(event.target.files?.[0]);
+            }}
+          />
+        </div>
+        <div className="toolbar-divider" aria-hidden="true" />
         <StitchTypeSelector
           value={selectedStitchType}
           onChange={setSelectedStitchType}
@@ -356,6 +373,7 @@ export function Toolbar() {
           title={confirmCopy.title}
           description={confirmCopy.description}
           confirmLabel={confirmCopy.confirmLabel}
+          returnFocusRef={confirmAction === 'import-pattern' ? loadPatternRef : undefined}
           onConfirm={handleConfirm}
           onCancel={() => {
             if (pendingTemplateId) {

@@ -7,6 +7,7 @@ import {
   StitchType,
   createSavedPatternFile,
   createStitchNode,
+  INVALID_PATTERN_FILE_MESSAGE,
   parsePatternFile,
   resetIdCounter,
   serializePatternFile,
@@ -76,7 +77,36 @@ describe('persistence', () => {
   });
 
   it('rejects malformed JSON', () => {
-    expect(() => parsePatternFile('{not json')).toThrow('Could not load pattern file.');
+    expect(() => parsePatternFile('{not json')).toThrow(INVALID_PATTERN_FILE_MESSAGE);
+  });
+
+  it('rejects duplicate stitch ids', () => {
+    const stitch = createStitchNode(StitchType.SINGLE_CROCHET, 1, 0, 'parent');
+    const duplicate = { ...stitch, column: 1 };
+    const file = createSavedPatternFile(
+      {
+        stitches: [stitch, duplicate],
+        currentRow: 1,
+        foundationChainLength: 2,
+        foundationType: FoundationType.CHAIN,
+        rowDirections: {},
+      },
+      sampleUiState(),
+    );
+
+    expect(() => validateSavedPatternFile(file)).toThrow('duplicate stitch ids');
+  });
+
+  it('round-trips a magic ring pattern', () => {
+    const original = patternFileFromSetup((pattern) => {
+      pattern.addMagicRing(6);
+      pattern.startNewRow();
+      pattern.addSingleCrochet();
+    });
+
+    const imported = parsePatternFile(serializePatternFile(original));
+    expect(imported.pattern.foundationType).toBe(FoundationType.MAGIC_RING);
+    expect(imported.pattern.stitches.length).toBeGreaterThan(6);
   });
 
   it('preserves increase and decrease placement metadata', () => {

@@ -9,6 +9,10 @@ export function usePatternAutosave() {
   const stitches = usePatternStore((state) => state.stitches);
   const yarnColor = usePatternStore((state) => state.yarnColor);
   const selectedStitchType = usePatternStore((state) => state.selectedStitchType);
+  const currentRow = usePatternStore((state) => state.currentRow);
+  const foundationType = usePatternStore((state) => state.foundationType);
+  const foundationChainLength = usePatternStore((state) => state.foundationChainLength);
+  const rowDirections = usePatternStore((state) => state.rowDirections);
 
   useEffect(() => {
     restoreAutosave();
@@ -19,6 +23,32 @@ export function usePatternAutosave() {
       persistAutosave();
     }, AUTOSAVE_DEBOUNCE_MS);
 
-    return () => window.clearTimeout(timeoutId);
-  }, [persistAutosave, stitches, yarnColor, selectedStitchType]);
+    const flushAutosave = () => {
+      window.clearTimeout(timeoutId);
+      persistAutosave();
+    };
+
+    window.addEventListener('pagehide', flushAutosave);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushAutosave();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.removeEventListener('pagehide', flushAutosave);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [
+    persistAutosave,
+    stitches,
+    yarnColor,
+    selectedStitchType,
+    currentRow,
+    foundationType,
+    foundationChainLength,
+    rowDirections,
+  ]);
 }
