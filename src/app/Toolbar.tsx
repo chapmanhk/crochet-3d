@@ -4,6 +4,7 @@ import {
   defaultInstructionsFilename,
   defaultPatternFilename,
   parsePatternFile,
+  type SavedPatternFile,
   type TemplateId,
 } from '@engine/index';
 import { usePatternStore } from '@store/patternStore';
@@ -43,7 +44,7 @@ export function Toolbar() {
     setLastError,
     lastError,
     exportPatternJson,
-    importPatternJson,
+    importSavedPattern,
     exportInstructionsMarkdown,
     exportInstructionsPlainText,
     foundationType,
@@ -74,7 +75,7 @@ export function Toolbar() {
       setLastError: state.setLastError,
       lastError: state.lastError,
       exportPatternJson: state.exportPatternJson,
-      importPatternJson: state.importPatternJson,
+      importSavedPattern: state.importSavedPattern,
       exportInstructionsMarkdown: state.exportInstructionsMarkdown,
       exportInstructionsPlainText: state.exportInstructionsPlainText,
       foundationType: state.foundationType,
@@ -94,7 +95,7 @@ export function Toolbar() {
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [pendingTemplateId, setPendingTemplateId] = useState<TemplateId | null>(null);
-  const [pendingPatternJson, setPendingPatternJson] = useState<string | null>(null);
+  const [pendingPatternFile, setPendingPatternFile] = useState<SavedPatternFile | null>(null);
   const newChainRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const loadPatternRef = useRef<HTMLButtonElement>(null);
@@ -148,9 +149,9 @@ export function Toolbar() {
         }
         return;
       case 'import-pattern':
-        if (pendingPatternJson) {
-          importPatternJson(pendingPatternJson);
-          setPendingPatternJson(null);
+        if (pendingPatternFile) {
+          importSavedPattern(pendingPatternFile);
+          setPendingPatternFile(null);
         }
         return;
       default:
@@ -173,22 +174,22 @@ export function Toolbar() {
     fileInputRef.current?.click();
   };
 
-  const handlePatternFileSelected = async (file: File | undefined) => {
-    if (!file) {
+  const handlePatternFileSelected = async (selectedFile: File | undefined) => {
+    if (!selectedFile) {
       return;
     }
 
     try {
-      const json = await readTextFile(file);
-      parsePatternFile(json);
+      const json = await readTextFile(selectedFile);
+      const patternFile = parsePatternFile(json);
 
       if (hasPattern) {
-        setPendingPatternJson(json);
+        setPendingPatternFile(patternFile);
         setConfirmAction('import-pattern');
         return;
       }
 
-      importPatternJson(json);
+      importSavedPattern(patternFile);
     } catch (error) {
       setLastError(
         error instanceof Error ? error.message : 'Could not read the selected file.',
@@ -383,12 +384,12 @@ export function Toolbar() {
             if (pendingTemplateId) {
               setTemplateDialogOpen(true);
             }
-            if (pendingPatternJson && fileInputRef.current) {
+            if (pendingPatternFile && fileInputRef.current) {
               fileInputRef.current.value = '';
             }
             setConfirmAction(null);
             setPendingTemplateId(null);
-            setPendingPatternJson(null);
+            setPendingPatternFile(null);
           }}
         />
       ) : null}

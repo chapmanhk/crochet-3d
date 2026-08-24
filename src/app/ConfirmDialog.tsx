@@ -28,7 +28,7 @@ export function ConfirmDialog({
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
 
-  useDialogFocusTrap(open, dialogRef, onCancel);
+  useDialogFocusTrap(open, dialogRef, onCancel, returnFocusRef);
 
   useEffect(() => {
     if (!open) {
@@ -37,14 +37,6 @@ export function ConfirmDialog({
 
     cancelRef.current?.focus();
   }, [open]);
-
-  useEffect(() => {
-    if (open || !returnFocusRef?.current) {
-      return;
-    }
-
-    returnFocusRef.current.focus();
-  }, [open, returnFocusRef]);
 
   if (!open) {
     return null;

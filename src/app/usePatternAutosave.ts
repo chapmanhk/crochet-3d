@@ -5,19 +5,27 @@ import { usePatternStore } from '@store/patternStore';
 const AUTOSAVE_DEBOUNCE_MS = 400;
 
 export function usePatternAutosave() {
-  const { restoreAutosave, persistAutosave, autosaveDeps } = usePatternStore(
+  const {
+    restoreAutosave,
+    persistAutosave,
+    stitches,
+    yarnColor,
+    selectedStitchType,
+    currentRow,
+    foundationType,
+    foundationChainLength,
+    rowDirections,
+  } = usePatternStore(
     useShallow((state) => ({
       restoreAutosave: state.restoreAutosave,
       persistAutosave: state.persistAutosave,
-      autosaveDeps: {
-        stitches: state.stitches,
-        yarnColor: state.yarnColor,
-        selectedStitchType: state.selectedStitchType,
-        currentRow: state.currentRow,
-        foundationType: state.foundationType,
-        foundationChainLength: state.foundationChainLength,
-        rowDirections: state.rowDirections,
-      },
+      stitches: state.stitches,
+      yarnColor: state.yarnColor,
+      selectedStitchType: state.selectedStitchType,
+      currentRow: state.currentRow,
+      foundationType: state.foundationType,
+      foundationChainLength: state.foundationChainLength,
+      rowDirections: state.rowDirections,
     })),
   );
 
@@ -26,20 +34,21 @@ export function usePatternAutosave() {
   }, [restoreAutosave]);
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(persistAutosave, AUTOSAVE_DEBOUNCE_MS);
+    const timeoutId = window.setTimeout(() => {
+      persistAutosave();
+    }, AUTOSAVE_DEBOUNCE_MS);
 
     const flushAutosave = () => {
       window.clearTimeout(timeoutId);
       persistAutosave();
     };
 
+    window.addEventListener('pagehide', flushAutosave);
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         flushAutosave();
       }
     };
-
-    window.addEventListener('pagehide', flushAutosave);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
@@ -47,5 +56,14 @@ export function usePatternAutosave() {
       window.removeEventListener('pagehide', flushAutosave);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [persistAutosave, autosaveDeps]);
+  }, [
+    persistAutosave,
+    stitches,
+    yarnColor,
+    selectedStitchType,
+    currentRow,
+    foundationType,
+    foundationChainLength,
+    rowDirections,
+  ]);
 }
