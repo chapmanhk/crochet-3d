@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { Pattern, FoundationType, resetIdCounter } from '@engine/index';
+import { Pattern, FoundationType, resetIdCounter, StitchType } from '@engine/index';
 import { StitchRenderer } from '../../src/scene/StitchRenderer';
 
 describe('StitchRenderer', () => {
@@ -87,4 +87,34 @@ describe('StitchRenderer', () => {
     renderer.dispose();
     vi.unstubAllGlobals();
   });
+
+  it('rebuilds row segment when increase-pair adjacency changes', () => {
+    resetIdCounter();
+    const normal = new Pattern();
+    normal.addFoundationChain(4);
+    normal.startNewRow();
+    normal.addSingleCrochet();
+    normal.addSingleCrochet();
+
+    resetIdCounter();
+    const increased = new Pattern();
+    increased.addFoundationChain(4);
+    increased.startNewRow();
+    increased.addIncrease(StitchType.SINGLE_CROCHET);
+    increased.addSingleCrochet();
+
+    renderer = new StitchRenderer();
+    renderer.sync(normal.getStitches(), FoundationType.CHAIN);
+    const firstGeometry = rowSegmentGeometry(renderer, 1);
+
+    renderer.sync(increased.getStitches(), FoundationType.CHAIN);
+    const secondGeometry = rowSegmentGeometry(renderer, 1);
+
+    expect(secondGeometry).not.toBe(firstGeometry);
+  });
 });
+
+function rowSegmentGeometry(renderer: StitchRenderer, childIndex: number): THREE.BufferGeometry {
+  const segmentGroup = renderer.group.children[childIndex] as THREE.Group;
+  return (segmentGroup.children[0] as THREE.Mesh).geometry;
+}

@@ -6,6 +6,7 @@ export const VISUAL_ROW_HEIGHT = 0.22;
 export const YARN_RADIUS = 0.052;
 export const SC_V_HALF_WIDTH = 0.1;
 export const CHAIN_TURN_LIFT = VISUAL_ROW_HEIGHT * 0.18;
+export const ROUND_WORKING_TOP_Z_OFFSET = 0.05;
 
 const PLY_TWIST_AMPLITUDE_X = 0.009;
 const PLY_TWIST_AMPLITUDE_Z = 0.007;
@@ -83,9 +84,24 @@ export function getStitchShapeAdjustments(
   return { xShift, yShift, zShift, vHalfWidth, leanRadians };
 }
 
-export function stitchTopY(insertionY: number, stitch: StitchNode, options?: { increasePairFirst?: boolean }): number {
-  const adjustments = getStitchShapeAdjustments(stitch, options);
+export function stitchTopYFromAdjustments(
+  insertionY: number,
+  stitch: StitchNode,
+  adjustments: StitchShapeAdjustments,
+): number {
   return insertionY + stitchPostHeight(stitch.type) + adjustments.yShift;
+}
+
+export function stitchTopY(
+  insertionY: number,
+  stitch: StitchNode,
+  options?: { increasePairFirst?: boolean },
+): number {
+  return stitchTopYFromAdjustments(
+    insertionY,
+    stitch,
+    getStitchShapeAdjustments(stitch, options),
+  );
 }
 
 export function yarnOverHeights(type: StitchType): number[] {
