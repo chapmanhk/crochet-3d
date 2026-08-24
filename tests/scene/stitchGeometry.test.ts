@@ -236,4 +236,44 @@ describe('stitchGeometry', () => {
     expect(measureSegmentsHeight(segments)).toBeGreaterThan(VISUAL_ROW_HEIGHT * 1.5);
     disposeSegments(segments);
   });
+
+  it('renders taller geometry for hdc and dc than sc', () => {
+    const scRow = buildYarnSegments(
+      stitchesFromPattern((pattern) => {
+        pattern.addFoundationChain(3);
+        pattern.startNewRow();
+        pattern.addWorkingStitch(StitchType.SINGLE_CROCHET);
+      }),
+    );
+    const hdcRow = buildYarnSegments(
+      stitchesFromPattern((pattern) => {
+        pattern.addFoundationChain(3);
+        pattern.startNewRow();
+        pattern.addWorkingStitch(StitchType.HALF_DOUBLE_CROCHET);
+      }),
+    );
+    const dcRow = buildYarnSegments(
+      stitchesFromPattern((pattern) => {
+        pattern.addFoundationChain(3);
+        pattern.startNewRow();
+        pattern.addWorkingStitch(StitchType.DOUBLE_CROCHET);
+      }),
+    );
+
+    const scHeight = measureSegmentsHeight(scRow.filter((segment) => segment.key === 'row-1'));
+    const hdcHeight = measureSegmentsHeight(hdcRow.filter((segment) => segment.key === 'row-1'));
+    const dcHeight = measureSegmentsHeight(dcRow.filter((segment) => segment.key === 'row-1'));
+
+    expect(hdcHeight).toBeGreaterThan(scHeight);
+    expect(dcHeight).toBeGreaterThan(hdcHeight);
+    expect(hdcHeight / scHeight).toBeGreaterThan(1.2);
+    expect(dcHeight / scHeight).toBeGreaterThan(1.45);
+    expect(dcRow[1]!.geometry.attributes.position.count).toBeGreaterThan(
+      scRow[1]!.geometry.attributes.position.count,
+    );
+
+    disposeSegments(scRow);
+    disposeSegments(hdcRow);
+    disposeSegments(dcRow);
+  });
 });
