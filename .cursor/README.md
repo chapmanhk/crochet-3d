@@ -37,6 +37,7 @@ Invoke via Cursor's agent picker or by referencing the agent file in chat.
 | `testing` | Vitest conventions and commands |
 | `three-layer-architecture` | Changes that cross engine / store / scene / app boundaries |
 | `ui-ux-creative-tool` | UI panels, toolbar, onboarding, accessibility for the designer |
+| `crochet-realism-reviewer` | Audit stitch geometry vs real crochet anatomy; plan Rapier drape |
 | `code-simplifier` | Post-feature cleanup — reduce complexity, dedupe within layers |
 | `tech-debt` | Find/fix debt — dead code, shortcuts, spec-test drift, layer smells |
 
