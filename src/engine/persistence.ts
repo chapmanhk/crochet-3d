@@ -13,14 +13,19 @@ import {
   WORKING_STITCH_TYPES,
 } from './types';
 
+/** Schema version for saved pattern JSON files. Bump when the on-disk format changes. */
 export const PATTERN_FILE_VERSION = 1;
+
+/** `localStorage` key used by session autosave in the app store. */
 export const AUTOSAVE_STORAGE_KEY = 'crochet-3d-autosave';
 
+/** UI preferences persisted alongside a pattern snapshot. */
 export interface PatternUiState {
   yarnColor: string;
   selectedStitchType: WorkingStitchType;
 }
 
+/** Versioned JSON envelope written by save, load, and autosave. */
 export interface SavedPatternFile {
   version: number;
   exportedAt: string;
@@ -28,6 +33,7 @@ export interface SavedPatternFile {
   ui: PatternUiState;
 }
 
+/** Thrown when a pattern file fails schema or crochet-semantics validation. */
 export class PatternPersistenceError extends Error {
   constructor(message: string) {
     super(message);
@@ -35,6 +41,7 @@ export class PatternPersistenceError extends Error {
   }
 }
 
+/** User-facing message for unreadable or non-app JSON imports. */
 export const INVALID_PATTERN_FILE_MESSAGE =
   'Could not load pattern file. Choose a .json file saved from this app.';
 
@@ -53,6 +60,10 @@ function isFiniteNumber(value: unknown): value is number {
 
 function isVec3(value: unknown): value is { x: number; y: number; z: number } {
   return isRecord(value) && isFiniteNumber(value.x) && isFiniteNumber(value.y) && isFiniteNumber(value.z);
+}
+
+function isOptionalString(value: unknown): value is string | null | undefined {
+  return value === undefined || value === null || typeof value === 'string';
 }
 
 function validateStitchNode(value: unknown, index: number): StitchNode {
@@ -76,15 +87,11 @@ function validateStitchNode(value: unknown, index: number): StitchNode {
     throw new PatternPersistenceError(`Stitch ${index} has an invalid column.`);
   }
 
-  if (value.attachToId !== undefined && value.attachToId !== null && typeof value.attachToId !== 'string') {
+  if (!isOptionalString(value.attachToId)) {
     throw new PatternPersistenceError(`Stitch ${index} has an invalid attachToId.`);
   }
 
-  if (
-    value.secondaryAttachToId !== undefined &&
-    value.secondaryAttachToId !== null &&
-    typeof value.secondaryAttachToId !== 'string'
-  ) {
+  if (!isOptionalString(value.secondaryAttachToId)) {
     throw new PatternPersistenceError(`Stitch ${index} has an invalid secondaryAttachToId.`);
   }
 
@@ -383,6 +390,10 @@ function validateUiState(value: unknown): PatternUiState {
   };
 }
 
+/**
+ * Build a saveable file object from a pattern snapshot and UI state.
+ * Sets `version` to {@link PATTERN_FILE_VERSION} and `exportedAt` to the current time.
+ */
 export function createSavedPatternFile(
   pattern: PatternSnapshot,
   ui: PatternUiState,
@@ -395,6 +406,10 @@ export function createSavedPatternFile(
   };
 }
 
+/**
+ * Parse and validate unknown JSON into a {@link SavedPatternFile}.
+ * @throws {PatternPersistenceError} If the version, schema, or stitch graph is invalid.
+ */
 export function validateSavedPatternFile(value: unknown): SavedPatternFile {
   if (!isRecord(value)) {
     throw new PatternPersistenceError(INVALID_PATTERN_FILE_MESSAGE);
@@ -414,10 +429,15 @@ export function validateSavedPatternFile(value: unknown): SavedPatternFile {
   };
 }
 
+/** Serialize a validated file to pretty-printed JSON for download or storage. */
 export function serializePatternFile(file: SavedPatternFile): string {
   return JSON.stringify(file, null, 2);
 }
 
+/**
+ * Parse a JSON string and validate it as a saved pattern file.
+ * @throws {PatternPersistenceError} If JSON is malformed or fails validation.
+ */
 export function parsePatternFile(json: string): SavedPatternFile {
   let parsed: unknown;
 
@@ -430,23 +450,41 @@ export function parsePatternFile(json: string): SavedPatternFile {
   return validateSavedPatternFile(parsed);
 }
 
+function getInstructionsTitle(
+  foundationType: FoundationType,
+  style: 'markdown' | 'plain',
+): string {
+  const isMagicRing = foundationType === FoundationType.MAGIC_RING;
+  if (style === 'markdown') {
+    return isMagicRing ? '# Crochet pattern (magic ring)' : '# Crochet pattern';
+  }
+  return isMagicRing ? 'Crochet pattern (magic ring)' : 'Crochet pattern';
+}
+
+function numberedInstructionLines(instructions: string[]): string[] {
+  return instructions.map((instruction, index) => `${index + 1}. ${instruction}`);
+}
+
+/**
+ * Format generated instruction lines as a markdown document.
+ * Uses a magic-ring title when `foundationType` is {@link FoundationType.MAGIC_RING}.
+ */
 export function formatInstructionsMarkdown(
   instructions: string[],
   foundationType: FoundationType = FoundationType.CHAIN,
 ): string {
-  const title =
-    foundationType === FoundationType.MAGIC_RING
-      ? '# Crochet pattern (magic ring)'
-      : '# Crochet pattern';
+  const title = getInstructionsTitle(foundationType, 'markdown');
 
   if (instructions.length === 0) {
     return `${title}\n\n_No stitches yet._\n`;
   }
 
-  const lines = instructions.map((instruction, index) => `${index + 1}. ${instruction}`);
-  return `${title}\n\n${lines.join('\n')}\n`;
+  return `${title}\n\n${numberedInstructionLines(instructions).join('\n')}\n`;
 }
 
+/**
+ * Format generated instruction lines as numbered plain text for clipboard export.
+ */
 export function formatInstructionsPlainText(
   instructions: string[],
   foundationType: FoundationType = FoundationType.CHAIN,
@@ -455,12 +493,13 @@ export function formatInstructionsPlainText(
     return 'No stitches yet.';
   }
 
-  const title =
-    foundationType === FoundationType.MAGIC_RING ? 'Crochet pattern (magic ring)' : 'Crochet pattern';
-
-  return [title, '', ...instructions.map((line, index) => `${index + 1}. ${line}`)].join('\n');
+  const title = getInstructionsTitle(foundationType, 'plain');
+  return [title, '', ...numberedInstructionLines(instructions)].join('\n');
 }
 
+/**
+ * Generate instruction strings from a snapshot and both export formats.
+ */
 export function buildInstructionsExport(
   snapshot: PatternSnapshot,
 ): { markdown: string; plainText: string; instructions: string[] } {
@@ -473,12 +512,16 @@ export function buildInstructionsExport(
   };
 }
 
-export function defaultPatternFilename(exportedAt = new Date()): string {
-  const stamp = exportedAt.toISOString().slice(0, 19).replace(/[:T]/g, '-');
-  return `crochet-pattern-${stamp}.json`;
+function formatExportTimestamp(exportedAt: Date): string {
+  return exportedAt.toISOString().slice(0, 19).replace(/[:T]/g, '-');
 }
 
+/** Default download filename for a saved pattern JSON file. */
+export function defaultPatternFilename(exportedAt = new Date()): string {
+  return `crochet-pattern-${formatExportTimestamp(exportedAt)}.json`;
+}
+
+/** Default download filename for an exported instructions markdown file. */
 export function defaultInstructionsFilename(exportedAt = new Date()): string {
-  const stamp = exportedAt.toISOString().slice(0, 19).replace(/[:T]/g, '-');
-  return `crochet-instructions-${stamp}.md`;
+  return `crochet-instructions-${formatExportTimestamp(exportedAt)}.md`;
 }
