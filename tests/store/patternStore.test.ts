@@ -249,4 +249,37 @@ describe('patternStore', () => {
     expect(store.importPatternJson(json)).toBe(false);
     expect(usePatternStore.getState().lastError).toContain('not supported');
   });
+
+  it('exports plain-text instructions for copy to clipboard', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(3);
+
+    const plainText = store.exportInstructionsPlainText();
+    expect(plainText).toContain('Foundation: ch 3');
+  });
+
+  it('exports markdown instructions for download', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(3);
+
+    const markdown = store.exportInstructionsMarkdown();
+    expect(markdown).toContain('# Crochet pattern');
+    expect(markdown).toContain('Foundation: ch 3');
+  });
+
+  it('returns false when restoring autosave with no saved pattern', () => {
+    expect(usePatternStore.getState().restoreAutosave()).toBe(false);
+  });
+
+  it('clears autosave when persisting an empty pattern', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(2);
+    store.persistAutosave();
+    expect(window.localStorage.getItem(AUTOSAVE_STORAGE_KEY)).toBeTruthy();
+
+    store.resetPattern();
+    store.persistAutosave();
+
+    expect(window.localStorage.getItem(AUTOSAVE_STORAGE_KEY)).toBeNull();
+  });
 });

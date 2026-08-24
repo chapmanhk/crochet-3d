@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  buildInstructionsExport,
   FoundationType,
   Pattern,
   PatternPersistenceError,
@@ -34,19 +35,41 @@ describe('persistence', () => {
   });
 
   it('round-trips a saved pattern through JSON export and import', () => {
-    const original = patternFileFromSetup((pattern) => {
-      pattern.addFoundationChain(2);
-      pattern.startNewRow();
-      pattern.addSingleCrochet();
-      pattern.addSingleCrochet();
+    resetIdCounter();
+    const originalPattern = new Pattern();
+    originalPattern.addFoundationChain(2);
+    originalPattern.startNewRow();
+    originalPattern.addSingleCrochet();
+    originalPattern.addSingleCrochet();
+    const originalStitchCount = originalPattern.getStitches().length;
+
+    const exported = createSavedPatternFile(
+      originalPattern.getSnapshot(),
+      sampleUiState(),
+    );
+    const importedFile = parsePatternFile(serializePatternFile(exported));
+
+    const restoredPattern = new Pattern();
+    restoredPattern.loadSnapshot(importedFile.pattern);
+
+    expect(restoredPattern.getStitches()).toHaveLength(originalStitchCount);
+    expect(restoredPattern.getStitches()).toHaveLength(4);
+    expect(restoredPattern.getCurrentRow()).toBe(1);
+    expect(importedFile.pattern.foundationChainLength).toBe(2);
+    expect(importedFile.ui.yarnColor).toBe('#d98952');
+  });
+
+  it('builds markdown and plain-text instruction exports from a saved snapshot', () => {
+    const file = patternFileFromSetup((pattern) => {
+      pattern.addFoundationChain(3);
     });
 
-    const imported = parsePatternFile(serializePatternFile(original));
+    const exported = buildInstructionsExport(file.pattern);
 
-    expect(imported.pattern.stitches).toHaveLength(original.pattern.stitches.length);
-    expect(imported.pattern.foundationChainLength).toBe(2);
-    expect(imported.pattern.currentRow).toBe(1);
-    expect(imported.ui.yarnColor).toBe('#d98952');
+    expect(exported.instructions).toEqual(['Foundation: ch 3']);
+    expect(exported.plainText).toContain('Foundation: ch 3');
+    expect(exported.markdown).toContain('# Crochet pattern');
+    expect(exported.markdown).toContain('1. Foundation: ch 3');
   });
 
   it('rejects unsupported file versions', () => {
@@ -73,6 +96,26 @@ describe('persistence', () => {
 
     expect(() => validateSavedPatternFile(file)).toThrow(
       'references a missing parent stitch',
+    );
+  });
+
+  it('rejects files with missing secondary parent references', () => {
+    const parent = createStitchNode(StitchType.CHAIN, 0, 0);
+    const stitch = createStitchNode(StitchType.SINGLE_CROCHET, 1, 0, parent.id);
+    stitch.secondaryAttachToId = 'missing-secondary';
+    const file = createSavedPatternFile(
+      {
+        stitches: [parent, stitch],
+        currentRow: 1,
+        foundationChainLength: 2,
+        foundationType: FoundationType.CHAIN,
+        rowDirections: {},
+      },
+      sampleUiState(),
+    );
+
+    expect(() => validateSavedPatternFile(file)).toThrow(
+      'references a missing secondary parent stitch',
     );
   });
 
