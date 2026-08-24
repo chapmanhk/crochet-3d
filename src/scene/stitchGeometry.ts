@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { StitchNode, Vec3, WorkingDirection } from '@engine/index';
 import {
   defaultDirectionForRow,
@@ -50,7 +49,7 @@ export interface YarnSegmentManifest {
 
 export interface YarnSegment {
   key: string;
-  geometry: THREE.BufferGeometry;
+  geometries: THREE.BufferGeometry[];
 }
 
 function midpoint(a: Vec3, b: Vec3): THREE.Vector3 {
@@ -177,21 +176,12 @@ function createTube(
   return new THREE.TubeGeometry(curve, tubularSegments, YARN_RADIUS, TUBE_RADIAL, false);
 }
 
-function mergeTubes(tubes: THREE.TubeGeometry[]): THREE.BufferGeometry {
+function finalizeStrandGeometries(tubes: THREE.TubeGeometry[]): THREE.BufferGeometry[] {
   if (tubes.length === 0) {
-    throw new Error('Cannot merge an empty tube list.');
+    throw new Error('Cannot finalize an empty tube list.');
   }
 
-  const merged = mergeGeometries(tubes, false);
-  for (const tube of tubes) {
-    tube.dispose();
-  }
-
-  if (!merged) {
-    throw new Error('Failed to merge stitch tube geometries.');
-  }
-
-  return merged;
+  return tubes;
 }
 
 function buildChainLoopGeometry(
@@ -244,7 +234,7 @@ function isMagicRingFoundation(foundationType: FoundationType): boolean {
   return foundationType === FoundationType.MAGIC_RING;
 }
 
-function buildMagicRingFoundationGeometry(stitches: StitchNode[]): THREE.BufferGeometry | null {
+function buildMagicRingFoundationGeometry(stitches: StitchNode[]): THREE.BufferGeometry[] | null {
   if (stitches.length === 0) {
     return null;
   }
@@ -286,10 +276,10 @@ function buildMagicRingFoundationGeometry(stitches: StitchNode[]): THREE.BufferG
     );
   }
 
-  return mergeTubes(tubes);
+  return finalizeStrandGeometries(tubes);
 }
 
-function buildFoundationRowGeometry(rowStitches: StitchNode[]): THREE.BufferGeometry | null {
+function buildFoundationRowGeometry(rowStitches: StitchNode[]): THREE.BufferGeometry[] | null {
   if (rowStitches.length === 0) {
     return null;
   }
@@ -347,7 +337,7 @@ function buildFoundationRowGeometry(rowStitches: StitchNode[]): THREE.BufferGeom
     ),
   );
 
-  return mergeTubes(tubes);
+  return finalizeStrandGeometries(tubes);
 }
 
 function buildYarnOverWrapGeometry(
@@ -469,7 +459,7 @@ function buildWorkingRowGeometry(
   stitchById: Map<string, StitchNode>,
   rowNumber: number,
   roundFoundation = false,
-): THREE.BufferGeometry | null {
+): THREE.BufferGeometry[] | null {
   if (rowStitches.length === 0) {
     return null;
   }
@@ -517,7 +507,7 @@ function buildWorkingRowGeometry(
     }
   }
 
-  return mergeTubes(tubes);
+  return finalizeStrandGeometries(tubes);
 }
 
 function hookPointForRowEnd(
@@ -687,9 +677,11 @@ export function measureSegmentsHeight(segments: YarnSegment[]): number {
   const bounds = new THREE.Box3();
 
   for (const segment of segments) {
-    segment.geometry.computeBoundingBox();
-    if (segment.geometry.boundingBox) {
-      bounds.union(segment.geometry.boundingBox);
+    for (const geometry of segment.geometries) {
+      geometry.computeBoundingBox();
+      if (geometry.boundingBox) {
+        bounds.union(geometry.boundingBox);
+      }
     }
   }
 
@@ -744,7 +736,7 @@ export function buildYarnSegmentGeometry(
   key: string,
   stitches: StitchNode[],
   foundationType: FoundationType = FoundationType.CHAIN,
-): THREE.BufferGeometry | null {
+): THREE.BufferGeometry[] | null {
   const { stitchById, byRow, rowNumbers } = indexStitches(stitches);
   const roundFoundation = isMagicRingFoundation(foundationType);
 
@@ -775,7 +767,7 @@ export function buildYarnSegmentGeometry(
       return null;
     }
 
-    return createTube(joinPoints, 10, 0.15);
+    return [createTube(joinPoints, 10, 0.15)];
   }
 
   return null;
@@ -786,12 +778,12 @@ export function buildYarnSegments(
   foundationType: FoundationType = FoundationType.CHAIN,
 ): YarnSegment[] {
   return getYarnSegmentManifests(stitches, foundationType).flatMap((manifest) => {
-    const geometry = buildYarnSegmentGeometry(manifest.key, stitches, foundationType);
-    if (!geometry) {
+    const geometries = buildYarnSegmentGeometry(manifest.key, stitches, foundationType);
+    if (!geometries || geometries.length === 0) {
       return [];
     }
 
-    return [{ key: manifest.key, geometry }];
+    return [{ key: manifest.key, geometries }];
   });
 }
 

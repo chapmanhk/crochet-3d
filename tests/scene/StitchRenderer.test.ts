@@ -26,7 +26,9 @@ describe('StitchRenderer', () => {
     renderer.sync(pattern.getStitches(), FoundationType.CHAIN);
 
     expect(renderer.group.children).toHaveLength(1);
-    expect((renderer.group.children[0] as THREE.Group).children).toHaveLength(2);
+    const segmentGroup = renderer.group.children[0] as THREE.Group;
+    expect(segmentGroup.children.length).toBeGreaterThan(2);
+    expect(segmentGroup.children.length % 2).toBe(0);
   });
 
   it('sync removes stale segments when the pattern shrinks', () => {
@@ -52,12 +54,12 @@ describe('StitchRenderer', () => {
 
     renderer = new StitchRenderer();
     renderer.sync(stitches, FoundationType.CHAIN);
-    const firstGeometry = (renderer.group.children[0] as THREE.Group).children[0] as THREE.Mesh;
+    const firstGeometry = rowSegmentGeometry(renderer, 0);
 
     renderer.sync(stitches, FoundationType.CHAIN);
-    const secondGeometry = (renderer.group.children[0] as THREE.Group).children[0] as THREE.Mesh;
+    const secondGeometry = rowSegmentGeometry(renderer, 0);
 
-    expect(secondGeometry.geometry).toBe(firstGeometry.geometry);
+    expect(secondGeometry).toBe(firstGeometry);
   });
 
   it('dispose clears all segment groups', () => {
@@ -116,5 +118,6 @@ describe('StitchRenderer', () => {
 
 function rowSegmentGeometry(renderer: StitchRenderer, childIndex: number): THREE.BufferGeometry {
   const segmentGroup = renderer.group.children[childIndex] as THREE.Group;
-  return (segmentGroup.children[0] as THREE.Mesh).geometry;
+  const fill = segmentGroup.children[1] as THREE.Mesh;
+  return fill.geometry;
 }
