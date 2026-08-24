@@ -169,4 +169,86 @@ describe('persistence', () => {
     expect(kinds).toContain(PlacementKind.INCREASE_SECOND);
     expect(kinds).toContain(PlacementKind.DECREASE);
   });
+
+  it('rejects foundation length that does not match foundation stitches', () => {
+    const chain = createStitchNode(StitchType.CHAIN, 0, 0);
+    const file = createSavedPatternFile(
+      {
+        stitches: [chain],
+        currentRow: 0,
+        foundationChainLength: 3,
+        foundationType: FoundationType.CHAIN,
+        rowDirections: {},
+      },
+      sampleUiState(),
+    );
+
+    expect(() => validateSavedPatternFile(file)).toThrow(
+      'foundation length does not match foundation stitches',
+    );
+  });
+
+  it('rejects working stitches that attach to the wrong row', () => {
+    const chain = createStitchNode(StitchType.CHAIN, 0, 0);
+    const sibling = createStitchNode(StitchType.CHAIN, 0, 1);
+    const firstSc = createStitchNode(StitchType.SINGLE_CROCHET, 1, 0, chain.id);
+    const secondSc = createStitchNode(StitchType.SINGLE_CROCHET, 1, 1, firstSc.id);
+    const file = createSavedPatternFile(
+      {
+        stitches: [chain, sibling, firstSc, secondSc],
+        currentRow: 1,
+        foundationChainLength: 2,
+        foundationType: FoundationType.CHAIN,
+        rowDirections: {},
+      },
+      sampleUiState(),
+    );
+
+    expect(() => validateSavedPatternFile(file)).toThrow('must attach to the previous row');
+  });
+
+  it('rejects decreases without a secondary parent', () => {
+    const chain = createStitchNode(StitchType.CHAIN, 0, 0);
+    const parent = createStitchNode(StitchType.CHAIN, 0, 1);
+    const decrease = createStitchNode(
+      StitchType.SINGLE_CROCHET,
+      1,
+      0,
+      chain.id,
+      PlacementKind.DECREASE,
+    );
+    const file = createSavedPatternFile(
+      {
+        stitches: [chain, parent, decrease],
+        currentRow: 1,
+        foundationChainLength: 2,
+        foundationType: FoundationType.CHAIN,
+        rowDirections: {},
+      },
+      sampleUiState(),
+    );
+
+    expect(() => validateSavedPatternFile(file)).toThrow(
+      'missing a secondary parent for decrease',
+    );
+  });
+
+  it('rejects magic ring files with chain foundation stitches', () => {
+    const chain0 = createStitchNode(StitchType.CHAIN, 0, 0);
+    const chain1 = createStitchNode(StitchType.CHAIN, 0, 1);
+    const file = createSavedPatternFile(
+      {
+        stitches: [chain0, chain1],
+        currentRow: 0,
+        foundationChainLength: 2,
+        foundationType: FoundationType.MAGIC_RING,
+        rowDirections: {},
+      },
+      sampleUiState(),
+    );
+
+    expect(() => validateSavedPatternFile(file)).toThrow(
+      'Magic ring foundation has invalid stitch types',
+    );
+  });
 });

@@ -1,4 +1,10 @@
 import { generateInstructions } from './instructions';
+import {
+  MAX_CHAIN_LENGTH,
+  MAX_MAGIC_RING_STITCHES,
+  MIN_CHAIN_LENGTH,
+  MIN_MAGIC_RING_STITCHES,
+} from './Pattern';
 import type { PatternSnapshot, StitchNode, WorkingStitchType } from './types';
 import {
   FoundationType,
@@ -106,6 +112,182 @@ function validateStitchNode(value: unknown, index: number): StitchNode {
   };
 }
 
+function getPlacementKind(stitch: StitchNode): PlacementKind {
+  return stitch.placementKind ?? PlacementKind.NORMAL;
+}
+
+function validateRowColumnIndices(rowStitches: StitchNode[], row: number): void {
+  if (rowStitches.length === 0) {
+    return;
+  }
+
+  const columns = rowStitches.map((stitch) => stitch.column);
+  const uniqueColumns = new Set(columns);
+  if (uniqueColumns.size !== columns.length) {
+    throw new PatternPersistenceError(`Row ${row} has duplicate column indices.`);
+  }
+
+  for (let column = 0; column < rowStitches.length; column++) {
+    if (!uniqueColumns.has(column)) {
+      throw new PatternPersistenceError(`Row ${row} has invalid column indices.`);
+    }
+  }
+}
+
+function validateFoundationBounds(
+  foundationType: FoundationType,
+  foundationChainLength: number,
+): void {
+  if (foundationChainLength === 0) {
+    return;
+  }
+
+  if (foundationType === FoundationType.CHAIN) {
+    if (
+      foundationChainLength < MIN_CHAIN_LENGTH ||
+      foundationChainLength > MAX_CHAIN_LENGTH
+    ) {
+      throw new PatternPersistenceError('Pattern foundation length is out of range.');
+    }
+    return;
+  }
+
+  if (
+    foundationChainLength < MIN_MAGIC_RING_STITCHES ||
+    foundationChainLength > MAX_MAGIC_RING_STITCHES
+  ) {
+    throw new PatternPersistenceError('Pattern foundation length is out of range.');
+  }
+}
+
+function validatePatternSemantics(
+  snapshot: Pick<
+    PatternSnapshot,
+    'stitches' | 'currentRow' | 'foundationChainLength' | 'foundationType'
+  >,
+  stitchById: Map<string, StitchNode>,
+): void {
+  const { stitches, currentRow, foundationChainLength, foundationType } = snapshot;
+
+  validateFoundationBounds(foundationType, foundationChainLength);
+
+  if (foundationChainLength === 0) {
+    if (stitches.length > 0) {
+      throw new PatternPersistenceError('Pattern has stitches but no foundation length.');
+    }
+    if (currentRow !== 0) {
+      throw new PatternPersistenceError('Pattern current row is invalid.');
+    }
+    return;
+  }
+
+  const rowStitchesMap = new Map<number, StitchNode[]>();
+  for (const stitch of stitches) {
+    const rowList = rowStitchesMap.get(stitch.row) ?? [];
+    rowList.push(stitch);
+    rowStitchesMap.set(stitch.row, rowList);
+  }
+
+  const foundationRow = rowStitchesMap.get(0) ?? [];
+  if (foundationRow.length !== foundationChainLength) {
+    throw new PatternPersistenceError(
+      'Pattern foundation length does not match foundation stitches.',
+    );
+  }
+
+  for (const [row, rowStitches] of rowStitchesMap.entries()) {
+    validateRowColumnIndices(rowStitches, row);
+  }
+
+  for (const stitch of foundationRow) {
+    if (foundationType === FoundationType.CHAIN) {
+      if (stitch.type !== StitchType.CHAIN) {
+        throw new PatternPersistenceError('Foundation chain row has invalid stitch types.');
+      }
+    } else if (stitch.type !== StitchType.SINGLE_CROCHET) {
+      throw new PatternPersistenceError('Magic ring foundation has invalid stitch types.');
+    }
+
+    if (stitch.attachToId) {
+      throw new PatternPersistenceError('Foundation stitches must not attach to another stitch.');
+    }
+
+    if (stitch.secondaryAttachToId) {
+      throw new PatternPersistenceError(
+        'Foundation stitches must not have a secondary attachment.',
+      );
+    }
+  }
+
+  if (stitches.some((stitch) => stitch.row > 0) && currentRow === 0) {
+    throw new PatternPersistenceError('Pattern current row is invalid.');
+  }
+
+  for (const stitch of stitches) {
+    if (stitch.row === 0) {
+      continue;
+    }
+
+    if (stitch.type === StitchType.CHAIN) {
+      throw new PatternPersistenceError(
+        `Stitch ${stitch.id} is a chain outside the foundation row.`,
+      );
+    }
+
+    if (!stitch.attachToId) {
+      throw new PatternPersistenceError(`Stitch ${stitch.id} is missing a parent attachment.`);
+    }
+
+    const parent = stitchById.get(stitch.attachToId);
+    if (parent && parent.row !== stitch.row - 1) {
+      throw new PatternPersistenceError(`Stitch ${stitch.id} must attach to the previous row.`);
+    }
+
+    const placementKind = getPlacementKind(stitch);
+
+    if (placementKind === PlacementKind.DECREASE) {
+      if (!stitch.secondaryAttachToId) {
+        throw new PatternPersistenceError(
+          `Stitch ${stitch.id} is missing a secondary parent for decrease.`,
+        );
+      }
+
+      if (stitch.secondaryAttachToId === stitch.attachToId) {
+        throw new PatternPersistenceError(
+          `Stitch ${stitch.id} decrease references duplicate parents.`,
+        );
+      }
+
+      const secondaryParent = stitchById.get(stitch.secondaryAttachToId);
+      if (secondaryParent && secondaryParent.row !== stitch.row - 1) {
+        throw new PatternPersistenceError(
+          `Stitch ${stitch.id} secondary parent must be in the previous row.`,
+        );
+      }
+    } else if (stitch.secondaryAttachToId) {
+      throw new PatternPersistenceError(`Stitch ${stitch.id} has an unexpected secondary attachment.`);
+    }
+
+    if (placementKind === PlacementKind.INCREASE_SECOND) {
+      const previousStitch = rowStitchesMap
+        .get(stitch.row)
+        ?.find((candidate) => candidate.column === stitch.column - 1);
+
+      if (!previousStitch) {
+        throw new PatternPersistenceError(
+          `Stitch ${stitch.id} increase_second has no preceding stitch.`,
+        );
+      }
+
+      if (previousStitch.attachToId !== stitch.attachToId) {
+        throw new PatternPersistenceError(
+          `Stitch ${stitch.id} increase_second must share its parent with the prior stitch.`,
+        );
+      }
+    }
+  }
+}
+
 function validatePatternSnapshot(value: unknown): PatternSnapshot {
   if (!isRecord(value)) {
     throw new PatternPersistenceError('Pattern data is missing.');
@@ -156,6 +338,9 @@ function validatePatternSnapshot(value: unknown): PatternSnapshot {
     }
   }
 
+  const foundationType =
+    (value.foundationType as FoundationType | undefined) ?? FoundationType.CHAIN;
+
   const rowDirections: PatternSnapshot['rowDirections'] = {};
   if (isRecord(value.rowDirections)) {
     for (const [rowKey, direction] of Object.entries(value.rowDirections)) {
@@ -165,13 +350,18 @@ function validatePatternSnapshot(value: unknown): PatternSnapshot {
     }
   }
 
-  return {
+  const snapshot: PatternSnapshot = {
     stitches,
     currentRow: value.currentRow,
     foundationChainLength: value.foundationChainLength,
-    foundationType: (value.foundationType as FoundationType | undefined) ?? FoundationType.CHAIN,
+    foundationType,
     rowDirections,
   };
+
+  const stitchById = new Map(stitches.map((stitch) => [stitch.id, stitch]));
+  validatePatternSemantics(snapshot, stitchById);
+
+  return snapshot;
 }
 
 function validateUiState(value: unknown): PatternUiState {
