@@ -37,13 +37,13 @@ export class StitchRenderer {
         continue;
       }
 
-      const geometry = buildYarnSegmentGeometry(manifest.key, stitches, foundationType);
-      if (!geometry) {
+      const geometries = buildYarnSegmentGeometry(manifest.key, stitches, foundationType);
+      if (!geometries || geometries.length === 0) {
         this.removeSegment(manifest.key);
         continue;
       }
 
-      this.upsertSegment(manifest.key, geometry);
+      this.upsertSegment(manifest.key, geometries);
       this.fingerprints.set(manifest.key, manifest.fingerprint);
     }
   }
@@ -67,7 +67,7 @@ export class StitchRenderer {
     updateOutlineMaterialColor(this.outlineMaterial, color);
   }
 
-  private upsertSegment(key: string, geometry: THREE.BufferGeometry): void {
+  private upsertSegment(key: string, geometries: THREE.BufferGeometry[]): void {
     const existing = this.segments.get(key);
     if (existing) {
       this.group.remove(existing);
@@ -75,7 +75,7 @@ export class StitchRenderer {
     }
 
     const segmentGroup = createOutlinedStitch(
-      geometry,
+      geometries,
       this.fillMaterial,
       this.outlineMaterial,
     );

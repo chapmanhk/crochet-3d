@@ -29,6 +29,29 @@ describe('stitchMaterials', () => {
     outlineMaterial.dispose();
   });
 
+  it('creates per-strand outlines when given multiple geometries', () => {
+    const geometries = [
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.BoxGeometry(0.5, 0.5, 0.5),
+    ];
+    const fillMaterial = createStitchFillMaterial();
+    const outlineMaterial = createStitchOutlineMaterial();
+    const group = createOutlinedStitch(geometries, fillMaterial, outlineMaterial);
+
+    expect(group.children).toHaveLength(4);
+
+    for (let index = 0; index < geometries.length; index += 1) {
+      const outline = group.children[index * 2] as THREE.Mesh;
+      const fill = group.children[index * 2 + 1] as THREE.Mesh;
+      expect(outline.geometry).not.toBe(fill.geometry);
+      expect(fill.geometry).toBe(geometries[index]);
+    }
+
+    disposeOutlinedStitch(group);
+    fillMaterial.dispose();
+    outlineMaterial.dispose();
+  });
+
   it('uses a slightly darker yarn color for the outline stroke', () => {
     const fillMaterial = createStitchFillMaterial();
     const outlineMaterial = createStitchOutlineMaterial();

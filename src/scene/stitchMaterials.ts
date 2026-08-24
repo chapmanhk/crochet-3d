@@ -110,21 +110,24 @@ export function updateOutlineMaterialSize(material: THREE.ShaderMaterial): void 
 }
 
 export function createOutlinedStitch(
-  geometry: THREE.BufferGeometry,
+  geometry: THREE.BufferGeometry | THREE.BufferGeometry[],
   fillMaterial: THREE.MeshBasicMaterial,
   outlineMaterial: THREE.ShaderMaterial,
 ): THREE.Group {
+  const geometries = Array.isArray(geometry) ? geometry : [geometry];
   const group = new THREE.Group();
-  const outlineGeometry = toCreasedNormals(geometry, OUTLINE_CREASE_ANGLE);
 
-  const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
-  outline.renderOrder = 0;
+  for (const strandGeometry of geometries) {
+    const outlineGeometry = toCreasedNormals(strandGeometry, OUTLINE_CREASE_ANGLE);
+    const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
+    outline.renderOrder = 0;
 
-  const fill = new THREE.Mesh(geometry, fillMaterial);
-  fill.renderOrder = 1;
+    const fill = new THREE.Mesh(strandGeometry, fillMaterial);
+    fill.renderOrder = 1;
 
-  group.add(outline);
-  group.add(fill);
+    group.add(outline);
+    group.add(fill);
+  }
 
   return group;
 }

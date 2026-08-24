@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import * as THREE from 'three';
 import { Pattern, FoundationType, resetIdCounter, StitchType } from '@engine/index';
 import { buildYarnSegments, getYarnSegmentManifests, measureSegmentsHeight, VISUAL_ROW_HEIGHT } from '../../src/scene/stitchGeometry';
 import { ROW_HEIGHT } from '@engine/index';
@@ -12,8 +13,17 @@ function stitchesFromPattern(setup: (pattern: Pattern) => void) {
 
 function disposeSegments(segments: ReturnType<typeof buildYarnSegments>) {
   for (const segment of segments) {
-    segment.geometry.dispose();
+    for (const geometry of segment.geometries) {
+      geometry.dispose();
+    }
   }
+}
+
+function segmentVertexCount(segment: ReturnType<typeof buildYarnSegments>[number]): number {
+  return segment.geometries.reduce(
+    (total, geometry) => total + geometry.attributes.position.count,
+    0,
+  );
 }
 
 describe('stitchGeometry', () => {
@@ -36,7 +46,8 @@ describe('stitchGeometry', () => {
 
     const segments = buildYarnSegments(stitches);
     expect(segments).toHaveLength(1);
-    expect(segments[0]?.geometry.attributes.position.count).toBeGreaterThan(0);
+    expect(segments[0]?.geometries.length).toBeGreaterThan(0);
+    expect(segmentVertexCount(segments[0]!)).toBeGreaterThan(0);
     disposeSegments(segments);
   });
 
@@ -103,8 +114,8 @@ describe('stitchGeometry', () => {
       }),
     );
 
-    expect(long[0]!.geometry.attributes.position.count).toBeGreaterThan(
-      short[0]!.geometry.attributes.position.count,
+    expect(segmentVertexCount(long[0]!)).toBeGreaterThan(
+      segmentVertexCount(short[0]!),
     );
 
     disposeSegments(short);
@@ -268,8 +279,8 @@ describe('stitchGeometry', () => {
     expect(dcHeight).toBeGreaterThan(hdcHeight);
     expect(hdcHeight / scHeight).toBeGreaterThan(1.2);
     expect(dcHeight / scHeight).toBeGreaterThan(1.45);
-    expect(dcRow[1]!.geometry.attributes.position.count).toBeGreaterThan(
-      scRow[1]!.geometry.attributes.position.count,
+    expect(segmentVertexCount(dcRow[1]!)).toBeGreaterThan(
+      segmentVertexCount(scRow[1]!),
     );
 
     disposeSegments(scRow);
@@ -337,11 +348,13 @@ function measureRowWidth(segments: ReturnType<typeof buildYarnSegments>, key: st
     throw new Error(`Missing segment ${key}`);
   }
 
-  segment.geometry.computeBoundingBox();
-  const box = segment.geometry.boundingBox;
-  if (!box) {
-    throw new Error(`Missing bounding box for ${key}`);
+  const bounds = new THREE.Box3();
+  for (const geometry of segment.geometries) {
+    geometry.computeBoundingBox();
+    if (geometry.boundingBox) {
+      bounds.union(geometry.boundingBox);
+    }
   }
 
-  return box.max.x - box.min.x;
+  return bounds.max.x - bounds.min.x;
 }
