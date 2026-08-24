@@ -1,7 +1,12 @@
 import { useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { type TemplateId } from '@engine/index';
+import {
+  defaultInstructionsFilename,
+  defaultPatternFilename,
+  type TemplateId,
+} from '@engine/index';
 import { usePatternStore } from '@store/patternStore';
+import { copyTextToClipboard, downloadTextFile, readTextFile } from '../shared/fileUtils';
 import { ConfirmDialog } from './ConfirmDialog';
 import {
   CONFIRM_DIALOG_COPY,
@@ -12,7 +17,11 @@ import { getAddStitchButtonLabel, getAdvanceActionLabel, relabelForFoundationTyp
 import { StitchTypeSelector } from './StitchTypeSelector';
 import { TemplateDialog } from './TemplateDialog';
 import { ToolbarActionButton } from './ToolbarActionButton';
-import { getResetDisabledReason } from './toolbarState';
+import {
+  getCopyInstructionsDisabledReason,
+  getResetDisabledReason,
+  getSavePatternDisabledReason,
+} from './toolbarState';
 
 export function Toolbar() {
   const {
@@ -27,7 +36,13 @@ export function Toolbar() {
     redo,
     loadTemplate,
     clearError,
+    clearNotice,
+    setNotice,
     lastError,
+    exportPatternJson,
+    importPatternJson,
+    exportInstructionsMarkdown,
+    exportInstructionsPlainText,
     foundationChainLength,
     foundationType,
     selectedStitchType,
@@ -52,7 +67,13 @@ export function Toolbar() {
       redo: state.redo,
       loadTemplate: state.loadTemplate,
       clearError: state.clearError,
+      clearNotice: state.clearNotice,
+      setNotice: state.setNotice,
       lastError: state.lastError,
+      exportPatternJson: state.exportPatternJson,
+      importPatternJson: state.importPatternJson,
+      exportInstructionsMarkdown: state.exportInstructionsMarkdown,
+      exportInstructionsPlainText: state.exportInstructionsPlainText,
       foundationChainLength: state.foundationChainLength,
       foundationType: state.foundationType,
       selectedStitchType: state.selectedStitchType,
@@ -71,9 +92,13 @@ export function Toolbar() {
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [pendingTemplateId, setPendingTemplateId] = useState<TemplateId | null>(null);
+  const [pendingPatternJson, setPendingPatternJson] = useState<string | null>(null);
   const newChainRef = useRef<HTMLButtonElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetDisabledReason = getResetDisabledReason(stitches.length);
+  const savePatternDisabledReason = getSavePatternDisabledReason(stitches.length);
+  const copyInstructionsDisabledReason = getCopyInstructionsDisabledReason(stitches.length);
   const addStitchLabel = getAddStitchButtonLabel(selectedStitchType);
   const advanceActionLabel = getAdvanceActionLabel(foundationType);
   const newRowReason = relabelForFoundationType(newRowDisabledReason, foundationType);
@@ -112,7 +137,74 @@ export function Toolbar() {
       loadTemplate(pendingTemplateId);
       setPendingTemplateId(null);
       setTemplateDialogOpen(false);
+      return;
     }
+
+    if (action === 'import-pattern' && pendingPatternJson) {
+      importPatternJson(pendingPatternJson);
+      setPendingPatternJson(null);
+    }
+  };
+
+  const handleSavePattern = () => {
+    clearError();
+    clearNotice();
+    downloadTextFile(
+      defaultPatternFilename(),
+      exportPatternJson(),
+      'application/json',
+    );
+    setNotice('Pattern saved.');
+  };
+
+  const handleLoadPatternClick = () => {
+    clearError();
+    fileInputRef.current?.click();
+  };
+
+  const handlePatternFileSelected = async (file: File | undefined) => {
+    if (!file) {
+      return;
+    }
+
+    try {
+      const json = await readTextFile(file);
+      if (foundationChainLength > 0) {
+        setPendingPatternJson(json);
+        setConfirmAction('import-pattern');
+        return;
+      }
+
+      importPatternJson(json);
+    } catch {
+      importPatternJson('{');
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleCopyInstructions = async () => {
+    clearError();
+    clearNotice();
+    const copied = await copyTextToClipboard(exportInstructionsPlainText());
+    setNotice(
+      copied
+        ? 'Instructions copied to clipboard.'
+        : 'Could not copy instructions. Try Export instructions instead.',
+    );
+  };
+
+  const handleExportInstructions = () => {
+    clearError();
+    clearNotice();
+    downloadTextFile(
+      defaultInstructionsFilename(),
+      exportInstructionsMarkdown(),
+      'text/markdown',
+    );
+    setNotice('Instructions exported.');
   };
 
   const handleTemplateSelect = (templateId: TemplateId) => {
@@ -147,6 +239,42 @@ export function Toolbar() {
         >
           Templates
         </button>
+        <ToolbarActionButton
+          label="Save pattern"
+          disabledReason={savePatternDisabledReason}
+          onClick={handleSavePattern}
+          variant="subtle"
+        />
+        <button
+          type="button"
+          className="btn subtle"
+          onClick={handleLoadPatternClick}
+        >
+          Load pattern
+        </button>
+        <ToolbarActionButton
+          label="Copy instructions"
+          disabledReason={copyInstructionsDisabledReason}
+          onClick={handleCopyInstructions}
+          variant="subtle"
+        />
+        <ToolbarActionButton
+          label="Export instructions"
+          disabledReason={copyInstructionsDisabledReason}
+          onClick={handleExportInstructions}
+          variant="subtle"
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json,.json"
+          hidden
+          aria-hidden="true"
+          tabIndex={-1}
+          onChange={(event) => {
+            void handlePatternFileSelected(event.target.files?.[0]);
+          }}
+        />
         <StitchTypeSelector
           value={selectedStitchType}
           onChange={setSelectedStitchType}
@@ -233,8 +361,12 @@ export function Toolbar() {
             if (pendingTemplateId) {
               setTemplateDialogOpen(true);
             }
+            if (pendingPatternJson && fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
             setConfirmAction(null);
             setPendingTemplateId(null);
+            setPendingPatternJson(null);
           }}
         />
       ) : null}

@@ -1,4 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest';
+import { StitchType } from '@engine/index';
 import {
   __resetPatternStoreForTests,
   usePatternStore,
@@ -180,5 +181,33 @@ describe('patternStore', () => {
     expect(usePatternStore.getState().lastError).not.toBeNull();
     store.clearError();
     expect(usePatternStore.getState().lastError).toBeNull();
+  });
+
+  it('imports and exports saved pattern JSON with UI state', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(2);
+    store.startNewRow();
+    store.addSingleCrochet();
+    store.setYarnColor('#112233');
+    store.setSelectedStitchType(StitchType.HALF_DOUBLE_CROCHET);
+
+    const json = store.exportPatternJson();
+    store.resetPattern();
+    expect(usePatternStore.getState().stitches).toHaveLength(0);
+
+    expect(store.importPatternJson(json)).toBe(true);
+
+    const state = usePatternStore.getState();
+    expect(state.stitches).toHaveLength(3);
+    expect(state.yarnColor).toBe('#112233');
+    expect(state.selectedStitchType).toBe(StitchType.HALF_DOUBLE_CROCHET);
+    expect(state.lastNotice).toBe('Pattern loaded.');
+    expect(state.canUndo).toBe(false);
+  });
+
+  it('surfaces persistence errors for invalid JSON imports', () => {
+    const store = usePatternStore.getState();
+    expect(store.importPatternJson('{')).toBe(false);
+    expect(usePatternStore.getState().lastError).toBe('Could not load pattern file.');
   });
 });

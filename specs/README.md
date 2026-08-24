@@ -40,6 +40,7 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | `pattern-editing.feature` | Undo and redo stitch placements |
 | `stitch-types.feature` | HDC/DC, increase/decrease |
 | `templates.feature` | Coaster and swatch templates |
+| `persistence.feature` | Save/load JSON, export/copy instructions |
 | `deferred.feature` | Roadmap items tagged `@deferred` (not yet implemented) |
 
 ## Scenario index
@@ -95,8 +96,12 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 
 | Spec scenario | Notes |
 |---------------|-------|
+| Saved pattern round-trips through JSON export and import | `tests/engine/persistence.test.ts` |
+| Save pattern downloads a JSON file | `e2e/persistence.spec.ts` |
+| Load pattern replaces the current work after confirmation | `e2e/persistence.spec.ts` |
+| Copy instructions places pattern text on the clipboard | `e2e/persistence.spec.ts` |
+| Export instructions downloads a markdown file | `e2e/persistence.spec.ts` |
 | Reset with no pattern is a no-op | `deferred.feature` — `@deferred` |
-| Saved pattern round-trips through JSON export and import | `deferred.feature` — `@deferred @engine` |
 
 ## Tags
 

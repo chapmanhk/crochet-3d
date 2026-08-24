@@ -40,6 +40,8 @@ export function InfoPanel() {
     setYarnColor,
     instructions,
     lastError,
+    lastNotice,
+    clearNotice,
     clearError,
   } = usePatternStore(
     useShallow((state) => ({
@@ -55,6 +57,8 @@ export function InfoPanel() {
       setYarnColor: state.setYarnColor,
       instructions: state.instructions,
       lastError: state.lastError,
+      lastNotice: state.lastNotice,
+      clearNotice: state.clearNotice,
       clearError: state.clearError,
     })),
   );
@@ -145,6 +149,20 @@ export function InfoPanel() {
           </ol>
         )}
       </div>
+
+      {lastNotice ? (
+        <div className="notice-banner" role="status">
+          <p>{lastNotice}</p>
+          <button
+            type="button"
+            className="btn subtle"
+            onClick={clearNotice}
+            aria-label="Dismiss notice"
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
 
       {lastError ? (
         <div className="error-banner" role="alert">
