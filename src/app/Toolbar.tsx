@@ -108,6 +108,11 @@ export function Toolbar() {
   const advanceActionLabel = getAdvanceActionLabel(foundationType);
   const newRowReason = relabelForFoundationType(newRowDisabledReason, foundationType);
 
+  const clearFeedback = () => {
+    clearError();
+    clearNotice();
+  };
+
   const openFoundationDialog = () => {
     clearError();
     setFoundationDialogOpen(true);
@@ -126,34 +131,35 @@ export function Toolbar() {
     const action = confirmAction;
     setConfirmAction(null);
 
-    if (action === 'reset') {
-      resetPattern();
-      return;
-    }
-
-    if (action === 'new-chain') {
-      resetPattern();
-      openFoundationDialog();
-      return;
-    }
-
-    if (action === 'load-template' && pendingTemplateId) {
-      resetPattern();
-      loadTemplate(pendingTemplateId);
-      setPendingTemplateId(null);
-      setTemplateDialogOpen(false);
-      return;
-    }
-
-    if (action === 'import-pattern' && pendingPatternJson) {
-      importPatternJson(pendingPatternJson);
-      setPendingPatternJson(null);
+    switch (action) {
+      case 'reset':
+        resetPattern();
+        return;
+      case 'new-chain':
+        resetPattern();
+        openFoundationDialog();
+        return;
+      case 'load-template':
+        if (pendingTemplateId) {
+          resetPattern();
+          loadTemplate(pendingTemplateId);
+          setPendingTemplateId(null);
+          setTemplateDialogOpen(false);
+        }
+        return;
+      case 'import-pattern':
+        if (pendingPatternJson) {
+          importPatternJson(pendingPatternJson);
+          setPendingPatternJson(null);
+        }
+        return;
+      default:
+        return;
     }
   };
 
   const handleSavePattern = () => {
-    clearError();
-    clearNotice();
+    clearFeedback();
     downloadTextFile(
       defaultPatternFilename(),
       exportPatternJson(),
@@ -195,8 +201,7 @@ export function Toolbar() {
   };
 
   const handleCopyInstructions = async () => {
-    clearError();
-    clearNotice();
+    clearFeedback();
     const copied = await copyTextToClipboard(exportInstructionsPlainText());
     setNotice(
       copied
@@ -206,8 +211,7 @@ export function Toolbar() {
   };
 
   const handleExportInstructions = () => {
-    clearError();
-    clearNotice();
+    clearFeedback();
     downloadTextFile(
       defaultInstructionsFilename(),
       exportInstructionsMarkdown(),

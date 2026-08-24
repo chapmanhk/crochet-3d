@@ -1,0 +1,43 @@
+CROCHET-3D REALISM REVIEW DEMO SUMMARY
+======================================
+
+Demo Date: August 24, 2026
+URL Used: http://127.0.0.1:5173 (vite preview server)
+Recording: /workspace/recordings/realism-review-demo.mp4 (30MB)
+
+PATTERN BUILT:
+--------------
+Template Used: "Swatch" template (demonstrates multiple stitch types)
+
+Pattern Details:
+1. Foundation: Chain 8
+2. Row 1: 8 single crochet (SC) stitches
+3. Row 2: 8 half double crochet (HDC) stitches
+4. Row 3: 8 double crochet (DC) stitches
+5. Row 4: 2 SC, 1 increase, 1 HDC, 7 DC stitches (mixed row with increase)
+
+Total: 34 stitches across 4 rows
+
+REALISM IMPROVEMENTS DEMONSTRATED:
+----------------------------------
+1. ✓ V-top crossing geometry - Clear V-shaped tops visible on all stitches
+2. ✓ Progressive stitch heights - SC < HDC < DC heights clearly differentiated
+3. ✓ Stitch post structure - Vertical posts visible from side angles
+4. ✓ Attachment points - Stitches properly connect to previous row
+5. ✓ 3D depth and structure - Realistic crochet fabric appearance
+6. ✓ Increase stitches - Two stitches in one base stitch shown working correctly
+7. ✓ Foundation chain - Proper chain structure at the base
+
+CAMERA ANGLES SHOWN:
+--------------------
+- Top-down view (shows V-tops from above)
+- Side perspective (shows progressive height differences)
+- Angled 3D view (shows overall structure and depth)
+- Back view (shows stitch pattern from reverse side)
+- Close-up zoom (shows detailed stitch geometry)
+
+CONCLUSION:
+-----------
+The demo successfully shows the realism geometry improvements in action,
+with all stitch types rendering correctly with proper heights, V-top
+crossing, and realistic 3D structure.

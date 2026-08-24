@@ -184,34 +184,54 @@ function applySavedPattern(
   }
 }
 
-function readAutosave(): SavedPatternFile | null {
-  if (typeof window === 'undefined') {
-    return null;
+function applyHistoryEntry(
+  source: PatternSnapshot[],
+  destination: PatternSnapshot[],
+): boolean {
+  if (source.length === 0) {
+    return false;
   }
 
-  const raw = window.localStorage.getItem(AUTOSAVE_STORAGE_KEY);
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    return parsePatternFile(raw);
-  } catch {
-    window.localStorage.removeItem(AUTOSAVE_STORAGE_KEY);
-    return null;
-  }
+  destination.push(cloneSnapshot(pattern.getSnapshot()));
+  pattern.loadSnapshot(source.pop()!);
+  return true;
 }
 
-function writeAutosave(file: SavedPatternFile): void {
+function withLocalStorage(run: (storage: Storage) => void): void {
   if (typeof window === 'undefined') {
     return;
   }
 
-  try {
-    window.localStorage.setItem(AUTOSAVE_STORAGE_KEY, serializePatternFile(file));
-  } catch {
-    // Ignore quota or storage errors; manual save remains available.
-  }
+  run(window.localStorage);
+}
+
+function readAutosave(): SavedPatternFile | null {
+  let saved: SavedPatternFile | null = null;
+
+  withLocalStorage((storage) => {
+    const raw = storage.getItem(AUTOSAVE_STORAGE_KEY);
+    if (!raw) {
+      return;
+    }
+
+    try {
+      saved = parsePatternFile(raw);
+    } catch {
+      storage.removeItem(AUTOSAVE_STORAGE_KEY);
+    }
+  });
+
+  return saved;
+}
+
+function writeAutosave(file: SavedPatternFile): void {
+  withLocalStorage((storage) => {
+    try {
+      storage.setItem(AUTOSAVE_STORAGE_KEY, serializePatternFile(file));
+    } catch {
+      // Ignore quota or storage errors; manual save remains available.
+    }
+  });
 }
 
 function clearHistoryStack(): void {
@@ -433,9 +453,9 @@ export const usePatternStore = create<PatternState>((set, get) => ({
   },
 
   clearAutosave: () => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(AUTOSAVE_STORAGE_KEY);
-    }
+    withLocalStorage((storage) => {
+      storage.removeItem(AUTOSAVE_STORAGE_KEY);
+    });
   },
 
   clearNotice: () => {
@@ -461,29 +481,21 @@ export const usePatternStore = create<PatternState>((set, get) => ({
     ),
 
   undo: () => {
-    if (historyPast.length === 0) {
+    if (!applyHistoryEntry(historyPast, historyFuture)) {
       set({ lastError: 'Nothing to undo.' });
       return false;
     }
 
-    const current = cloneSnapshot(pattern.getSnapshot());
-    const previous = historyPast.pop()!;
-    historyFuture.push(current);
-    pattern.loadSnapshot(previous);
     set({ ...syncState(get().selectedStitchType), lastError: null });
     return true;
   },
 
   redo: () => {
-    if (historyFuture.length === 0) {
+    if (!applyHistoryEntry(historyFuture, historyPast)) {
       set({ lastError: 'Nothing to redo.' });
       return false;
     }
 
-    const current = cloneSnapshot(pattern.getSnapshot());
-    const next = historyFuture.pop()!;
-    historyPast.push(current);
-    pattern.loadSnapshot(next);
     set({ ...syncState(get().selectedStitchType), lastError: null });
     return true;
   },
@@ -507,9 +519,9 @@ export const usePatternStore = create<PatternState>((set, get) => ({
 export function __resetPatternStoreForTests(): void {
   pattern.reset();
   clearHistoryStack();
-  if (typeof window !== 'undefined') {
-    window.localStorage.removeItem(AUTOSAVE_STORAGE_KEY);
-  }
+  withLocalStorage((storage) => {
+    storage.removeItem(AUTOSAVE_STORAGE_KEY);
+  });
   usePatternStore.setState({
     ...syncState(StitchType.SINGLE_CROCHET),
     selectedStitchType: StitchType.SINGLE_CROCHET,

@@ -10,7 +10,6 @@ import {
   acceptConfirm,
   createFoundationChain,
   dismissConfirm,
-  gotoApp,
   infoPanel,
   startRowOne,
   toolbarButton,
