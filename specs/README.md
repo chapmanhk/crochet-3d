@@ -91,17 +91,21 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | First-run onboarding explains how to start a pattern | `e2e/app.spec.ts` — Onboarding… |
 | Info panel can be collapsed on narrow viewports | `e2e/app.spec.ts` — Responsive panels… |
 | Row 2 attaches to far end of row 1 after turning | `tests/engine/Pattern.test.ts` — attaches row 2… |
+| Save pattern downloads a JSON file | `e2e/persistence.spec.ts` — Save pattern downloads… |
+| Load pattern replaces the current work after confirmation | `e2e/persistence.spec.ts` — Load pattern replaces… |
+| Load pattern is cancelled without replacing work | `e2e/persistence.spec.ts` — Load pattern is cancelled… |
+| Invalid pattern file shows an error | `e2e/persistence.spec.ts` — Invalid pattern file… |
+| Copy instructions places pattern text on the clipboard | `e2e/persistence.spec.ts` — Copy instructions… |
+| Export instructions downloads a markdown file | `e2e/persistence.spec.ts` — Export instructions… |
+| Pattern restores from autosave after refresh | `e2e/persistence.spec.ts` — Pattern restores from autosave… |
+| Saved pattern round-trips through JSON export and import | `tests/engine/persistence.test.ts` — round-trips a saved pattern… |
+| Unsupported pattern file version is rejected | `tests/engine/persistence.test.ts` — rejects unsupported file versions |
+| Pattern file with duplicate stitch ids is rejected | `tests/engine/persistence.test.ts` — rejects duplicate stitch ids |
 
 ## Deferred scenarios
 
 | Spec scenario | Notes |
 |---------------|-------|
-| Saved pattern round-trips through JSON export and import | `tests/engine/persistence.test.ts` |
-| Save pattern downloads a JSON file | `e2e/persistence.spec.ts` |
-| Load pattern replaces the current work after confirmation | `e2e/persistence.spec.ts` |
-| Copy instructions places pattern text on the clipboard | `e2e/persistence.spec.ts` |
-| Export instructions downloads a markdown file | `e2e/persistence.spec.ts` |
-| Pattern restores from autosave after refresh | `e2e/persistence.spec.ts` |
 | Reset with no pattern is a no-op | `deferred.feature` — `@deferred` |
 
 ## Tags
