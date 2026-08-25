@@ -3,10 +3,11 @@ import { Canvas } from '@react-three/fiber';
 import { useSyncExternalStore } from 'react';
 import { usePatternStore } from '@store/patternStore';
 import { AttachmentPointPicker } from './AttachmentPointPicker';
-import { LazyDrapePreview } from './preview/LazyDrapePreview';
+import { LazyDrapePreview } from './LazyDrapePreview';
 import { SceneStitchRenderer } from './SceneStitchRenderer';
 
-export const SCENE_BACKGROUND = '#f7f0e6';
+/** Keep in sync with `SCENE_BACKGROUND` in `src/app/sceneConstants.ts`. */
+const SCENE_BACKGROUND = '#f7f0e6';
 
 function subscribeToReducedMotion(onStoreChange: () => void): () => void {
   const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');

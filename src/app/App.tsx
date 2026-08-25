@@ -1,4 +1,5 @@
-import { LazyCrochetScene, SCENE_BACKGROUND } from './LazyCrochetScene';
+import { SCENE_BACKGROUND } from './sceneConstants';
+import { LazyCrochetScene } from './LazyCrochetScene';
 import { InfoPanel } from './InfoPanel';
 import { OnboardingDialog } from './OnboardingDialog';
 import { Toolbar } from './Toolbar';

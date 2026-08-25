@@ -18,6 +18,10 @@ import {
 import { mergeStrandGeometries } from './geometryMerge';
 import type { InstancedStitchBatch, StitchInstance } from './instancedStitches';
 import {
+  getCachedPrototypeGeometry,
+  setCachedPrototypeGeometry,
+} from './prototypeGeometryCache';
+import {
   buildCrossingVTopPoints,
   getStitchShapeAdjustments,
   helicalPoints,
@@ -39,8 +43,6 @@ export interface YarnSegmentRenderData {
   geometries?: THREE.BufferGeometry[];
   instanced?: InstancedStitchBatch;
 }
-
-const prototypeGeometryCache = new Map<string, THREE.BufferGeometry>();
 
 const MAGIC_RING_FOUNDATION_VISUAL_Z_DROP = 0.08;
 const TUBE_RADIAL = 8;
@@ -814,7 +816,7 @@ function getStitchPrototypeGeometry(
   roundFoundation: boolean,
 ): THREE.BufferGeometry {
   const cacheKey = `${prototypeKey}:${roundFoundation ? 'round' : 'flat'}`;
-  const cached = prototypeGeometryCache.get(cacheKey);
+  const cached = getCachedPrototypeGeometry(cacheKey);
   if (cached) {
     return cached;
   }
@@ -825,7 +827,7 @@ function getStitchPrototypeGeometry(
     increasePairFirst,
   });
   const merged = mergeStrandGeometries(tubes);
-  prototypeGeometryCache.set(cacheKey, merged);
+  setCachedPrototypeGeometry(cacheKey, merged);
   return merged;
 }
 

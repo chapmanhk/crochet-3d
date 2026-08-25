@@ -13,9 +13,17 @@ export default defineConfig({
     },
   },
   build: {
+    modulePreload: false,
     rollupOptions: {
       output: {
         manualChunks(id) {
+          if (
+            id.includes('node_modules/react-dom') ||
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/scheduler/')
+          ) {
+            return 'react-vendor';
+          }
           if (id.includes('node_modules/@dimforge/rapier') || id.includes('@react-three/rapier')) {
             return 'rapier';
           }
@@ -28,7 +36,13 @@ export default defineConfig({
           ) {
             return 'r3f';
           }
-          if (id.includes('/src/scene/')) {
+          if (id.includes('/src/engine/')) {
+            return 'engine';
+          }
+          if (id.includes('/src/store/') || id.includes('node_modules/zustand')) {
+            return 'store';
+          }
+          if (id.includes('/src/scene/') && !id.includes('/src/scene/preview/')) {
             return 'scene';
           }
         },

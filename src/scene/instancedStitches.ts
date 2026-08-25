@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three-stdlib';
+import { isCachedPrototypeGeometry } from './prototypeGeometryCache';
 import { mergeStrandGeometries } from './geometryMerge';
 
 const OUTLINE_CREASE_ANGLE = Math.PI;
@@ -61,7 +62,9 @@ export function disposeInstancedOutlinedSegment(group: THREE.Group): void {
   }
 
   for (const geometry of geometries) {
-    geometry.dispose();
+    if (!isCachedPrototypeGeometry(geometry)) {
+      geometry.dispose();
+    }
   }
 }
 

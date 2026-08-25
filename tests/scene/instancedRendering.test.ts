@@ -1,9 +1,16 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import * as THREE from 'three';
 import { Pattern, FoundationType, resetIdCounter, StitchType } from '@engine/index';
+import {
+  createInstancedOutlinedSegment,
+  disposeInstancedOutlinedSegment,
+} from '../../src/scene/instancedStitches';
+import { createStitchFillMaterial, createStitchOutlineMaterial } from '../../src/scene/stitchMaterials';
 import {
   buildYarnSegmentRenderData,
   INSTANCED_ROW_MIN_STITCHES,
 } from '../../src/scene/stitchGeometry';
+import { isCachedPrototypeGeometry } from '../../src/scene/prototypeGeometryCache';
 
 describe('instanced stitch rendering', () => {
   afterEach(() => {
@@ -97,5 +104,35 @@ describe('instanced stitch rendering', () => {
     expect(renderData?.mode).toBe('instanced');
     const batch = renderData?.instanced;
     expect(batch?.prototypes.size).toBeLessThan(batch?.instances.length ?? 0);
+  });
+
+  it('keeps shared prototype geometries alive after disposing instanced segments', () => {
+    const pattern = new Pattern();
+    pattern.addFoundationChain(10);
+    pattern.startNewRow();
+    for (let index = 0; index < 10; index += 1) {
+      pattern.addWorkingStitch(StitchType.SINGLE_CROCHET);
+    }
+
+    const renderData = buildYarnSegmentRenderData(
+      'row-1',
+      pattern.getStitches(),
+      FoundationType.CHAIN,
+    );
+    const batch = renderData?.instanced;
+    expect(batch).toBeDefined();
+
+    const sharedPrototype = batch!.prototypes.values().next().value as THREE.BufferGeometry;
+    expect(isCachedPrototypeGeometry(sharedPrototype)).toBe(true);
+
+    const group = createInstancedOutlinedSegment(
+      batch!,
+      createStitchFillMaterial(),
+      createStitchOutlineMaterial(),
+    );
+    disposeInstancedOutlinedSegment(group);
+
+    expect(sharedPrototype.attributes.position).toBeDefined();
+    expect(isCachedPrototypeGeometry(sharedPrototype)).toBe(true);
   });
 });

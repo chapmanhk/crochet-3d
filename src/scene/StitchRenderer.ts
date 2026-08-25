@@ -80,7 +80,12 @@ export class StitchRenderer {
     const existing = this.segments.get(key);
     if (existing) {
       this.group.remove(existing);
-      this.disposeSegmentGroup(existing, renderData.mode);
+      const existingMode = existing.children.some(
+        (child) => child instanceof THREE.InstancedMesh,
+      )
+        ? 'instanced'
+        : 'merged';
+      this.disposeSegmentGroup(existing, existingMode);
     }
 
     const segmentGroup =
