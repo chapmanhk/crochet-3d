@@ -17,9 +17,9 @@ Gherkin feature files describe **what crochet-3d should do** from a crocheter's 
 
 | Constant / behavior | Value / rule | Source |
 |---------------------|--------------|--------|
-| Canvas background | `#f7f0e6` warm flat fill (no perspective grid) | `SCENE_BACKGROUND` in `CrochetScene.tsx`, `--scene-background` in `styles.css` |
+| Canvas background | `#f7f0e6` warm flat fill (no perspective grid) | `SCENE_BACKGROUND` in `src/app/sceneConstants.ts`, mirrored in `CrochetScene.tsx` for chunk split, `--scene-background` in `styles.css` |
 | Yarn fill color | `0xd98952` | `STITCH_YARN_COLOR` in `stitchMaterials.ts` |
-| Outline style | Screen-space stroke (~2.5 px), darker yarn tone, one outline per yarn strand | `createOutlinedStitch()` in `stitchMaterials.ts` |
+| Outline style | Screen-space stroke (~2.5 px), darker yarn tone; merged mesh pair per segment or instanced batches | `geometryMerge.ts`, `instancedStitches.ts`, legacy `createOutlinedStitch()` in `stitchMaterials.ts` |
 | Visual row height | `0.22` scene units per working row (engine `ROW_HEIGHT` = 1.2 is **not** used for stitch height) | `VISUAL_ROW_HEIGHT` in `stitchRealism.ts` |
 | SC topology | Inverted-V arc + two legs per stitch; top working-yarn bridge between neighbors | `buildWorkingStitchGeometry()` in `stitchGeometry.ts` |
 | Foundation topology | Chain loops + spine segments per chain stitch | `buildFoundationRowGeometry()` |
