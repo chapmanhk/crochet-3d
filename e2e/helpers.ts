@@ -36,7 +36,7 @@ export function toolbarButton(page: Page, name: string | RegExp) {
 }
 
 export async function openChainDialog(page: Page) {
-  await page.getByRole('button', { name: 'New foundation' }).click();
+  await toolbarButton(page, 'New foundation').click();
   await expect(chainDialog(page)).toBeVisible();
 }
 
