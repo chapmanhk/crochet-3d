@@ -117,6 +117,10 @@ export function getNextStep(
   return `${completeLabel} is complete. Choose ${advanceAction} to continue.`;
 }
 
+/**
+ * Screen-reader text for the next attachment target shown in the info panel.
+ * Returns null when no stitch can be placed or the target is not on a working row.
+ */
 export function getAttachmentTargetDescription(
   stitches: StitchNode[],
   nextAttachmentTargetId: string | null,

@@ -6,17 +6,22 @@ import { mergeStrandGeometries } from './geometryMerge';
 const OUTLINE_CREASE_ANGLE = Math.PI;
 const INITIAL_INSTANCE_CAPACITY = 16;
 
+/** One placed stitch body referencing a shared prototype geometry key and world matrix. */
 export interface StitchInstance {
   prototypeKey: string;
   matrix: THREE.Matrix4;
 }
 
+/** Prototype geometries plus instance transforms for one instanced working-row segment. */
 export interface InstancedStitchBatch {
   prototypes: Map<string, THREE.BufferGeometry>;
   instances: StitchInstance[];
   bridgeGeometries: THREE.BufferGeometry[];
 }
 
+/**
+ * Build a segment group from instanced outline/fill meshes per prototype, plus merged bridge strands.
+ */
 export function createInstancedOutlinedSegment(
   batch: InstancedStitchBatch,
   fillMaterial: THREE.MeshBasicMaterial,
@@ -52,6 +57,7 @@ export function createInstancedOutlinedSegment(
   return group;
 }
 
+/** Dispose instanced segment geometries while keeping shared prototype cache entries alive. */
 export function disposeInstancedOutlinedSegment(group: THREE.Group): void {
   const geometries = new Set<THREE.BufferGeometry>();
 

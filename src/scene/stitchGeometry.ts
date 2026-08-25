@@ -34,10 +34,13 @@ import {
   yarnOverHeights,
 } from './stitchRealism';
 
+/** Minimum flat working-row stitch count before switching from merged meshes to instancing. */
 export const INSTANCED_ROW_MIN_STITCHES = 4;
 
+/** How a yarn segment row is drawn: merged strand meshes or instanced stitch prototypes. */
 export type YarnSegmentRenderMode = 'merged' | 'instanced';
 
+/** Geometry payload for one yarn segment, either merged strands or an instanced batch. */
 export interface YarnSegmentRenderData {
   mode: YarnSegmentRenderMode;
   geometries?: THREE.BufferGeometry[];
@@ -901,6 +904,10 @@ function buildWorkingRowInstancedBatch(
   return { prototypes, instances, bridgeGeometries };
 }
 
+/**
+ * Resolve merged or instanced geometry for one yarn segment key (`row-N`, `join-N`).
+ * Flat working rows at or above `INSTANCED_ROW_MIN_STITCHES` prefer instanced rendering.
+ */
 export function buildYarnSegmentRenderData(
   key: string,
   stitches: StitchNode[],

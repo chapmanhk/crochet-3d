@@ -12,6 +12,10 @@ interface LazyDrapePreviewProps {
   enabled: boolean;
 }
 
+/**
+ * Lazy-loads the Rapier drape preview layer only when `enabled` is true.
+ * Keeps the `rapier` chunk off the critical path until the user toggles preview on.
+ */
 export function LazyDrapePreview({ stitches, enabled }: LazyDrapePreviewProps) {
   if (!enabled) {
     return null;

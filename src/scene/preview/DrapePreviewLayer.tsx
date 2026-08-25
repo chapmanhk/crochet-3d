@@ -10,6 +10,10 @@ interface DrapePreviewLayerProps {
   stitches: StitchNode[];
 }
 
+/**
+ * Optional Rapier physics proxy: ball colliders on working-row stitch positions.
+ * Illustrative hang feedback only — not stitch-accurate yarn simulation.
+ */
 export function DrapePreviewLayer({ stitches }: DrapePreviewLayerProps) {
   const nodes = useMemo(
     () =>

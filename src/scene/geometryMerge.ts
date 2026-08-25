@@ -4,6 +4,7 @@ import { toCreasedNormals } from 'three-stdlib';
 
 const OUTLINE_CREASE_ANGLE = Math.PI;
 
+/** Merge multiple strand tube geometries into one draw call. */
 export function mergeStrandGeometries(geometries: THREE.BufferGeometry[]): THREE.BufferGeometry {
   if (geometries.length === 0) {
     throw new Error('Cannot merge an empty geometry list.');
@@ -21,6 +22,7 @@ export function mergeStrandGeometries(geometries: THREE.BufferGeometry[]): THREE
   return merged;
 }
 
+/** Merge strand fill and creased-outline copies for outlined yarn segments. */
 export function mergeOutlinedStrands(geometries: THREE.BufferGeometry[]): {
   fill: THREE.BufferGeometry;
   outline: THREE.BufferGeometry;
@@ -34,6 +36,7 @@ export function mergeOutlinedStrands(geometries: THREE.BufferGeometry[]): {
   return { fill, outline };
 }
 
+/** Build a fill + outline mesh pair from merged strand geometries. */
 export function createMergedOutlinedMeshes(
   geometries: THREE.BufferGeometry[],
   fillMaterial: THREE.MeshBasicMaterial,
@@ -54,6 +57,7 @@ export function createMergedOutlinedMeshes(
   return group;
 }
 
+/** Dispose merged segment meshes and their non-cached geometries. */
 export function disposeMergedOutlinedMeshes(group: THREE.Group): void {
   const geometries = new Set<THREE.BufferGeometry>();
 

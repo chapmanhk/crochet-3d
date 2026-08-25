@@ -5,6 +5,7 @@ const CrochetScene = lazy(() =>
   import('@scene/CrochetScene').then((module) => ({ default: module.CrochetScene })),
 );
 
+/** Lazy-loads the Three.js canvas so `scene`, `three`, and `r3f` chunks defer until needed. */
 export function LazyCrochetScene() {
   return (
     <Suspense
