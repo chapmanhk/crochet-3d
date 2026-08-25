@@ -10,6 +10,17 @@ function isMagicRing(foundationType: FoundationType): boolean {
   return foundationType === FoundationType.MAGIC_RING;
 }
 
+function formatAttachmentTargetRowLabel(
+  target: StitchNode,
+  foundationType: FoundationType,
+): string {
+  if (isMagicRing(foundationType)) {
+    return `round ${target.row}`;
+  }
+
+  return target.row === 0 ? 'foundation' : `row ${target.row}`;
+}
+
 export function getAdvanceActionLabel(
   foundationType: FoundationType = FoundationType.CHAIN,
 ): string {
@@ -139,11 +150,7 @@ export function getAttachmentTargetDescription(
 
   const stitchName = getWorkingStitchName(selectedStitchType);
   const workUnit = isMagicRing(foundationType) ? 'round' : 'row';
-  const targetRowLabel = isMagicRing(foundationType)
-    ? `round ${target.row}`
-    : target.row === 0
-      ? 'foundation'
-      : `row ${target.row}`;
+  const targetRowLabel = formatAttachmentTargetRowLabel(target, foundationType);
   const columnIndex = target.column + 1;
   const rowStitches = stitches.filter((stitch) => stitch.row === target.row);
   const totalInRow = rowStitches.length;

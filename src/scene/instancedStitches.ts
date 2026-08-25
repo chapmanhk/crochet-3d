@@ -1,9 +1,8 @@
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three-stdlib';
 import { isCachedPrototypeGeometry } from './prototypeGeometryCache';
-import { mergeStrandGeometries } from './geometryMerge';
-
-const OUTLINE_CREASE_ANGLE = Math.PI;
+import { addOutlinedMeshes, mergeStrandGeometries } from './geometryMerge';
+import { OUTLINE_CREASE_ANGLE } from './stitchMaterials';
 const INITIAL_INSTANCE_CAPACITY = 16;
 
 /** One placed stitch body referencing a shared prototype geometry key and world matrix. */
@@ -42,16 +41,9 @@ export function createInstancedOutlinedSegment(
   }
 
   if (batch.bridgeGeometries.length > 0) {
-    const mergedBridges = mergeStrandGeometries(batch.bridgeGeometries);
-    const outlineBridges = toCreasedNormals(mergedBridges.clone(), OUTLINE_CREASE_ANGLE);
-
-    const outlineMesh = new THREE.Mesh(outlineBridges, outlineMaterial);
-    outlineMesh.renderOrder = 0;
-    const fillMesh = new THREE.Mesh(mergedBridges, fillMaterial);
-    fillMesh.renderOrder = 1;
-
-    group.add(outlineMesh);
-    group.add(fillMesh);
+    const fill = mergeStrandGeometries(batch.bridgeGeometries);
+    const outline = toCreasedNormals(fill.clone(), OUTLINE_CREASE_ANGLE);
+    addOutlinedMeshes(group, fill, outline, fillMaterial, outlineMaterial);
   }
 
   return group;
@@ -79,10 +71,13 @@ function groupInstancesByPrototype(
 ): Map<string, THREE.Matrix4[]> {
   const grouped = new Map<string, THREE.Matrix4[]>();
 
-  for (const instance of instances) {
-    const matrices = grouped.get(instance.prototypeKey) ?? [];
-    matrices.push(instance.matrix);
-    grouped.set(instance.prototypeKey, matrices);
+  for (const { prototypeKey, matrix } of instances) {
+    const matrices = grouped.get(prototypeKey);
+    if (matrices) {
+      matrices.push(matrix);
+    } else {
+      grouped.set(prototypeKey, [matrix]);
+    }
   }
 
   return grouped;

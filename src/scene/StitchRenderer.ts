@@ -21,6 +21,10 @@ import {
   updateOutlineMaterialSize,
 } from './stitchMaterials';
 
+function segmentUsesInstancing(segmentGroup: THREE.Group): boolean {
+  return segmentGroup.children.some((child) => child instanceof THREE.InstancedMesh);
+}
+
 export class StitchRenderer {
   readonly group = new THREE.Group();
   private readonly segments = new Map<string, THREE.Group>();
@@ -80,36 +84,34 @@ export class StitchRenderer {
     const existing = this.segments.get(key);
     if (existing) {
       this.group.remove(existing);
-      const existingMode = existing.children.some(
-        (child) => child instanceof THREE.InstancedMesh,
-      )
-        ? 'instanced'
-        : 'merged';
-      this.disposeSegmentGroup(existing, existingMode);
+      this.disposeSegmentGroup(existing);
     }
 
-    const segmentGroup =
-      renderData.mode === 'instanced' && renderData.instanced
-        ? createInstancedOutlinedSegment(
-            renderData.instanced,
-            this.fillMaterial,
-            this.outlineMaterial,
-          )
-        : createMergedOutlinedMeshes(
-            renderData.geometries ?? [],
-            this.fillMaterial,
-            this.outlineMaterial,
-          );
-
+    const segmentGroup = this.createSegmentGroup(renderData);
     this.segments.set(key, segmentGroup);
     this.group.add(segmentGroup);
   }
 
-  private disposeSegmentGroup(
-    segmentGroup: THREE.Group,
-    mode: 'merged' | 'instanced',
-  ): void {
-    if (mode === 'instanced') {
+  private createSegmentGroup(
+    renderData: NonNullable<ReturnType<typeof buildYarnSegmentRenderData>>,
+  ): THREE.Group {
+    if (renderData.mode === 'instanced' && renderData.instanced) {
+      return createInstancedOutlinedSegment(
+        renderData.instanced,
+        this.fillMaterial,
+        this.outlineMaterial,
+      );
+    }
+
+    return createMergedOutlinedMeshes(
+      renderData.geometries ?? [],
+      this.fillMaterial,
+      this.outlineMaterial,
+    );
+  }
+
+  private disposeSegmentGroup(segmentGroup: THREE.Group): void {
+    if (segmentUsesInstancing(segmentGroup)) {
       disposeInstancedOutlinedSegment(segmentGroup);
       return;
     }
@@ -124,10 +126,7 @@ export class StitchRenderer {
     }
 
     this.group.remove(segmentGroup);
-    const hasInstancedMesh = segmentGroup.children.some(
-      (child) => child instanceof THREE.InstancedMesh,
-    );
-    this.disposeSegmentGroup(segmentGroup, hasInstancedMesh ? 'instanced' : 'merged');
+    this.disposeSegmentGroup(segmentGroup);
     this.segments.delete(key);
     this.fingerprints.delete(key);
   }

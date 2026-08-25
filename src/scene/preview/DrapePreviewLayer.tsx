@@ -15,27 +15,24 @@ interface DrapePreviewLayerProps {
  * Illustrative hang feedback only — not stitch-accurate yarn simulation.
  */
 export function DrapePreviewLayer({ stitches }: DrapePreviewLayerProps) {
-  const nodes = useMemo(
-    () =>
-      stitches
-        .filter((stitch) => stitch.row > 0)
-        .map((stitch) => ({
-          id: stitch.id,
-          position: [
-            stitch.position.x,
-            stitch.row * VISUAL_ROW_HEIGHT + 0.05,
-            stitch.position.z,
-          ] as [number, number, number],
-        })),
-    [stitches],
-  );
+  const nodes = useMemo(() => {
+    const drapedStitches = stitches.filter((stitch) => stitch.row > 0);
+    return drapedStitches.map((stitch) => ({
+      id: stitch.id,
+      position: [
+        stitch.position.x,
+        stitch.row * VISUAL_ROW_HEIGHT + 0.05,
+        stitch.position.z,
+      ] as [number, number, number],
+    }));
+  }, [stitches]);
 
   if (nodes.length === 0) {
     return null;
   }
 
   return (
-    <Physics gravity={[0, -2.4, 0]} timeStep="vary" paused={false}>
+    <Physics gravity={[0, -2.4, 0]} timeStep="vary">
       {nodes.map((node) => (
         <RigidBody
           key={node.id}

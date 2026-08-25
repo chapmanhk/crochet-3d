@@ -30,8 +30,10 @@ function SceneControls() {
 }
 
 export function CrochetScene() {
-  const stitches = usePatternStore((state) => state.stitches);
-  const drapePreviewEnabled = usePatternStore((state) => state.drapePreviewEnabled);
+  const { stitches, drapePreviewEnabled } = usePatternStore((state) => ({
+    stitches: state.stitches,
+    drapePreviewEnabled: state.drapePreviewEnabled,
+  }));
 
   return (
     <Canvas
