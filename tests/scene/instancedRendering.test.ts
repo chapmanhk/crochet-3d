@@ -43,6 +43,43 @@ describe('instanced stitch rendering', () => {
     expect(renderData?.geometries?.length).toBeGreaterThan(1);
   });
 
+  it('uses merged rendering for small working rows below the instanced threshold', () => {
+    const pattern = new Pattern();
+    pattern.addFoundationChain(3);
+    pattern.startNewRow();
+    for (let index = 0; index < 3; index += 1) {
+      pattern.addSingleCrochet();
+    }
+
+    const renderData = buildYarnSegmentRenderData(
+      'row-1',
+      pattern.getStitches(),
+      FoundationType.CHAIN,
+    );
+
+    expect(renderData?.mode).toBe('merged');
+    expect(renderData?.geometries?.length).toBeGreaterThan(0);
+  });
+
+  it('keeps magic ring working rows on merged geometry even at scale', () => {
+    const stitchCount = INSTANCED_ROW_MIN_STITCHES + 5;
+    const pattern = new Pattern();
+    pattern.addMagicRing(stitchCount);
+    pattern.startNewRow();
+    for (let index = 0; index < stitchCount; index += 1) {
+      pattern.addSingleCrochet();
+    }
+
+    const renderData = buildYarnSegmentRenderData(
+      'row-1',
+      pattern.getStitches(),
+      FoundationType.MAGIC_RING,
+    );
+
+    expect(renderData?.mode).toBe('merged');
+    expect(renderData?.geometries?.length).toBeGreaterThan(0);
+  });
+
   it('reuses stitch prototypes across instances', () => {
     const pattern = new Pattern();
     pattern.addFoundationChain(10);

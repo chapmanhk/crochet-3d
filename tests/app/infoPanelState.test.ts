@@ -80,4 +80,57 @@ describe('infoPanelState', () => {
       ),
     ).toContain('attaches to stitch 1 of 2 in foundation');
   });
+
+  it('uses round labels for magic ring attachment targets', () => {
+    const stitches = [
+      {
+        id: 'ring-1',
+        type: StitchType.CHAIN,
+        row: 0,
+        column: 0,
+        attachToId: null,
+        position: { x: 0, y: 0, z: 0 },
+      },
+      {
+        id: 'ring-2',
+        type: StitchType.CHAIN,
+        row: 0,
+        column: 1,
+        attachToId: null,
+        position: { x: 1, y: 0, z: 0 },
+      },
+    ];
+
+    expect(
+      getAttachmentTargetDescription(
+        stitches,
+        'ring-1',
+        StitchType.SINGLE_CROCHET,
+        1,
+        FoundationType.MAGIC_RING,
+      ),
+    ).toContain('in round 0 (round 1)');
+  });
+
+  it('names the selected stitch type in the attachment target description', () => {
+    const stitches = [
+      {
+        id: 'chain-1',
+        type: StitchType.CHAIN,
+        row: 0,
+        column: 0,
+        attachToId: null,
+        position: { x: 0, y: 0, z: 0 },
+      },
+    ];
+
+    expect(
+      getAttachmentTargetDescription(
+        stitches,
+        'chain-1',
+        StitchType.HALF_DOUBLE_CROCHET,
+        1,
+      ),
+    ).toContain('Next half double crochet attaches');
+  });
 });
