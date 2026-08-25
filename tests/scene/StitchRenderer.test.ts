@@ -27,8 +27,9 @@ describe('StitchRenderer', () => {
 
     expect(renderer.group.children).toHaveLength(1);
     const segmentGroup = renderer.group.children[0] as THREE.Group;
-    expect(segmentGroup.children.length).toBeGreaterThan(2);
-    expect(segmentGroup.children.length % 2).toBe(0);
+    expect(segmentGroup.children.length).toBe(2);
+    expect(segmentGroup.children[0]).toBeInstanceOf(THREE.Mesh);
+    expect(segmentGroup.children[1]).toBeInstanceOf(THREE.Mesh);
   });
 
   it('sync removes stale segments when the pattern shrinks', () => {

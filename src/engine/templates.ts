@@ -4,7 +4,7 @@ import {
   type PatternSnapshot,
 } from './types';
 
-export type TemplateId = 'coaster' | 'swatch';
+export type TemplateId = 'coaster' | 'swatch' | 'large-swatch';
 
 export interface PatternTemplate {
   id: TemplateId;
@@ -22,6 +22,11 @@ export const PATTERN_TEMPLATES: PatternTemplate[] = [
     id: 'swatch',
     name: 'Swatch',
     description: 'Chain 8 with sc, hdc, and dc rows for practice.',
+  },
+  {
+    id: 'large-swatch',
+    name: 'Large swatch',
+    description: 'Chain 20 with 5 rows of single crochet for scale testing.',
   },
 ];
 
@@ -60,6 +65,19 @@ export function createTemplateSnapshot(templateId: TemplateId): PatternSnapshot 
         pattern.startNewRow();
         for (let stitch = 0; stitch < 8; stitch += 1) {
           pattern.addWorkingStitch(StitchType.DOUBLE_CROCHET);
+        }
+      });
+    case 'large-swatch':
+      return buildSnapshot((pattern) => {
+        pattern.addFoundationChain(20);
+        pattern.startNewRow();
+        for (let row = 0; row < 5; row += 1) {
+          for (let stitch = 0; stitch < 20; stitch += 1) {
+            pattern.addWorkingStitch(StitchType.SINGLE_CROCHET);
+          }
+          if (row < 4) {
+            pattern.startNewRow();
+          }
         }
       });
     default:

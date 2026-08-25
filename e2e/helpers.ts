@@ -84,7 +84,7 @@ export async function openTemplateDialog(page: Page) {
 
 export async function loadTemplate(page: Page, name: string) {
   await openTemplateDialog(page);
-  await page.getByRole('button', { name: new RegExp(name, 'i') }).click();
+  await page.getByRole('button', { name, exact: true }).click();
 }
 
 export async function createMagicRing(page: Page, stitchCount: number) {

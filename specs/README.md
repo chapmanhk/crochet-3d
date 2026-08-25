@@ -39,8 +39,9 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | `click-to-place.feature` | Click attachment points in 3D canvas to place SC |
 | `pattern-editing.feature` | Undo and redo stitch placements |
 | `stitch-types.feature` | HDC/DC, increase/decrease |
-| `templates.feature` | Coaster and swatch templates |
+| `templates.feature` | Coaster, swatch, and large swatch templates |
 | `persistence.feature` | Save/load JSON, export/copy instructions |
+| `scale-preview.feature` | Instanced rendering, drape preview, attachment a11y |
 | `deferred.feature` | Roadmap items tagged `@deferred` (not yet implemented) |
 
 ## Scenario index
@@ -101,6 +102,11 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | Saved pattern round-trips through JSON export and import | `tests/engine/persistence.test.ts` — round-trips a saved pattern… |
 | Unsupported pattern file version is rejected | `tests/engine/persistence.test.ts` — rejects unsupported file versions |
 | Pattern file with duplicate stitch ids is rejected | `tests/engine/persistence.test.ts` — rejects duplicate stitch ids |
+| Large pattern renders without blocking the toolbar | `e2e/scale-preview.spec.ts` — Large pattern renders… |
+| Drape preview can be toggled on and off | `e2e/scale-preview.spec.ts` — Drape preview can be toggled… |
+| Attachment target is announced in the info panel | `e2e/scale-preview.spec.ts` — Attachment target is announced… |
+| Instanced row rendering batches stitches by prototype | `tests/scene/instancedRendering.test.ts` — uses instanced rendering… |
+| Merged segment geometry reduces mesh count | `tests/scene/instancedRendering.test.ts` — merges foundation row… |
 
 ## Deferred scenarios
 

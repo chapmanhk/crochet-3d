@@ -16,4 +16,9 @@ describe('templates', () => {
     expect(instructions.some((line) => line.includes('hdc'))).toBe(true);
     expect(instructions.some((line) => line.includes('dc'))).toBe(true);
   });
+
+  it('creates a large swatch template for scale testing', () => {
+    const snapshot = createTemplateSnapshot('large-swatch');
+    expect(snapshot.stitches.length).toBeGreaterThanOrEqual(100);
+  });
 });

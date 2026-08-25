@@ -15,9 +15,22 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          three: ['three'],
-          r3f: ['@react-three/fiber', '@react-three/drei'],
+        manualChunks(id) {
+          if (id.includes('node_modules/@dimforge/rapier') || id.includes('@react-three/rapier')) {
+            return 'rapier';
+          }
+          if (id.includes('node_modules/three')) {
+            return 'three';
+          }
+          if (
+            id.includes('node_modules/@react-three/fiber') ||
+            id.includes('node_modules/@react-three/drei')
+          ) {
+            return 'r3f';
+          }
+          if (id.includes('/src/scene/')) {
+            return 'scene';
+          }
         },
       },
     },

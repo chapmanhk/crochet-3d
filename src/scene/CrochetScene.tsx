@@ -1,7 +1,9 @@
 import { OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useSyncExternalStore } from 'react';
+import { usePatternStore } from '@store/patternStore';
 import { AttachmentPointPicker } from './AttachmentPointPicker';
+import { LazyDrapePreview } from './preview/LazyDrapePreview';
 import { SceneStitchRenderer } from './SceneStitchRenderer';
 
 export const SCENE_BACKGROUND = '#f7f0e6';
@@ -27,6 +29,9 @@ function SceneControls() {
 }
 
 export function CrochetScene() {
+  const stitches = usePatternStore((state) => state.stitches);
+  const drapePreviewEnabled = usePatternStore((state) => state.drapePreviewEnabled);
+
   return (
     <Canvas
       camera={{ position: [3.2, 2.2, 5.5], fov: 42 }}
@@ -36,6 +41,7 @@ export function CrochetScene() {
       <color attach="background" args={[SCENE_BACKGROUND]} />
       <SceneControls />
       <SceneStitchRenderer />
+      <LazyDrapePreview stitches={stitches} enabled={drapePreviewEnabled} />
       <AttachmentPointPicker />
     </Canvas>
   );

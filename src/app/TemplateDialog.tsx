@@ -39,6 +39,7 @@ export function TemplateDialog({ open, onClose, onSelect }: TemplateDialogProps)
             <button
               type="button"
               className="template-card"
+              aria-label={template.name}
               onClick={() => onSelect(template.id)}
             >
               <strong>{template.name}</strong>
