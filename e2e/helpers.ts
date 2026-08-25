@@ -3,8 +3,10 @@ import { expect, type Page } from '@playwright/test';
 export async function gotoApp(page: Page) {
   await page.addInitScript(() => {
     window.localStorage.setItem('crochet-3d-onboarding-seen', 'true');
+    window.localStorage.removeItem('crochet-3d-autosave');
   });
   await page.goto('/');
+  await page.getByRole('toolbar', { name: 'Pattern tools' }).waitFor({ state: 'visible' });
 }
 
 export function infoPanel(page: Page) {
