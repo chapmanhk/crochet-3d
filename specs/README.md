@@ -105,8 +105,8 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | Large pattern renders without blocking the toolbar | `e2e/scale-preview.spec.ts` — Large pattern renders… |
 | Drape preview can be toggled on and off | `e2e/scale-preview.spec.ts` — Drape preview can be toggled… |
 | Attachment target is announced in the info panel | `e2e/scale-preview.spec.ts` — Attachment target is announced… |
-| Instanced row rendering batches stitches by prototype | `tests/scene/instancedRendering.test.ts` — uses instanced rendering… |
-| Merged segment geometry reduces mesh count | `tests/scene/instancedRendering.test.ts` — merges foundation row… |
+| Instanced row rendering batches stitches by prototype | `tests/scene/instancedRendering.test.ts` — reuses stitch prototypes… |
+| Merged segment geometry reduces mesh count | `tests/scene/instancedRendering.test.ts` — merges foundation row…; mesh pair in `StitchRenderer.test.ts` |
 
 ## Deferred scenarios
 
