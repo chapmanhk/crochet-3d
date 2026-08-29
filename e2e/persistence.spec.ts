@@ -92,6 +92,9 @@ test.describe('Pattern persistence', () => {
 
     await page.evaluate((contents) => {
       const input = document.querySelector('input[type="file"][accept*="json"]') as HTMLInputElement;
+      if (!input) {
+        throw new Error('Missing pattern file input');
+      }
       const file = new File([contents], 'pattern.json', { type: 'application/json' });
       const dataTransfer = new DataTransfer();
       dataTransfer.items.add(file);

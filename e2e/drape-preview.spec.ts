@@ -8,6 +8,11 @@ import {
 } from './helpers';
 
 test.describe('Drape preview yarn constraints', () => {
+  test('Drape preview is disabled without a pattern', async ({ page }) => {
+    await gotoApp(page);
+    await expect(drapePreviewToggle(page)).toBeDisabled();
+  });
+
   test('Drape preview with yarn constraints remains toggleable', async ({ page }) => {
     await gotoApp(page);
     await createFoundationChain(page, 6);

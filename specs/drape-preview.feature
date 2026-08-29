@@ -1,5 +1,5 @@
 # Drape preview — yarn constraint simulation (scene layer)
-# Physics stays in src/scene/preview/; engine placement rules unchanged.
+# Rapier spring-linked stitch proxies (loop + post constraints) in src/scene/preview/; engine placement rules unchanged.
 
 Feature: Drape preview yarn constraints
   As a crocheter previewing how fabric might hang

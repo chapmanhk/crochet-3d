@@ -11,6 +11,10 @@ describe('buildDrapeGraph', () => {
     resetIdCounter();
   });
 
+  it('returns an empty graph for no stitches', () => {
+    expect(buildDrapeGraph([])).toEqual({ nodes: [], edges: [] });
+  });
+
   it('connects working stitches to parent loop anchors', () => {
     const pattern = new Pattern();
     pattern.addFoundationChain(4);
@@ -44,6 +48,21 @@ describe('buildDrapeGraph', () => {
     expect(postEdges.every((edge) => edge.stiffness === DRAPE_SPRING_TUNING.post.stiffness)).toBe(
       true,
     );
+  });
+
+  it('links decreases to secondary parent loop anchors', () => {
+    const pattern = new Pattern();
+    pattern.addFoundationChain(4);
+    pattern.startNewRow();
+    pattern.addSingleCrochet();
+    pattern.addSingleCrochet();
+    pattern.addDecrease(StitchType.SINGLE_CROCHET);
+
+    const graph = buildDrapeGraph(pattern.getStitches());
+    const secondaryEdges = graph.edges.filter((edge) => edge.kind === 'secondary');
+
+    expect(secondaryEdges).toHaveLength(1);
+    expect(secondaryEdges[0]!.stiffness).toBe(DRAPE_SPRING_TUNING.secondary.stiffness);
   });
 
   it('caps simulation nodes for very large patterns', () => {

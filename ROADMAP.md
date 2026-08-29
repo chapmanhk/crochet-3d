@@ -179,6 +179,7 @@ When pulling an item from this roadmap into development:
 
 | Date | Change |
 |------|--------|
+| 2026-08-29 | Drape preview yarn constraints (loop/post springs); E2E hardening (shared fixtures, autosave clear, toolbar retry) |
 | 2026-08-25 | Phase 4 shipped: instanced meshes, code splitting, Rapier drape preview, attachment a11y |
 | 2026-08-24 | Phase 3 shipped: save/load JSON, export/copy instructions, import validation, autosave |
 | 2026-08-24 | Realism review fixes + per-strand outlines shipped |

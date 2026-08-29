@@ -9,9 +9,13 @@ Gherkin feature files describe **what crochet-3d should do** from a crocheter's 
 3. **Implement** — code changes in `src/` follow approved specs
 4. **Verify** — `@e2e` scenarios → Playwright; `@engine` scenarios → Vitest
 
+### E2E conventions
+
+Playwright proof uses shared setup in `e2e/test.ts` (onboarding suppressed via init script) and `e2e/helpers.ts` (`gotoApp` clears autosave and waits for toolbar; `waitForAppReady` waits out lazy 3D load; `clickToolbarButton` retries flaky toolbar clicks). These mechanics are not spelled out in Gherkin steps.
+
 ## Scope
 
-**Behavioral specs** (`*.feature`) cover crocheter-observable UI: toolbar, panels, dialogs, status text, counts, and guidance. They do **not** assert yarn topology, colors, outline stroke, or canvas fill — those are scene-layer concerns.
+**Behavioral specs** (`*.feature`) cover crocheter-observable UI: toolbar, panels, dialogs, status text, counts, and guidance. They do **not** assert yarn fill, outline stroke, or canvas fill — those are scene-layer concerns (see table below). Drape graph joint topology in `drape-preview.feature` is reviewed in Gherkin (`@engine`) but proven in `tests/scene/buildDrapeGraph.test.ts`, not Playwright.
 
 **Scene visual contract** (implemented in `src/scene/`, verified in `tests/scene/`):
 
@@ -44,7 +48,7 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | `templates.feature` | Coaster, swatch, and large swatch templates |
 | `persistence.feature` | Save/load JSON, export/copy instructions |
 | `scale-preview.feature` | Instanced rendering, attachment a11y, large-pattern performance |
-| `drape-preview.feature` | Yarn constraint springs for drape simulation |
+| `drape-preview.feature` | Yarn constraint springs (`@engine`) + toggle behavior (`@e2e`) |
 | `deferred.feature` | Roadmap items tagged `@deferred` (not yet implemented) |
 
 ## Scenario index
@@ -128,6 +132,7 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | Drape graph connects same-row neighbors with post springs | `tests/scene/buildDrapeGraph.test.ts` — links same-row neighbors… |
 | Drape graph caps simulation size for very large patterns | `tests/scene/buildDrapeGraph.test.ts` — caps simulation nodes… |
 | Drape preview with yarn constraints remains toggleable | `e2e/drape-preview.spec.ts` — Drape preview with yarn constraints… |
+| Drape preview is disabled without a pattern | `e2e/drape-preview.spec.ts` — Drape preview is disabled without a pattern |
 
 ## Deferred scenarios
 
