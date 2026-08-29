@@ -1,6 +1,7 @@
 import { OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useSyncExternalStore } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { usePatternStore } from '@store/patternStore';
 import { AttachmentPointPicker } from './AttachmentPointPicker';
 import { LazyDrapePreview } from './LazyDrapePreview';
@@ -30,10 +31,12 @@ function SceneControls() {
 }
 
 export function CrochetScene() {
-  const { stitches, drapePreviewEnabled } = usePatternStore((state) => ({
-    stitches: state.stitches,
-    drapePreviewEnabled: state.drapePreviewEnabled,
-  }));
+  const { stitches, drapePreviewEnabled } = usePatternStore(
+    useShallow((state) => ({
+      stitches: state.stitches,
+      drapePreviewEnabled: state.drapePreviewEnabled,
+    })),
+  );
 
   return (
     <Canvas
