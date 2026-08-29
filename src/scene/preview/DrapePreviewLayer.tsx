@@ -37,7 +37,7 @@ export function DrapePreviewLayer({ stitches }: DrapePreviewLayerProps) {
   }
 
   return (
-    <Physics gravity={[0, -2.8, 0]} timeStep="vary">
+    <Physics gravity={[0, -2.8, 0]} timeStep={1 / 60}>
       {graph.nodes.map((node) => {
         const dynamicProps = node.fixed
           ? {}
@@ -56,14 +56,22 @@ export function DrapePreviewLayer({ stitches }: DrapePreviewLayerProps) {
           </RigidBody>
         );
       })}
-      {graph.edges.map((edge) => (
-        <DrapeSpringEdge
-          key={edge.id}
-          bodyA={nodeRefs.get(edge.fromId)! as RefObject<RapierRigidBody>}
-          bodyB={nodeRefs.get(edge.toId)! as RefObject<RapierRigidBody>}
-          edge={edge}
-        />
-      ))}
+      {graph.edges.map((edge) => {
+        const bodyA = nodeRefs.get(edge.fromId);
+        const bodyB = nodeRefs.get(edge.toId);
+        if (!bodyA || !bodyB) {
+          return null;
+        }
+
+        return (
+          <DrapeSpringEdge
+            key={edge.id}
+            bodyA={bodyA as RefObject<RapierRigidBody>}
+            bodyB={bodyB as RefObject<RapierRigidBody>}
+            edge={edge}
+          />
+        );
+      })}
     </Physics>
   );
 }

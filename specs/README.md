@@ -24,6 +24,8 @@ Gherkin feature files describe **what crochet-3d should do** from a crocheter's 
 | SC topology | Inverted-V arc + two legs per stitch; top working-yarn bridge between neighbors | `buildWorkingStitchGeometry()` in `stitchGeometry.ts` |
 | Foundation topology | Chain loops + spine segments per chain stitch | `buildFoundationRowGeometry()` |
 | Segment sync | Row-level yarn segments + join segments; fingerprint diff | `StitchRenderer.sync()` |
+| Drape simulation cap | 200 dynamic stitch nodes max; whole rows only | `MAX_DRAPE_SIMULATION_NODES` in `buildDrapeGraph.ts` |
+| Drape spring tuning | Post / loop / secondary stiffness + damping | `DRAPE_SPRING_TUNING` in `buildDrapeGraph.ts` |
 
 Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 
@@ -41,7 +43,8 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | `stitch-types.feature` | HDC/DC, increase/decrease |
 | `templates.feature` | Coaster, swatch, and large swatch templates |
 | `persistence.feature` | Save/load JSON, export/copy instructions |
-| `scale-preview.feature` | Instanced rendering, drape preview, attachment a11y |
+| `scale-preview.feature` | Instanced rendering, attachment a11y, large-pattern performance |
+| `drape-preview.feature` | Yarn constraint springs for drape simulation |
 | `deferred.feature` | Roadmap items tagged `@deferred` (not yet implemented) |
 
 ## Scenario index
@@ -103,10 +106,28 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | Unsupported pattern file version is rejected | `tests/engine/persistence.test.ts` — rejects unsupported file versions |
 | Pattern file with duplicate stitch ids is rejected | `tests/engine/persistence.test.ts` — rejects duplicate stitch ids |
 | Large pattern renders without blocking the toolbar | `e2e/scale-preview.spec.ts` — Large pattern renders… |
-| Drape preview can be toggled on and off | `e2e/scale-preview.spec.ts` — Drape preview can be toggled… |
 | Attachment target is announced in the info panel | `e2e/scale-preview.spec.ts` — Attachment target is announced… |
 | Instanced row rendering batches stitches by prototype | `tests/scene/instancedRendering.test.ts` — reuses stitch prototypes… |
 | Merged segment geometry reduces mesh count | `tests/scene/instancedRendering.test.ts` — merges foundation row…; mesh pair in `StitchRenderer.test.ts` |
+| Yarn color picker updates the selected color | `e2e/app.spec.ts` — Yarn color picker… |
+| Create a magic ring foundation | `e2e/app.spec.ts` — Create a magic ring foundation |
+| Work multiple rounds on a magic ring | `e2e/app.spec.ts` — Work multiple rounds on a magic ring |
+| Magic ring stitch count must be within allowed bounds | `tests/engine/Pattern.test.ts` — magic ring bounds |
+| Load a coaster template | `e2e/app.spec.ts` — Load a coaster template |
+| Load a swatch template | `e2e/app.spec.ts` — Load a swatch template |
+| Place half double crochet stitches | `e2e/app.spec.ts` — Place half double crochet stitches |
+| Place double crochet stitches | `e2e/app.spec.ts` — Place double crochet stitches |
+| Half double crochet attaches like single crochet | `tests/engine/Pattern.test.ts` — HDC placement |
+| Increase places two stitches in one parent slot | `e2e/app.spec.ts` — Increase places two stitches… |
+| Decrease consumes two parent slots | `e2e/app.spec.ts` — Decrease consumes two parent slots |
+| Decrease uses two parent stitches | `tests/engine/stitchTypes.test.ts` — places a decrease across two parent stitches |
+| Undo is disabled with nothing to undo | `e2e/app.spec.ts` — Undo is disabled… |
+| Reset clears undo and redo history | `e2e/app.spec.ts` — Reset clears undo and redo history |
+| No attachment point when SC cannot be placed | `e2e/app.spec.ts` — No attachment point… |
+| Drape graph connects stitches to parent loop anchors | `tests/scene/buildDrapeGraph.test.ts` — connects working stitches… |
+| Drape graph connects same-row neighbors with post springs | `tests/scene/buildDrapeGraph.test.ts` — links same-row neighbors… |
+| Drape graph caps simulation size for very large patterns | `tests/scene/buildDrapeGraph.test.ts` — caps simulation nodes… |
+| Drape preview with yarn constraints remains toggleable | `e2e/drape-preview.spec.ts` — Drape preview with yarn constraints… |
 
 ## Deferred scenarios
 
@@ -117,7 +138,7 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 ## Tags
 
 - `@e2e` — feature-level tag; proven by Playwright tests in `e2e/`
-- `@engine` — proven by Vitest tests in `tests/engine/` and `tests/store/`
+- `@engine` — proven by Vitest tests in `tests/engine/`, `tests/store/`, and `tests/scene/`
 - `@deferred` — on the [product roadmap](../ROADMAP.md); no implementation until scheduled
 - `@wip` — specified and in active development
 

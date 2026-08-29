@@ -105,7 +105,7 @@ Expand what patterns can express while keeping the engine testable.
 |------------|-------|-------|
 | Instanced stitch meshes | `scale-preview.feature` | `InstancedMesh` batches for flat working rows ≥4 stitches; merged geometry for foundation/joins |
 | Three.js code splitting | `scale-preview.feature` | Lazy scene load; separate `scene`, `three`, `r3f`, `rapier` chunks |
-| Rapier drape preview | `scale-preview.feature` | Optional toolbar toggle; lazy-loaded physics proxy layer |
+| Rapier drape preview | `drape-preview.feature`, `scale-preview.feature` | Optional toolbar toggle; spring-linked Rapier proxy layer |
 | Stitch-level attachment description | `scale-preview.feature` | `aria-live` info panel sync for next attachment target |
 
 **Exit criteria met:** Large swatch template (120 stitches) renders with interactive toolbar; orbit controls remain responsive.

@@ -137,3 +137,19 @@ export async function startRowOne(page: Page, chainLength: number) {
 export function attachmentPoint(page: Page) {
   return page.getByTestId('attachment-point');
 }
+
+export function drapePreviewToggle(page: Page) {
+  return page.getByTestId('drape-preview-toggle');
+}
+
+export async function toggleDrapePreview(page: Page, enabled: boolean) {
+  const toggle = drapePreviewToggle(page);
+  const target = enabled ? 'true' : 'false';
+  if ((await toggle.getAttribute('aria-pressed')) !== target) {
+    await expect(async () => {
+      await toggle.click({ timeout: 2_000 });
+    }).toPass({ timeout: 15_000 });
+  }
+  await expect(toggle).toHaveAttribute('aria-pressed', target);
+  await expect(toggle).toHaveText(enabled ? 'Drape preview on' : 'Drape preview off');
+}

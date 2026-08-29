@@ -1,6 +1,5 @@
 import type { StitchNode } from '@engine/index';
 import { groupStitchesByRow } from '@engine/index';
-import { VISUAL_ROW_HEIGHT } from '../stitchRealism';
 
 export type DrapeEdgeKind = 'post' | 'loop' | 'secondary';
 
@@ -35,7 +34,22 @@ export const DRAPE_SPRING_TUNING = {
 export const MAX_DRAPE_SIMULATION_NODES = 200;
 
 function drapePosition(stitch: StitchNode): [number, number, number] {
-  return [stitch.position.x, stitch.row * VISUAL_ROW_HEIGHT + 0.05, stitch.position.z];
+  return [stitch.position.x, stitch.position.y, stitch.position.z];
+}
+
+function selectWorkingStitches(stitches: StitchNode[]): StitchNode[] {
+  const working = stitches.filter((stitch) => stitch.row > 0);
+  const rows = [...groupStitchesByRow(working).entries()].sort(([left], [right]) => left - right);
+  const selected: StitchNode[] = [];
+
+  for (const [, rowStitches] of rows) {
+    if (selected.length + rowStitches.length > MAX_DRAPE_SIMULATION_NODES) {
+      break;
+    }
+    selected.push(...rowStitches);
+  }
+
+  return selected;
 }
 
 function distance(
@@ -84,9 +98,7 @@ export function buildDrapeGraph(stitches: StitchNode[]): DrapeGraph {
   const nodes = new Map<string, DrapeNode>();
   const edges: DrapeEdge[] = [];
 
-  const workingStitches = stitches
-    .filter((stitch) => stitch.row > 0)
-    .slice(0, MAX_DRAPE_SIMULATION_NODES);
+  const workingStitches = selectWorkingStitches(stitches);
 
   for (const stitch of workingStitches) {
     nodes.set(stitch.id, {

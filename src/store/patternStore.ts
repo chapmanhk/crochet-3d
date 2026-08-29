@@ -520,6 +520,7 @@ export const usePatternStore = create<PatternState>((set, get) => ({
       ...syncState(get().selectedStitchType),
       lastError: null,
       lastNotice: null,
+      drapePreviewEnabled: false,
     });
   },
 
