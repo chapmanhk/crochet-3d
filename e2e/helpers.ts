@@ -3,8 +3,10 @@ import { expect, type Page } from '@playwright/test';
 export async function gotoApp(page: Page) {
   await page.addInitScript(() => {
     window.localStorage.setItem('crochet-3d-onboarding-seen', 'true');
+    window.localStorage.removeItem('crochet-3d-autosave');
   });
   await page.goto('/');
+  await page.getByRole('toolbar', { name: 'Pattern tools' }).waitFor({ state: 'visible' });
 }
 
 export function infoPanel(page: Page) {
@@ -34,7 +36,7 @@ export function toolbarButton(page: Page, name: string | RegExp) {
 }
 
 export async function openChainDialog(page: Page) {
-  await page.getByRole('button', { name: 'New foundation' }).click();
+  await toolbarButton(page, 'New foundation').click();
   await expect(chainDialog(page)).toBeVisible();
 }
 
@@ -84,7 +86,7 @@ export async function openTemplateDialog(page: Page) {
 
 export async function loadTemplate(page: Page, name: string) {
   await openTemplateDialog(page);
-  await page.getByRole('button', { name: new RegExp(name, 'i') }).click();
+  await page.getByRole('button', { name, exact: true }).click();
 }
 
 export async function createMagicRing(page: Page, stitchCount: number) {

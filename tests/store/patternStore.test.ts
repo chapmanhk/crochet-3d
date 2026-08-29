@@ -271,6 +271,26 @@ describe('patternStore', () => {
     expect(usePatternStore.getState().restoreAutosave()).toBe(false);
   });
 
+  it('toggles drape preview from the toolbar state', () => {
+    const store = usePatternStore.getState();
+    expect(usePatternStore.getState().drapePreviewEnabled).toBe(false);
+
+    store.toggleDrapePreview();
+    expect(usePatternStore.getState().drapePreviewEnabled).toBe(true);
+
+    store.toggleDrapePreview();
+    expect(usePatternStore.getState().drapePreviewEnabled).toBe(false);
+  });
+
+  it('sets drape preview explicitly', () => {
+    const store = usePatternStore.getState();
+    store.setDrapePreviewEnabled(true);
+    expect(usePatternStore.getState().drapePreviewEnabled).toBe(true);
+
+    store.setDrapePreviewEnabled(false);
+    expect(usePatternStore.getState().drapePreviewEnabled).toBe(false);
+  });
+
   it('clears autosave when persisting an empty pattern', () => {
     const store = usePatternStore.getState();
     store.addFoundationChain(2);

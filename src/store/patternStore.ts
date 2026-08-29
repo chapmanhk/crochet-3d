@@ -51,6 +51,9 @@ interface PatternState {
   redoDisabledReason: string | null;
   lastError: string | null;
   lastNotice: string | null;
+  drapePreviewEnabled: boolean;
+  setDrapePreviewEnabled: (enabled: boolean) => void;
+  toggleDrapePreview: () => void;
   setLastError: (message: string) => void;
   addFoundationChain: (length: number) => boolean;
   addMagicRing: (stitchCount: number) => boolean;
@@ -276,6 +279,15 @@ export const usePatternStore = create<PatternState>((set, get) => ({
   yarnColor: DEFAULT_YARN_COLOR,
   lastError: null,
   lastNotice: null,
+  drapePreviewEnabled: false,
+
+  setDrapePreviewEnabled: (enabled: boolean) => {
+    set({ drapePreviewEnabled: enabled });
+  },
+
+  toggleDrapePreview: () => {
+    set((state) => ({ drapePreviewEnabled: !state.drapePreviewEnabled }));
+  },
 
   addFoundationChain: (length: number) =>
     runPatternAction(
@@ -528,5 +540,6 @@ export function __resetPatternStoreForTests(): void {
     yarnColor: DEFAULT_YARN_COLOR,
     lastError: null,
     lastNotice: null,
+    drapePreviewEnabled: false,
   });
 }

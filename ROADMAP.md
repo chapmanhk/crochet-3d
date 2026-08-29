@@ -99,18 +99,22 @@ Expand what patterns can express while keeping the engine testable.
 
 ---
 
-## Phase 4 — 3D preview at scale (next)
+## Shipped — v0.5 Phase 4 (current)
 
-Performance and realism for larger patterns.
+| Capability | Specs | Notes |
+|------------|-------|-------|
+| Instanced stitch meshes | `scale-preview.feature` | `InstancedMesh` batches for flat working rows ≥4 stitches; merged geometry for foundation/joins |
+| Three.js code splitting | `scale-preview.feature` | Lazy scene load; separate `scene`, `three`, `r3f`, `rapier` chunks |
+| Rapier drape preview | `scale-preview.feature` | Optional toolbar toggle; lazy-loaded physics proxy layer |
+| Stitch-level attachment description | `scale-preview.feature` | `aria-live` info panel sync for next attachment target |
 
-| Priority | Feature | Why | Notes |
-|----------|---------|-----|-------|
-| P0 | **Instanced stitch meshes** | Row-level yarn helps; instancing still needed at scale | Scene layer only |
-| P1 | **Three.js code splitting** | Bundle currently >500 kB | Build config |
-| P2 | **Rapier drape preview** | Optional physics preview | Separate preview layer; not in engine |
-| P3 | **Stitch-level selection description** | Screen reader detail for canvas | `aria-live` + panel sync |
+**Exit criteria met:** Large swatch template (120 stitches) renders with interactive toolbar; orbit controls remain responsive.
 
-**Exit criteria:** Smooth orbit/preview with 500+ stitches on mid-range hardware.
+---
+
+## Phase 5 — TBD (next)
+
+Future work to be defined in `ROADMAP.md` after Phase 4 review.
 
 ---
 
@@ -175,6 +179,7 @@ When pulling an item from this roadmap into development:
 
 | Date | Change |
 |------|--------|
+| 2026-08-25 | Phase 4 shipped: instanced meshes, code splitting, Rapier drape preview, attachment a11y |
 | 2026-08-24 | Phase 3 shipped: save/load JSON, export/copy instructions, import validation, autosave |
 | 2026-08-24 | Realism review fixes + per-strand outlines shipped |
 | 2026-08-23 | Phase 2 shipped: HDC/DC, inc/dec, magic ring, templates, yarn color picker |

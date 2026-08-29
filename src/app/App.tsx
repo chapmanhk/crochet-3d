@@ -1,4 +1,5 @@
-import { CrochetScene, SCENE_BACKGROUND } from '@scene/CrochetScene';
+import { SCENE_BACKGROUND } from './sceneConstants';
+import { LazyCrochetScene } from './LazyCrochetScene';
 import { InfoPanel } from './InfoPanel';
 import { OnboardingDialog } from './OnboardingDialog';
 import { Toolbar } from './Toolbar';
@@ -26,7 +27,7 @@ export function App() {
           tabIndex={-1}
           aria-label="3D pattern preview. Stitch status and instructions are in the pattern information panel."
         >
-          <CrochetScene />
+          <LazyCrochetScene />
         </div>
       </main>
     </div>

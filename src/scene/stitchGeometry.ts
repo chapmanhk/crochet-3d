@@ -15,6 +15,12 @@ import {
   WorkingDirection as WorkingDirectionEnum,
 } from '@engine/index';
 
+import { mergeStrandGeometries } from './geometryMerge';
+import type { InstancedStitchBatch, StitchInstance } from './instancedStitches';
+import {
+  getCachedPrototypeGeometry,
+  setCachedPrototypeGeometry,
+} from './prototypeGeometryCache';
 import {
   buildCrossingVTopPoints,
   getStitchShapeAdjustments,
@@ -27,6 +33,19 @@ import {
   YARN_RADIUS,
   yarnOverHeights,
 } from './stitchRealism';
+
+/** Minimum flat working-row stitch count before switching from merged meshes to instancing. */
+export const INSTANCED_ROW_MIN_STITCHES = 4;
+
+/** How a yarn segment row is drawn: merged strand meshes or instanced stitch prototypes. */
+export type YarnSegmentRenderMode = 'merged' | 'instanced';
+
+/** Geometry payload for one yarn segment, either merged strands or an instanced batch. */
+export interface YarnSegmentRenderData {
+  mode: YarnSegmentRenderMode;
+  geometries?: THREE.BufferGeometry[];
+  instanced?: InstancedStitchBatch;
+}
 
 const MAGIC_RING_FOUNDATION_VISUAL_Z_DROP = 0.08;
 const TUBE_RADIAL = 8;
@@ -730,6 +749,215 @@ export function getYarnSegmentManifests(
   }
 
   return manifests;
+}
+
+function getStitchPrototypeKey(
+  stitch: StitchNode,
+  increasePairFirst: boolean,
+): string {
+  const kind = getPlacementKind(stitch);
+  return `${stitch.type}:${kind}:${increasePairFirst ? 'inc-first' : 'inc-normal'}`;
+}
+
+function buildSyntheticPrototypeContext(prototypeKey: string): {
+  stitch: StitchNode;
+  parent: StitchNode;
+  stitchById: Map<string, StitchNode>;
+  insertion: THREE.Vector3;
+} {
+  const [typeValue, kindValue] = prototypeKey.split(':');
+  const stitchType = typeValue as StitchType;
+  const placementKind = kindValue as PlacementKind;
+
+  const parent: StitchNode = {
+    id: 'prototype-parent',
+    type: StitchType.CHAIN,
+    row: 0,
+    column: 0,
+    position: { x: 0, y: 0, z: 0 },
+    attachToId: null,
+    placementKind: PlacementKind.NORMAL,
+  };
+
+  const stitch: StitchNode = {
+    id: 'prototype-stitch',
+    type: stitchType,
+    row: 1,
+    column: 0,
+    position: { x: 0, y: VISUAL_ROW_HEIGHT, z: 0 },
+    attachToId: parent.id,
+    placementKind,
+    secondaryAttachToId:
+      placementKind === PlacementKind.DECREASE ? 'prototype-secondary' : undefined,
+  };
+
+  const stitchById = new Map<string, StitchNode>([
+    [parent.id, parent],
+    [stitch.id, stitch],
+  ]);
+
+  if (placementKind === PlacementKind.DECREASE) {
+    const secondary: StitchNode = {
+      id: 'prototype-secondary',
+      type: StitchType.SINGLE_CROCHET,
+      row: 0,
+      column: 1,
+      position: { x: STITCH_SPACING, y: 0, z: 0 },
+      attachToId: null,
+      placementKind: PlacementKind.NORMAL,
+    };
+    stitchById.set(secondary.id, secondary);
+  }
+
+  const insertion = scInsertionPoint(stitch, parent, stitchById, false);
+
+  return { stitch, parent, stitchById, insertion };
+}
+
+function getStitchPrototypeGeometry(
+  prototypeKey: string,
+  roundFoundation: boolean,
+): THREE.BufferGeometry {
+  const cacheKey = `${prototypeKey}:${roundFoundation ? 'round' : 'flat'}`;
+  const cached = getCachedPrototypeGeometry(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const { stitch, insertion } = buildSyntheticPrototypeContext(prototypeKey);
+  const increasePairFirst = prototypeKey.endsWith('inc-first');
+  const tubes = buildWorkingStitchGeometry(stitch, insertion, roundFoundation, {
+    increasePairFirst,
+  });
+  const merged = mergeStrandGeometries(tubes);
+  setCachedPrototypeGeometry(cacheKey, merged);
+  return merged;
+}
+
+function buildWorkingRowInstancedBatch(
+  rowStitches: StitchNode[],
+  stitchById: Map<string, StitchNode>,
+  rowNumber: number,
+  roundFoundation: boolean,
+): InstancedStitchBatch {
+  const prototypes = new Map<string, THREE.BufferGeometry>();
+  const instances: StitchInstance[] = [];
+  const bridgeGeometries: THREE.BufferGeometry[] = [];
+  const direction = defaultDirectionForRow(rowNumber);
+  const prototypeReferences = new Map<string, THREE.Vector3>();
+
+  for (let index = 0; index < rowStitches.length; index += 1) {
+    const stitch = rowStitches[index]!;
+    const parent = stitchById.get(stitch.attachToId ?? '');
+    if (!parent) {
+      continue;
+    }
+
+    const increasePairFirst = isIncreasePairFirst(stitch, rowStitches, index);
+    const prototypeKey = getStitchPrototypeKey(stitch, increasePairFirst);
+    if (!prototypes.has(prototypeKey)) {
+      prototypes.set(prototypeKey, getStitchPrototypeGeometry(prototypeKey, roundFoundation));
+      prototypeReferences.set(
+        prototypeKey,
+        buildSyntheticPrototypeContext(prototypeKey).insertion,
+      );
+    }
+
+    const insertion = scInsertionPoint(stitch, parent, stitchById, roundFoundation);
+    const prototypeInsertion = prototypeReferences.get(prototypeKey)!;
+    const matrix = new THREE.Matrix4().makeTranslation(
+      insertion.x - prototypeInsertion.x,
+      insertion.y - prototypeInsertion.y,
+      insertion.z - prototypeInsertion.z,
+    );
+
+    instances.push({ prototypeKey, matrix });
+
+    if (index > 0) {
+      const previous = rowStitches[index - 1]!;
+      const previousParent = stitchById.get(previous.attachToId ?? '')!;
+      const previousInsertion = scInsertionPoint(
+        previous,
+        previousParent,
+        stitchById,
+        roundFoundation,
+      );
+      const previousPoints = scStitchPoints(
+        previous,
+        previousInsertion,
+        roundFoundation,
+        { increasePairFirst: isIncreasePairFirst(previous, rowStitches, index - 1) },
+      );
+      const currentPoints = scStitchPoints(stitch, insertion, roundFoundation, {
+        increasePairFirst,
+      });
+      const [from, to] = workingYarnEndpoints(
+        previousPoints,
+        currentPoints,
+        direction,
+        roundFoundation,
+      );
+      bridgeGeometries.push(buildWorkingYarnGeometry(from, to));
+    }
+  }
+
+  return { prototypes, instances, bridgeGeometries };
+}
+
+/**
+ * Resolve merged or instanced geometry for one yarn segment key (`row-N`, `join-N`).
+ * Flat working rows at or above `INSTANCED_ROW_MIN_STITCHES` prefer instanced rendering.
+ */
+export function buildYarnSegmentRenderData(
+  key: string,
+  stitches: StitchNode[],
+  foundationType: FoundationType = FoundationType.CHAIN,
+): YarnSegmentRenderData | null {
+  const { stitchById, byRow } = indexStitches(stitches);
+  const roundFoundation = isMagicRingFoundation(foundationType);
+
+  if (key.startsWith('row-')) {
+    const rowNumber = Number.parseInt(key.slice(4), 10);
+    const rowStitches = byRow.get(rowNumber);
+    if (!rowStitches) {
+      return null;
+    }
+
+    if (
+      rowNumber > 0 &&
+      !roundFoundation &&
+      rowStitches.length >= INSTANCED_ROW_MIN_STITCHES &&
+      canRenderWorkingRow(rowStitches, stitchById)
+    ) {
+      return {
+        mode: 'instanced',
+        instanced: buildWorkingRowInstancedBatch(
+          rowStitches,
+          stitchById,
+          rowNumber,
+          roundFoundation,
+        ),
+      };
+    }
+
+    const geometries =
+      rowNumber === 0
+        ? buildFoundationRowGeometry(rowStitches)
+        : buildWorkingRowGeometry(rowStitches, stitchById, rowNumber, roundFoundation);
+
+    if (!geometries || geometries.length === 0) {
+      return null;
+    }
+
+    return { mode: 'merged', geometries };
+  }
+
+  const geometries = buildYarnSegmentGeometry(key, stitches, foundationType);
+  if (!geometries || geometries.length === 0) {
+    return null;
+  }
+
+  return { mode: 'merged', geometries };
 }
 
 export function buildYarnSegmentGeometry(

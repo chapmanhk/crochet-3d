@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SCENE_BACKGROUND } from '../../src/scene/CrochetScene';
+import { SCENE_BACKGROUND } from '../../src/app/sceneConstants';
 
 describe('scene constants', () => {
   it('exports the flat illustrated background color', () => {

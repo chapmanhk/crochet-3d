@@ -1,19 +1,29 @@
 import * as THREE from 'three';
 import type { FoundationType, StitchNode } from '@engine/index';
 import {
-  buildYarnSegmentGeometry,
+  buildYarnSegmentRenderData,
   getYarnSegmentManifests,
 } from './stitchGeometry';
 import {
-  createOutlinedStitch,
+  createMergedOutlinedMeshes,
+  disposeMergedOutlinedMeshes,
+} from './geometryMerge';
+import {
+  createInstancedOutlinedSegment,
+  disposeInstancedOutlinedSegment,
+} from './instancedStitches';
+import {
   createStitchFillMaterial,
   createStitchOutlineMaterial,
-  disposeOutlinedStitch,
   STITCH_YARN_COLOR,
   updateFillMaterialColor,
   updateOutlineMaterialColor,
   updateOutlineMaterialSize,
 } from './stitchMaterials';
+
+function segmentUsesInstancing(segmentGroup: THREE.Group): boolean {
+  return segmentGroup.children.some((child) => child instanceof THREE.InstancedMesh);
+}
 
 export class StitchRenderer {
   readonly group = new THREE.Group();
@@ -37,13 +47,13 @@ export class StitchRenderer {
         continue;
       }
 
-      const geometries = buildYarnSegmentGeometry(manifest.key, stitches, foundationType);
-      if (!geometries || geometries.length === 0) {
+      const renderData = buildYarnSegmentRenderData(manifest.key, stitches, foundationType);
+      if (!renderData) {
         this.removeSegment(manifest.key);
         continue;
       }
 
-      this.upsertSegment(manifest.key, geometries);
+      this.upsertSegment(manifest.key, renderData);
       this.fingerprints.set(manifest.key, manifest.fingerprint);
     }
   }
@@ -67,20 +77,46 @@ export class StitchRenderer {
     updateOutlineMaterialColor(this.outlineMaterial, color);
   }
 
-  private upsertSegment(key: string, geometries: THREE.BufferGeometry[]): void {
+  private upsertSegment(
+    key: string,
+    renderData: NonNullable<ReturnType<typeof buildYarnSegmentRenderData>>,
+  ): void {
     const existing = this.segments.get(key);
     if (existing) {
       this.group.remove(existing);
-      disposeOutlinedStitch(existing);
+      this.disposeSegmentGroup(existing);
     }
 
-    const segmentGroup = createOutlinedStitch(
-      geometries,
+    const segmentGroup = this.createSegmentGroup(renderData);
+    this.segments.set(key, segmentGroup);
+    this.group.add(segmentGroup);
+  }
+
+  private createSegmentGroup(
+    renderData: NonNullable<ReturnType<typeof buildYarnSegmentRenderData>>,
+  ): THREE.Group {
+    if (renderData.mode === 'instanced' && renderData.instanced) {
+      return createInstancedOutlinedSegment(
+        renderData.instanced,
+        this.fillMaterial,
+        this.outlineMaterial,
+      );
+    }
+
+    return createMergedOutlinedMeshes(
+      renderData.geometries ?? [],
       this.fillMaterial,
       this.outlineMaterial,
     );
-    this.segments.set(key, segmentGroup);
-    this.group.add(segmentGroup);
+  }
+
+  private disposeSegmentGroup(segmentGroup: THREE.Group): void {
+    if (segmentUsesInstancing(segmentGroup)) {
+      disposeInstancedOutlinedSegment(segmentGroup);
+      return;
+    }
+
+    disposeMergedOutlinedMeshes(segmentGroup);
   }
 
   private removeSegment(key: string): void {
@@ -90,7 +126,7 @@ export class StitchRenderer {
     }
 
     this.group.remove(segmentGroup);
-    disposeOutlinedStitch(segmentGroup);
+    this.disposeSegmentGroup(segmentGroup);
     this.segments.delete(key);
     this.fingerprints.delete(key);
   }

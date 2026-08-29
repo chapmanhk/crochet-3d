@@ -57,6 +57,8 @@ export function Toolbar() {
     undoDisabledReason,
     redoDisabledReason,
     stitches,
+    drapePreviewEnabled,
+    toggleDrapePreview,
   } = usePatternStore(
     useShallow((state) => ({
       addFoundationChain: state.addFoundationChain,
@@ -88,6 +90,8 @@ export function Toolbar() {
       undoDisabledReason: state.undoDisabledReason,
       redoDisabledReason: state.redoDisabledReason,
       stitches: state.stitches,
+      drapePreviewEnabled: state.drapePreviewEnabled,
+      toggleDrapePreview: state.toggleDrapePreview,
     })),
   );
 
@@ -295,6 +299,19 @@ export function Toolbar() {
               void handlePatternFileSelected(event.target.files?.[0]);
             }}
           />
+        </div>
+        <div className="toolbar-divider" aria-hidden="true" />
+        <div className="toolbar-group" role="group" aria-label="Preview">
+          <button
+            type="button"
+            className="btn subtle"
+            aria-pressed={drapePreviewEnabled}
+            data-testid="drape-preview-toggle"
+            disabled={!hasPattern}
+            onClick={toggleDrapePreview}
+          >
+            {drapePreviewEnabled ? 'Drape preview on' : 'Drape preview off'}
+          </button>
         </div>
         <div className="toolbar-divider" aria-hidden="true" />
         <StitchTypeSelector

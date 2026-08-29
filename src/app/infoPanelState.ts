@@ -2,11 +2,23 @@ import {
   FoundationType,
   getWorkingStitchName,
   StitchType,
+  type StitchNode,
   type WorkingStitchType,
 } from '@engine/index';
 
 function isMagicRing(foundationType: FoundationType): boolean {
   return foundationType === FoundationType.MAGIC_RING;
+}
+
+function formatAttachmentTargetRowLabel(
+  target: StitchNode,
+  foundationType: FoundationType,
+): string {
+  if (isMagicRing(foundationType)) {
+    return `round ${target.row}`;
+  }
+
+  return target.row === 0 ? 'foundation' : `row ${target.row}`;
 }
 
 export function getAdvanceActionLabel(
@@ -114,6 +126,36 @@ export function getNextStep(
     ? `Round ${currentRow}`
     : `Row ${currentRow}`;
   return `${completeLabel} is complete. Choose ${advanceAction} to continue.`;
+}
+
+/**
+ * Screen-reader text for the next attachment target shown in the info panel.
+ * Returns null when no stitch can be placed or the target is not on a working row.
+ */
+export function getAttachmentTargetDescription(
+  stitches: StitchNode[],
+  nextAttachmentTargetId: string | null,
+  selectedStitchType: WorkingStitchType,
+  currentRow: number,
+  foundationType: FoundationType = FoundationType.CHAIN,
+): string | null {
+  if (!nextAttachmentTargetId || currentRow <= 0) {
+    return null;
+  }
+
+  const target = stitches.find((stitch) => stitch.id === nextAttachmentTargetId);
+  if (!target) {
+    return null;
+  }
+
+  const stitchName = getWorkingStitchName(selectedStitchType);
+  const workUnit = isMagicRing(foundationType) ? 'round' : 'row';
+  const targetRowLabel = formatAttachmentTargetRowLabel(target, foundationType);
+  const columnIndex = target.column + 1;
+  const rowStitches = stitches.filter((stitch) => stitch.row === target.row);
+  const totalInRow = rowStitches.length;
+
+  return `Next ${stitchName} attaches to stitch ${columnIndex} of ${totalInRow} in ${targetRowLabel} (${workUnit} ${currentRow}).`;
 }
 
 export function getAddStitchButtonLabel(selectedStitchType: WorkingStitchType): string {

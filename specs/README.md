@@ -17,9 +17,9 @@ Gherkin feature files describe **what crochet-3d should do** from a crocheter's 
 
 | Constant / behavior | Value / rule | Source |
 |---------------------|--------------|--------|
-| Canvas background | `#f7f0e6` warm flat fill (no perspective grid) | `SCENE_BACKGROUND` in `CrochetScene.tsx`, `--scene-background` in `styles.css` |
+| Canvas background | `#f7f0e6` warm flat fill (no perspective grid) | `SCENE_BACKGROUND` in `src/app/sceneConstants.ts`, mirrored in `CrochetScene.tsx` for chunk split, `--scene-background` in `styles.css` |
 | Yarn fill color | `0xd98952` | `STITCH_YARN_COLOR` in `stitchMaterials.ts` |
-| Outline style | Screen-space stroke (~2.5 px), darker yarn tone, one outline per yarn strand | `createOutlinedStitch()` in `stitchMaterials.ts` |
+| Outline style | Screen-space stroke (~2.5 px), darker yarn tone; merged mesh pair per segment or instanced batches | `geometryMerge.ts`, `instancedStitches.ts`, legacy `createOutlinedStitch()` in `stitchMaterials.ts` |
 | Visual row height | `0.22` scene units per working row (engine `ROW_HEIGHT` = 1.2 is **not** used for stitch height) | `VISUAL_ROW_HEIGHT` in `stitchRealism.ts` |
 | SC topology | Inverted-V arc + two legs per stitch; top working-yarn bridge between neighbors | `buildWorkingStitchGeometry()` in `stitchGeometry.ts` |
 | Foundation topology | Chain loops + spine segments per chain stitch | `buildFoundationRowGeometry()` |
@@ -39,8 +39,9 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | `click-to-place.feature` | Click attachment points in 3D canvas to place SC |
 | `pattern-editing.feature` | Undo and redo stitch placements |
 | `stitch-types.feature` | HDC/DC, increase/decrease |
-| `templates.feature` | Coaster and swatch templates |
+| `templates.feature` | Coaster, swatch, and large swatch templates |
 | `persistence.feature` | Save/load JSON, export/copy instructions |
+| `scale-preview.feature` | Instanced rendering, drape preview, attachment a11y |
 | `deferred.feature` | Roadmap items tagged `@deferred` (not yet implemented) |
 
 ## Scenario index
@@ -101,6 +102,11 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | Saved pattern round-trips through JSON export and import | `tests/engine/persistence.test.ts` — round-trips a saved pattern… |
 | Unsupported pattern file version is rejected | `tests/engine/persistence.test.ts` — rejects unsupported file versions |
 | Pattern file with duplicate stitch ids is rejected | `tests/engine/persistence.test.ts` — rejects duplicate stitch ids |
+| Large pattern renders without blocking the toolbar | `e2e/scale-preview.spec.ts` — Large pattern renders… |
+| Drape preview can be toggled on and off | `e2e/scale-preview.spec.ts` — Drape preview can be toggled… |
+| Attachment target is announced in the info panel | `e2e/scale-preview.spec.ts` — Attachment target is announced… |
+| Instanced row rendering batches stitches by prototype | `tests/scene/instancedRendering.test.ts` — reuses stitch prototypes… |
+| Merged segment geometry reduces mesh count | `tests/scene/instancedRendering.test.ts` — merges foundation row…; mesh pair in `StitchRenderer.test.ts` |
 
 ## Deferred scenarios
 

@@ -1,10 +1,14 @@
 import { OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useSyncExternalStore } from 'react';
+import { useShallow } from 'zustand/react/shallow';
+import { usePatternStore } from '@store/patternStore';
 import { AttachmentPointPicker } from './AttachmentPointPicker';
+import { LazyDrapePreview } from './LazyDrapePreview';
 import { SceneStitchRenderer } from './SceneStitchRenderer';
 
-export const SCENE_BACKGROUND = '#f7f0e6';
+/** Keep in sync with `SCENE_BACKGROUND` in `src/app/sceneConstants.ts`. */
+const SCENE_BACKGROUND = '#f7f0e6';
 
 function subscribeToReducedMotion(onStoreChange: () => void): () => void {
   const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -27,6 +31,13 @@ function SceneControls() {
 }
 
 export function CrochetScene() {
+  const { stitches, drapePreviewEnabled } = usePatternStore(
+    useShallow((state) => ({
+      stitches: state.stitches,
+      drapePreviewEnabled: state.drapePreviewEnabled,
+    })),
+  );
+
   return (
     <Canvas
       camera={{ position: [3.2, 2.2, 5.5], fov: 42 }}
@@ -36,6 +47,7 @@ export function CrochetScene() {
       <color attach="background" args={[SCENE_BACKGROUND]} />
       <SceneControls />
       <SceneStitchRenderer />
+      <LazyDrapePreview stitches={stitches} enabled={drapePreviewEnabled} />
       <AttachmentPointPicker />
     </Canvas>
   );

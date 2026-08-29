@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePatternStore } from '@store/patternStore';
 import {
+  getAttachmentTargetDescription,
   getFoundationStatLabel,
   getNextStep,
   getProgressLabel,
@@ -43,6 +44,7 @@ export function InfoPanel() {
     lastNotice,
     clearNotice,
     clearError,
+    nextAttachmentTargetId,
   } = usePatternStore(
     useShallow((state) => ({
       stitches: state.stitches,
@@ -60,6 +62,7 @@ export function InfoPanel() {
       lastNotice: state.lastNotice,
       clearNotice: state.clearNotice,
       clearError: state.clearError,
+      nextAttachmentTargetId: state.nextAttachmentTargetId,
     })),
   );
 
@@ -80,6 +83,13 @@ export function InfoPanel() {
     currentRowStitchCount,
     currentRowSlotsConsumed,
     selectedStitchType,
+    foundationType,
+  );
+  const attachmentTargetDescription = getAttachmentTargetDescription(
+    stitches,
+    nextAttachmentTargetId,
+    selectedStitchType,
+    currentRow,
     foundationType,
   );
 
@@ -122,6 +132,11 @@ export function InfoPanel() {
             </div>
           </dl>
           <p className="next-step muted">{nextStep}</p>
+          {attachmentTargetDescription ? (
+            <p className="attachment-target muted" data-testid="attachment-target-description">
+              {attachmentTargetDescription}
+            </p>
+          ) : null}
         </div>
 
         <div className="yarn-color-field">
