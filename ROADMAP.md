@@ -112,9 +112,25 @@ Expand what patterns can express while keeping the engine testable.
 
 ---
 
-## Phase 5 — TBD (next)
+## Phase 5 — Realism & in-the-round polish
 
-Future work to be defined in `ROADMAP.md` after Phase 4 review.
+Phases 1–4 delivered a full creative loop (place stitches, undo, save/load, scale preview). Phase 5 makes the **3D preview trustworthy for shaped and in-the-round work** — where beginners most need visual feedback — and finishes the drape preview started in Phase 4.
+
+**Theme:** Fabric fidelity over feature breadth. No new stitch types or sharing until round work and illustrated geometry read as real crochet.
+
+| Priority | Feature | Why | Spec target |
+|----------|---------|-----|-------------|
+| P0 | **Drape preview v2** — scene-aligned loop anchors, `foundationType`, physics remount | Phase 4 springs use simplified positions; magic ring / HDC / decreases hang incorrectly; simulation state can drift after edits | Extend `drape-preview.feature` (`@engine` + `@e2e`) |
+| P0 | **In-the-round visual fidelity** — radial layout, round join paths, attachment copy | Magic ring and rounds exist in the engine but scene/readout gaps make amigurumi hard to verify | Extend `foundation-chain.feature`, `scale-preview.feature` |
+| P1 | **Increase/decrease local shaping** — fan/bunch at stitch tops | Shaping is count-correct but geometry is flat; amigurumi doming/cupping doesn't read in 3D | Extend `stitch-types.feature` + `tests/scene/` |
+| P1 | **Drape toggle UX** — disabled reason, lazy-load status, stable label | Matches other toolbar buttons; avoids state-as-label confusion | `pattern-validation.feature`, `drape-preview.feature` |
+| P2 | **Turning-chain height offset** at row starts | Flat rows misalign at edges without modeled chain lift | `single-crochet-rows.feature` |
+| P2 | **Spec & doc continuity** — onboarding/responsive Gherkin, README scene contract sync | `specs/README.md` indexes scenarios not yet in `.feature` files | `app-shell.feature`, `specs/README.md` |
+| P2 | **Reset no-op when empty** | Low-risk polish; already in `deferred.feature` | `deferred.feature` → `reset-pattern.feature` |
+
+**Exit criteria:** A crocheter can build a 4-round magic-ring piece, see radial stitch layout and round-aware attachment guidance, toggle drape preview with correct loop anchors for chain and magic-ring foundations, and recognize increase/decrease shaping as local fabric deformation — not just stitch-count changes.
+
+**Explicitly deferred to Phase 6+:** treble crochet and taller stitches, pattern sharing URLs, garment grading, full continuous-yarn physics, native mobile apps.
 
 ---
 
@@ -128,6 +144,10 @@ Future work to be defined in `ROADMAP.md` after Phase 4 review.
 | Illustrated scene style (flat bg, outline stroke, visual row height) | **Done** | `stitchGeometry.ts`, `stitchMaterials.ts`, `CrochetScene.tsx` |
 | Per-row geometry fingerprinting | **Done** | `StitchRenderer` skips rebuild when row fingerprint unchanged |
 | Engine validation messages for toolbar disabled states | **Done** | `getAddSingleCrochetError()` / `getStartNewRowError()` |
+| E2E hardening (shared fixtures, autosave isolation, toolbar retry) | **Done** | `e2e/test.ts`, `e2e/helpers.ts` |
+| Drape spring graph (loop/post/secondary, 200-node row cap) | **Done** | `buildDrapeGraph.ts`, `drape-preview.feature` |
+| Drape preview v2 (scene-aligned anchors, `foundationType`, physics remount) | **Phase 5 P0** | Extend `drape-preview.feature`; thread `foundationType` store → scene |
+| Inc/dec geometric fan/bunch in scene layer | **Phase 5 P1** | Scene-only deformation; engine placement unchanged |
 | Cucumber step definitions | Deferred | Playwright is executable proof |
 | Store tests that only mirror engine | **Done** | Store tests focus on bridge behavior (`lastError`, sync, flags) |
 
@@ -152,7 +172,7 @@ tech-debt → code-simplifier → verifier
 | Tag | Meaning |
 |-----|---------|
 | `@e2e` | Needs Playwright test in `e2e/` |
-| `@engine` | Engine-only; Vitest in `tests/engine/` |
+| `@engine` | Vitest in `tests/engine/`, `tests/store/`, and `tests/scene/` |
 | `@deferred` | On the roadmap but not scheduled for current phase |
 | `@wip` | Specified and in active development |
 
@@ -179,6 +199,7 @@ When pulling an item from this roadmap into development:
 
 | Date | Change |
 |------|--------|
+| 2026-08-30 | Phase 5 drafted: realism & in-the-round polish (drape v2, round fidelity, inc/dec shaping) |
 | 2026-08-29 | Drape preview yarn constraints (loop/post springs); E2E hardening (shared fixtures, autosave clear, toolbar retry) |
 | 2026-08-25 | Phase 4 shipped: instanced meshes, code splitting, Rapier drape preview, attachment a11y |
 | 2026-08-24 | Phase 3 shipped: save/load JSON, export/copy instructions, import validation, autosave |
