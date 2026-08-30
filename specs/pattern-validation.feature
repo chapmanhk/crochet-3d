@@ -25,10 +25,6 @@ Feature: Pattern validation
     And I have placed 1 single crochet stitch on the current row
     Then the "New Row" control should be disabled
 
-  Scenario: Reset is disabled with no pattern
-    Given I have no pattern
-    Then the "Reset" control should be disabled
-
   Scenario: Disabled toolbar buttons expose reasons to assistive technology
     Given I have no pattern
     Then the "Add SC" control should be disabled

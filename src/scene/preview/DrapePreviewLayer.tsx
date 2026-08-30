@@ -20,7 +20,7 @@ export function DrapePreviewLayer({ stitches, foundationType }: DrapePreviewLaye
   const { graph, simulationKey } = useMemo(
     () => ({
       graph: buildDrapeGraph(stitches, foundationType),
-      simulationKey: stitches.map((stitch) => stitch.id).join(','),
+      simulationKey: `${foundationType}:${stitches.map((stitch) => stitch.id).join(',')}`,
     }),
     [stitches, foundationType],
   );

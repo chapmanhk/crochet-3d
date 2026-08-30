@@ -134,6 +134,31 @@ describe('buildDrapeGraph', () => {
     );
 
     expect(dynamicNodeIds.size).toBe(180);
-    expect(includedRows).toEqual(new Set([1, 2, 3]));
+    expect(includedRows).toEqual(new Set([2, 3, 4]));
+  });
+
+  it('orders magic ring post springs by angular position', () => {
+    const pattern = new Pattern();
+    pattern.addMagicRing(6);
+    pattern.startNewRow();
+    for (let index = 0; index < 6; index += 1) {
+      pattern.addSingleCrochet();
+    }
+
+    const stitches = pattern.getStitches();
+    const rowStitches = stitches.filter((stitch) => stitch.row === 1);
+    const angleById = new Map(
+      rowStitches.map((stitch) => [
+        stitch.id,
+        Math.atan2(stitch.position.z, stitch.position.x),
+      ]),
+    );
+    const graph = buildDrapeGraph(stitches, FoundationType.MAGIC_RING);
+    const postEdges = graph.edges.filter((edge) => edge.kind === 'post');
+
+    expect(postEdges).toHaveLength(5);
+    for (const edge of postEdges) {
+      expect(angleById.get(edge.toId)!).toBeGreaterThan(angleById.get(edge.fromId)!);
+    }
   });
 });

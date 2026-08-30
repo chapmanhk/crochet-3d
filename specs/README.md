@@ -111,6 +111,7 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | Pattern file with duplicate stitch ids is rejected | `tests/engine/persistence.test.ts` — rejects duplicate stitch ids |
 | Large pattern renders without blocking the toolbar | `e2e/scale-preview.spec.ts` — Large pattern renders… |
 | Attachment target is announced in the info panel | `e2e/scale-preview.spec.ts` — Attachment target is announced… |
+| Magic ring attachment target uses round wording | `e2e/scale-preview.spec.ts` — Magic ring attachment target uses round wording |
 | Instanced row rendering batches stitches by prototype | `tests/scene/instancedRendering.test.ts` — reuses stitch prototypes… |
 | Merged segment geometry reduces mesh count | `tests/scene/instancedRendering.test.ts` — merges foundation row…; mesh pair in `StitchRenderer.test.ts` |
 | Yarn color picker updates the selected color | `e2e/app.spec.ts` — Yarn color picker… |
@@ -135,7 +136,6 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | Drape preview is disabled without a pattern | `e2e/drape-preview.spec.ts` — Drape preview is disabled without a pattern |
 | Drape graph respects magic ring foundation anchors | `tests/scene/buildDrapeGraph.test.ts` — positions magic ring loop anchors… |
 | First stitch of each working row includes turning-chain lift | `tests/scene/stitchRealism.test.ts` — lifts the first stitch… |
-| Magic ring attachment target uses round wording | `e2e/scale-preview.spec.ts` — Magic ring attachment target… |
 | Reset with no pattern is disabled | `e2e/app.spec.ts` — Reset is disabled…; `reset-pattern.feature` |
 
 ## Deferred scenarios

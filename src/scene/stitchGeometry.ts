@@ -1054,8 +1054,11 @@ export function getDrapeLoopAnchorPosition(
 function drapeIncreasePairFirst(
   stitch: StitchNode,
   stitchById: Map<string, StitchNode>,
+  rowStitchesByRow?: Map<number, StitchNode[]>,
 ): boolean {
-  const rowStitches = groupStitchesByRow([...stitchById.values()]).get(stitch.row);
+  const rowStitches =
+    rowStitchesByRow?.get(stitch.row) ??
+    groupStitchesByRow([...stitchById.values()]).get(stitch.row);
   if (!rowStitches) {
     return false;
   }
@@ -1070,6 +1073,7 @@ export function getDrapeStitchTopPosition(
   stitch: StitchNode,
   stitchById: Map<string, StitchNode>,
   foundationType: FoundationType = FoundationType.CHAIN,
+  rowStitchesByRow?: Map<number, StitchNode[]>,
 ): [number, number, number] {
   const roundFoundation = isMagicRingFoundation(foundationType);
   const parent = stitch.attachToId ? stitchById.get(stitch.attachToId) : undefined;
@@ -1080,7 +1084,7 @@ export function getDrapeStitchTopPosition(
 
   const insertion = scInsertionPoint(stitch, parent, stitchById, roundFoundation);
   const adjustments = getStitchShapeAdjustments(stitch, {
-    increasePairFirst: drapeIncreasePairFirst(stitch, stitchById),
+    increasePairFirst: drapeIncreasePairFirst(stitch, stitchById, rowStitchesByRow),
   });
 
   return [

@@ -42,9 +42,24 @@ const ATTACHMENTS: ReadonlyArray<{
   { kind: 'secondary', getId: (stitch) => stitch.secondaryAttachToId },
 ];
 
+function sortRowStitches(
+  rowStitches: StitchNode[],
+  foundationType: FoundationType,
+): StitchNode[] {
+  if (foundationType === FoundationType.MAGIC_RING) {
+    return [...rowStitches].sort((left, right) => {
+      const leftAngle = Math.atan2(left.position.z, left.position.x);
+      const rightAngle = Math.atan2(right.position.z, right.position.x);
+      return leftAngle - rightAngle;
+    });
+  }
+
+  return [...rowStitches].sort((left, right) => left.column - right.column);
+}
+
 function selectWorkingStitches(stitches: StitchNode[]): StitchNode[] {
   const rows = [...groupStitchesByRow(stitches.filter((stitch) => stitch.row > 0)).entries()].sort(
-    ([left], [right]) => left - right,
+    ([left], [right]) => right - left,
   );
   const selected: StitchNode[] = [];
 
@@ -101,6 +116,7 @@ export function buildDrapeGraph(
   }
 
   const stitchById = new Map(stitches.map((stitch) => [stitch.id, stitch]));
+  const rowStitchesByRow = groupStitchesByRow(stitches);
   const nodes = new Map<string, DrapeNode>();
   const edges: DrapeEdge[] = [];
   const byRow = groupStitchesByRow(selectWorkingStitches(stitches));
@@ -120,13 +136,13 @@ export function buildDrapeGraph(
   };
 
   for (const rowStitches of byRow.values()) {
-    const sorted = [...rowStitches].sort((left, right) => left.column - right.column);
+    const sorted = sortRowStitches(rowStitches, foundationType);
 
     for (let index = 0; index < sorted.length; index += 1) {
       const stitch = sorted[index]!;
       const stitchNode: DrapeNode = {
         id: stitch.id,
-        position: getDrapeStitchTopPosition(stitch, stitchById, foundationType),
+        position: getDrapeStitchTopPosition(stitch, stitchById, foundationType, rowStitchesByRow),
         fixed: false,
       };
       nodes.set(stitch.id, stitchNode);
