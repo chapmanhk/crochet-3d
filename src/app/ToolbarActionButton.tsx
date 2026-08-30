@@ -29,7 +29,7 @@ export function ToolbarActionButton({
       className={className}
       aria-label={ariaLabel}
       aria-pressed={pressed}
-      aria-disabled={isDisabled || undefined}
+      disabled={isDisabled}
       aria-describedby={isDisabled ? reasonId : undefined}
       data-testid={testId}
       onClick={(event) => {

@@ -133,6 +133,8 @@ Do not add Gherkin steps for these — keep proof in `tests/scene/*.test.ts`.
 | Drape graph caps simulation size for very large patterns | `tests/scene/buildDrapeGraph.test.ts` — caps simulation nodes… |
 | Drape preview with yarn constraints remains toggleable | `e2e/drape-preview.spec.ts` — Drape preview with yarn constraints… |
 | Drape preview is disabled without a pattern | `e2e/drape-preview.spec.ts` — Drape preview is disabled without a pattern |
+| Drape graph respects magic ring foundation anchors | `tests/scene/buildDrapeGraph.test.ts` — positions magic ring loop anchors… |
+| First stitch of each working row includes turning-chain lift | `tests/scene/stitchRealism.test.ts` — lifts the first stitch… |
 | Magic ring attachment target uses round wording | `e2e/scale-preview.spec.ts` — Magic ring attachment target… |
 | Reset with no pattern is disabled | `e2e/app.spec.ts` — Reset is disabled…; `reset-pattern.feature` |
 

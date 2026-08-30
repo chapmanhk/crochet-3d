@@ -29,6 +29,13 @@ Feature: Drape preview yarn constraints
     When the drape graph is built
     Then the simulation node count should be at most 200
 
+  @engine
+  Scenario: Drape graph respects magic ring foundation anchors
+    Given a magic ring with 4 stitches
+    And a working round with 4 single crochet stitches
+    When the drape graph is built for magic ring foundation
+    Then loop anchor Z should differ from chain foundation anchors
+
   @e2e
   Scenario: Drape preview is disabled without a pattern
     Given I have no pattern
