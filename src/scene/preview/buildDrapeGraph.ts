@@ -34,9 +34,18 @@ export const DRAPE_SPRING_TUNING = {
 
 export const MAX_DRAPE_SIMULATION_NODES = 200;
 
+const ATTACHMENTS: ReadonlyArray<{
+  kind: Exclude<DrapeEdgeKind, 'post'>;
+  getId: (stitch: StitchNode) => string | null | undefined;
+}> = [
+  { kind: 'loop', getId: (stitch) => stitch.attachToId },
+  { kind: 'secondary', getId: (stitch) => stitch.secondaryAttachToId },
+];
+
 function selectWorkingStitches(stitches: StitchNode[]): StitchNode[] {
-  const working = stitches.filter((stitch) => stitch.row > 0);
-  const rows = [...groupStitchesByRow(working).entries()].sort(([left], [right]) => left - right);
+  const rows = [...groupStitchesByRow(stitches.filter((stitch) => stitch.row > 0)).entries()].sort(
+    ([left], [right]) => left - right,
+  );
   const selected: StitchNode[] = [];
 
   for (const [, rowStitches] of rows) {
@@ -53,10 +62,7 @@ function distance(
   a: [number, number, number],
   b: [number, number, number],
 ): number {
-  const dx = a[0] - b[0];
-  const dy = a[1] - b[1];
-  const dz = a[2] - b[2];
-  return Math.hypot(dx, dy, dz);
+  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 }
 
 function anchorNodeId(stitchId: string): string {
@@ -82,10 +88,6 @@ function createEdge(
   };
 }
 
-export function buildDrapeGraphFingerprint(stitches: StitchNode[]): string {
-  return stitches.map((stitch) => stitch.id).join(',');
-}
-
 /**
  * Build a coarse stitch joint graph for Rapier drape preview.
  * Post springs link same-row neighbors; loop springs link each stitch to its parent loop anchor.
@@ -101,61 +103,52 @@ export function buildDrapeGraph(
   const stitchById = new Map(stitches.map((stitch) => [stitch.id, stitch]));
   const nodes = new Map<string, DrapeNode>();
   const edges: DrapeEdge[] = [];
-
-  const workingStitches = selectWorkingStitches(stitches);
-
-  for (const stitch of workingStitches) {
-    nodes.set(stitch.id, {
-      id: stitch.id,
-      position: getDrapeStitchTopPosition(stitch, stitchById, foundationType),
-      fixed: false,
-    });
-  }
+  const byRow = groupStitchesByRow(selectWorkingStitches(stitches));
 
   const ensureAnchor = (parent: StitchNode): DrapeNode => {
     const id = anchorNodeId(parent.id);
-    const existing = nodes.get(id);
-    if (existing) {
-      return existing;
+    let anchor = nodes.get(id);
+    if (!anchor) {
+      anchor = {
+        id,
+        position: getDrapeLoopAnchorPosition(parent, foundationType),
+        fixed: true,
+      };
+      nodes.set(id, anchor);
     }
-
-    const anchor: DrapeNode = {
-      id,
-      position: getDrapeLoopAnchorPosition(parent, foundationType),
-      fixed: true,
-    };
-    nodes.set(id, anchor);
     return anchor;
   };
 
-  for (const stitch of workingStitches) {
-    const stitchNode = nodes.get(stitch.id)!;
-
-    const addAttachment = (attachToId: string | null | undefined, kind: DrapeEdgeKind) => {
-      if (!attachToId) {
-        return;
-      }
-      const target = stitchById.get(attachToId);
-      if (!target) {
-        return;
-      }
-      const anchor = ensureAnchor(target);
-      edges.push(createEdge(stitch.id, anchor.id, kind, stitchNode.position, anchor.position));
-    };
-
-    addAttachment(stitch.attachToId, 'loop');
-    addAttachment(stitch.secondaryAttachToId, 'secondary');
-  }
-
-  const byRow = groupStitchesByRow(workingStitches);
   for (const rowStitches of byRow.values()) {
     const sorted = [...rowStitches].sort((left, right) => left.column - right.column);
-    for (let index = 1; index < sorted.length; index += 1) {
-      const previous = nodes.get(sorted[index - 1]!.id);
-      const current = nodes.get(sorted[index]!.id);
-      if (previous && current) {
+
+    for (let index = 0; index < sorted.length; index += 1) {
+      const stitch = sorted[index]!;
+      const stitchNode: DrapeNode = {
+        id: stitch.id,
+        position: getDrapeStitchTopPosition(stitch, stitchById, foundationType),
+        fixed: false,
+      };
+      nodes.set(stitch.id, stitchNode);
+
+      for (const { kind, getId } of ATTACHMENTS) {
+        const attachToId = getId(stitch);
+        if (!attachToId) {
+          continue;
+        }
+        const target = stitchById.get(attachToId);
+        if (!target) {
+          continue;
+        }
+        const anchor = ensureAnchor(target);
+        edges.push(createEdge(stitch.id, anchor.id, kind, stitchNode.position, anchor.position));
+      }
+
+      const previous = sorted[index - 1];
+      if (previous) {
+        const previousNode = nodes.get(previous.id)!;
         edges.push(
-          createEdge(previous.id, current.id, 'post', previous.position, current.position),
+          createEdge(previous.id, stitch.id, 'post', previousNode.position, stitchNode.position),
         );
       }
     }

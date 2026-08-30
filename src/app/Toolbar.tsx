@@ -308,11 +308,9 @@ export function Toolbar() {
             label="Drape preview"
             disabledReason={drapePreviewDisabledReason}
             pressed={drapePreviewEnabled}
+            toggle
             testId="drape-preview-toggle"
             variant="subtle"
-            ariaLabel={
-              drapePreviewEnabled ? 'Drape preview on' : 'Drape preview off'
-            }
             onClick={toggleDrapePreview}
           />
         </div>

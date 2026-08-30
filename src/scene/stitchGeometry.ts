@@ -1043,12 +1043,26 @@ export function getDrapeLoopAnchorPosition(
   parent: StitchNode,
   foundationType: FoundationType = FoundationType.CHAIN,
 ): [number, number, number] {
-  const position = getAttachmentInsertionPosition(
+  const { x, y, z } = getAttachmentInsertionPosition(
     parent,
     StitchType.SINGLE_CROCHET,
     foundationType,
   );
-  return [position.x, position.y, position.z];
+  return [x, y, z];
+}
+
+function drapeIncreasePairFirst(
+  stitch: StitchNode,
+  stitchById: Map<string, StitchNode>,
+): boolean {
+  const rowStitches = groupStitchesByRow([...stitchById.values()]).get(stitch.row);
+  if (!rowStitches) {
+    return false;
+  }
+
+  const sorted = [...rowStitches].sort((left, right) => left.column - right.column);
+  const stitchIndex = sorted.findIndex((candidate) => candidate.id === stitch.id);
+  return stitchIndex >= 0 && isIncreasePairFirst(stitch, sorted, stitchIndex);
 }
 
 /** Top-of-stitch proxy position for drape preview dynamics. */
@@ -1060,22 +1074,18 @@ export function getDrapeStitchTopPosition(
   const roundFoundation = isMagicRingFoundation(foundationType);
   const parent = stitch.attachToId ? stitchById.get(stitch.attachToId) : undefined;
   if (!parent) {
-    return [stitch.position.x, stitch.position.y, stitch.position.z];
+    const { x, y, z } = stitch.position;
+    return [x, y, z];
   }
-
-  const rowStitches = [...stitchById.values()]
-    .filter((candidate) => candidate.row === stitch.row)
-    .sort((left, right) => left.column - right.column);
-  const stitchIndex = rowStitches.findIndex((candidate) => candidate.id === stitch.id);
 
   const insertion = scInsertionPoint(stitch, parent, stitchById, roundFoundation);
   const adjustments = getStitchShapeAdjustments(stitch, {
-    increasePairFirst:
-      stitchIndex >= 0 && isIncreasePairFirst(stitch, rowStitches, stitchIndex),
+    increasePairFirst: drapeIncreasePairFirst(stitch, stitchById),
   });
-  const x = stitch.position.x + adjustments.xShift;
-  const y = stitchTopYFromAdjustments(insertion.y, stitch, adjustments);
-  const z = workingStitchTopZ(stitch, roundFoundation, adjustments.zShift);
 
-  return [x, y, z];
+  return [
+    stitch.position.x + adjustments.xShift,
+    stitchTopYFromAdjustments(insertion.y, stitch, adjustments),
+    workingStitchTopZ(stitch, roundFoundation, adjustments.zShift),
+  ];
 }
