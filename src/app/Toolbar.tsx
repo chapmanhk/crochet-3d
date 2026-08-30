@@ -22,6 +22,7 @@ import { ToolbarActionButton } from './ToolbarActionButton';
 import {
   getCopyInstructionsDisabledReason,
   getExportInstructionsDisabledReason,
+  getDrapePreviewDisabledReason,
   getResetDisabledReason,
   getSavePatternDisabledReason,
 } from './toolbarState';
@@ -108,6 +109,7 @@ export function Toolbar() {
   const savePatternDisabledReason = getSavePatternDisabledReason(stitches.length);
   const copyInstructionsDisabledReason = getCopyInstructionsDisabledReason(stitches.length);
   const exportInstructionsDisabledReason = getExportInstructionsDisabledReason(stitches.length);
+  const drapePreviewDisabledReason = getDrapePreviewDisabledReason(stitches.length);
   const hasPattern = stitches.length > 0;
   const addStitchLabel = getAddStitchButtonLabel(selectedStitchType);
   const advanceActionLabel = getAdvanceActionLabel(foundationType);
@@ -302,18 +304,18 @@ export function Toolbar() {
         </div>
         <div className="toolbar-divider" aria-hidden="true" />
         <div className="toolbar-group" role="group" aria-label="Preview">
-          <button
-            type="button"
-            className="btn subtle"
-            aria-pressed={drapePreviewEnabled}
-            data-testid="drape-preview-toggle"
-            disabled={!hasPattern}
+          <ToolbarActionButton
+            label="Drape preview"
+            disabledReason={drapePreviewDisabledReason}
+            pressed={drapePreviewEnabled}
+            toggle
+            testId="drape-preview-toggle"
+            variant="subtle"
             onClick={toggleDrapePreview}
-          >
-            {drapePreviewEnabled ? 'Drape preview on' : 'Drape preview off'}
-          </button>
+          />
         </div>
         <div className="toolbar-divider" aria-hidden="true" />
+        <div className="toolbar-group" role="group" aria-label="Stitch actions">
         <StitchTypeSelector
           value={selectedStitchType}
           onChange={setSelectedStitchType}
@@ -356,6 +358,7 @@ export function Toolbar() {
           onClick={() => setConfirmAction('reset')}
           variant="subtle"
         />
+        </div>
       </div>
 
       <FoundationStartDialog

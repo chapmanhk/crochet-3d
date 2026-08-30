@@ -55,6 +55,18 @@ export function toolbarButton(page: Page, name: string | RegExp): Locator {
   return toolbar(page).getByRole('button', { name });
 }
 
+export async function expectToolbarDisabledReason(
+  page: Page,
+  name: string | RegExp,
+  reason: RegExp | string,
+) {
+  const button = toolbarButton(page, name);
+  await expect(button).toBeDisabled();
+  const describedBy = await button.getAttribute('aria-describedby');
+  expect(describedBy).toBeTruthy();
+  await expect(page.locator(`#${describedBy}`)).toHaveText(reason);
+}
+
 export async function clickToolbarButton(page: Page, name: string | RegExp) {
   await expect(async () => {
     const button = toolbarButton(page, name);
@@ -151,5 +163,5 @@ export async function toggleDrapePreview(page: Page, enabled: boolean) {
     }).toPass({ timeout: 15_000 });
   }
   await expect(toggle).toHaveAttribute('aria-pressed', target);
-  await expect(toggle).toHaveText(enabled ? 'Drape preview on' : 'Drape preview off');
+  await expect(toggle).toHaveText('Drape preview');
 }

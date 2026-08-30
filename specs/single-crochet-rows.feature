@@ -49,3 +49,10 @@ Feature: Single crochet rows
     And I have placed 3 single crochet stitches on the current row
     When I try to add another single crochet stitch
     Then the operation should be rejected
+
+  @engine
+  Scenario: First stitch of each working row includes turning-chain lift
+    Given a foundation chain of 4
+    And a working row with stitches starting at column 0
+    When stitch shape adjustments are computed
+    Then the first stitch of the row should have extra vertical lift

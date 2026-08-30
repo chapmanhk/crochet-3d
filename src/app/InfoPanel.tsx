@@ -133,9 +133,14 @@ export function InfoPanel() {
           </dl>
           <p className="next-step muted">{nextStep}</p>
           {attachmentTargetDescription ? (
-            <p className="attachment-target muted" data-testid="attachment-target-description">
-              {attachmentTargetDescription}
-            </p>
+            <div className="attachment-target-block">
+              <dl className="info-grid">
+                <div>
+                  <dt>Next attachment</dt>
+                  <dd data-testid="attachment-target-description">{attachmentTargetDescription}</dd>
+                </div>
+              </dl>
+            </div>
           ) : null}
         </div>
 

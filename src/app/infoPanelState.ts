@@ -15,10 +15,10 @@ function formatAttachmentTargetRowLabel(
   foundationType: FoundationType,
 ): string {
   if (isMagicRing(foundationType)) {
-    return `round ${target.row}`;
+    return target.row === 0 ? 'the magic ring' : `Round ${target.row}`;
   }
 
-  return target.row === 0 ? 'foundation' : `row ${target.row}`;
+  return target.row === 0 ? 'Foundation' : `Row ${target.row}`;
 }
 
 export function getAdvanceActionLabel(
@@ -155,7 +155,13 @@ export function getAttachmentTargetDescription(
   const rowStitches = stitches.filter((stitch) => stitch.row === target.row);
   const totalInRow = rowStitches.length;
 
-  return `Next ${stitchName} attaches to stitch ${columnIndex} of ${totalInRow} in ${targetRowLabel} (${workUnit} ${currentRow}).`;
+  const omitWorkingContext =
+    isMagicRing(foundationType) && target.row === 0 && currentRow === 1;
+  const workingContext = omitWorkingContext
+    ? ''
+    : `, working ${workUnit} ${currentRow}`;
+
+  return `Next ${stitchName} goes into stitch ${columnIndex} of ${totalInRow} in ${targetRowLabel}${workingContext}.`;
 }
 
 export function getAddStitchButtonLabel(selectedStitchType: WorkingStitchType): string {

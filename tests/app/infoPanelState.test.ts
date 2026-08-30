@@ -78,7 +78,7 @@ describe('infoPanelState', () => {
         StitchType.SINGLE_CROCHET,
         1,
       ),
-    ).toContain('attaches to stitch 1 of 2 in foundation');
+    ).toContain('goes into stitch 1 of 2 in Foundation');
   });
 
   it('uses round labels for magic ring attachment targets', () => {
@@ -109,7 +109,7 @@ describe('infoPanelState', () => {
         1,
         FoundationType.MAGIC_RING,
       ),
-    ).toContain('in round 0 (round 1)');
+    ).toContain('goes into stitch 1 of 2 in the magic ring.');
   });
 
   it('names the selected stitch type in the attachment target description', () => {
@@ -131,6 +131,6 @@ describe('infoPanelState', () => {
         StitchType.HALF_DOUBLE_CROCHET,
         1,
       ),
-    ).toContain('Next half double crochet attaches');
+    ).toContain('Next half double crochet goes');
   });
 });

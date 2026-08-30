@@ -53,7 +53,20 @@ describe('stitchRealism', () => {
 
     expect(increaseAdjust.xShift).toBeGreaterThan(normalAdjust.xShift);
     expect(increaseFirst.xShift).toBeLessThan(normalAdjust.xShift);
-    expect(decreaseAdjust.vHalfWidth).toBeLessThan(normalAdjust.vHalfWidth);
+    expect(decreaseAdjust.vHalfWidth).toBeLessThan(normalAdjust.vHalfWidth * 0.7);
+  });
+
+  it('lifts the first stitch of each working row for turning-chain height', () => {
+    const rowOneStart = createStitchNode(StitchType.SINGLE_CROCHET, 1, 0, 'parent');
+    const rowTwoStart = createStitchNode(StitchType.SINGLE_CROCHET, 2, 0, 'parent');
+    const rowOneMiddle = createStitchNode(StitchType.SINGLE_CROCHET, 1, 1, 'parent');
+
+    expect(getStitchShapeAdjustments(rowOneStart).yShift).toBeGreaterThan(
+      getStitchShapeAdjustments(rowOneMiddle).yShift,
+    );
+    expect(getStitchShapeAdjustments(rowTwoStart).yShift).toBeGreaterThan(
+      getStitchShapeAdjustments(rowOneMiddle).yShift,
+    );
   });
 
   it('computes stitch top Y from insertion and adjustments', () => {

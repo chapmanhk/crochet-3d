@@ -29,11 +29,24 @@ Feature: Drape preview yarn constraints
     When the drape graph is built
     Then the simulation node count should be at most 200
 
+  @engine
+  Scenario: Drape graph respects magic ring foundation anchors
+    Given a magic ring with 4 stitches
+    And a working round with 4 single crochet stitches
+    When the drape graph is built for magic ring foundation
+    Then loop anchor Z should differ from chain foundation anchors
+
+  @e2e
+  Scenario: Drape preview is disabled without a pattern
+    Given I have no pattern
+    Then the drape preview toggle should be disabled
+    And the disabled reason should mention adding a foundation chain or template
+
   @e2e
   Scenario: Drape preview with yarn constraints remains toggleable
     Given I have a foundation chain of 6
     When I choose "New Row"
     And I enable drape preview
-    Then the drape preview toggle should show "Drape preview on"
+    Then the drape preview toggle should be pressed
     When I disable drape preview
-    Then the drape preview toggle should show "Drape preview off"
+    Then the drape preview toggle should not be pressed

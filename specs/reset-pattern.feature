@@ -20,3 +20,8 @@ Feature: Reset pattern
     And I choose "Cancel" in the confirmation dialog
     Then the pattern status should be "Foundation"
     And the stitch count should be 2
+
+  Scenario: Reset with no pattern is disabled
+    Given I have no pattern
+    Then the "Reset" control should be disabled
+    And the disabled reason should explain there is no pattern to reset

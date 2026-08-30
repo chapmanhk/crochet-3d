@@ -32,3 +32,16 @@ Feature: App shell
     Given I have no pattern
     When I choose the yarn color "#336699"
     Then the yarn color should be "#336699"
+
+  Scenario: First-run onboarding explains how to start a pattern
+    Given onboarding has not been seen
+    When I open the crochet pattern designer
+    Then I should see the onboarding dialog
+    When I dismiss the onboarding dialog
+    Then the onboarding dialog should be closed
+
+  Scenario: Info panel can be collapsed on narrow viewports
+    Given I have a foundation chain of 3
+    And the viewport is narrow
+    When I hide the info panel
+    Then I should see the show panel control

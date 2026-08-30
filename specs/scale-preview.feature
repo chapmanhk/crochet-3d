@@ -29,6 +29,16 @@ Feature: Scale preview
     When the row segment is built for instanced rendering
     Then stitch prototypes should be reused across instances
 
+  @e2e
+  Scenario: Magic ring attachment target uses round wording
+    Given I have a magic ring of 4 stitches
+    When I choose "New Round"
+    And I complete the current round with 4 single crochet stitches
+    And I choose "New Round"
+    Then the info panel should describe the next attachment target
+    And the attachment target description should include "Round 1"
+    And the attachment target description should include "working round 2"
+
   @engine
   Scenario: Merged segment geometry reduces mesh count
     Given a foundation chain of 6

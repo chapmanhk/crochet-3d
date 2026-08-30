@@ -17,3 +17,10 @@ export function getCopyInstructionsDisabledReason(stitchesCount: number): string
 export function getExportInstructionsDisabledReason(stitchesCount: number): string | null {
   return disabledWhenEmpty(stitchesCount, 'Add stitches before exporting instructions.');
 }
+
+export function getDrapePreviewDisabledReason(stitchesCount: number): string | null {
+  return disabledWhenEmpty(
+    stitchesCount,
+    'Add a foundation (chain or magic ring) or choose a template before enabling drape preview.',
+  );
+}

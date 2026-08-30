@@ -6,6 +6,9 @@ interface ToolbarActionButtonProps {
   onClick: () => void;
   variant?: 'default' | 'subtle';
   ariaLabel?: string;
+  pressed?: boolean;
+  toggle?: boolean;
+  testId?: string;
 }
 
 export function ToolbarActionButton({
@@ -14,18 +17,25 @@ export function ToolbarActionButton({
   onClick,
   variant = 'default',
   ariaLabel,
+  pressed,
+  toggle = false,
+  testId,
 }: ToolbarActionButtonProps) {
   const reasonId = useId();
   const isDisabled = Boolean(disabledReason);
   const className = variant === 'subtle' ? 'btn subtle' : 'btn';
+  const resolvedAriaLabel =
+    ariaLabel ?? (toggle && pressed !== undefined ? `${label} ${pressed ? 'on' : 'off'}` : undefined);
 
   return (
     <button
       type="button"
       className={className}
-      aria-label={ariaLabel}
-      aria-disabled={isDisabled || undefined}
+      aria-label={resolvedAriaLabel}
+      aria-pressed={pressed}
+      disabled={isDisabled}
       aria-describedby={isDisabled ? reasonId : undefined}
+      data-testid={testId}
       onClick={(event) => {
         if (isDisabled) {
           event.preventDefault();

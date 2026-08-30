@@ -3,7 +3,9 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import {
   AUTOSAVE_STORAGE_KEY,
+  createSavedPatternFile,
   INVALID_PATTERN_FILE_MESSAGE,
+  Pattern,
   StitchType,
 } from '@engine/index';
 import {
@@ -289,6 +291,36 @@ describe('patternStore', () => {
 
     store.setDrapePreviewEnabled(false);
     expect(usePatternStore.getState().drapePreviewEnabled).toBe(false);
+  });
+
+  it('disables drape preview when importing a saved pattern', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(3);
+    store.toggleDrapePreview();
+    expect(usePatternStore.getState().drapePreviewEnabled).toBe(true);
+
+    const pattern = new Pattern();
+    pattern.addFoundationChain(5);
+    store.importSavedPattern(
+      createSavedPatternFile(pattern.getSnapshot(), {
+        yarnColor: '#ff0000',
+        selectedStitchType: StitchType.SINGLE_CROCHET,
+      }),
+    );
+
+    expect(usePatternStore.getState().drapePreviewEnabled).toBe(false);
+    expect(usePatternStore.getState().stitches).toHaveLength(5);
+  });
+
+  it('disables drape preview when loading a template', () => {
+    const store = usePatternStore.getState();
+    store.addFoundationChain(3);
+    store.toggleDrapePreview();
+    expect(usePatternStore.getState().drapePreviewEnabled).toBe(true);
+
+    expect(store.loadTemplate('swatch')).toBe(true);
+    expect(usePatternStore.getState().drapePreviewEnabled).toBe(false);
+    expect(usePatternStore.getState().stitches.length).toBeGreaterThan(0);
   });
 
   it('clears autosave when persisting an empty pattern', () => {

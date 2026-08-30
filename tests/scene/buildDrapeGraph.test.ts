@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { Pattern, resetIdCounter, StitchType } from '@engine/index';
+import { FoundationType, Pattern, resetIdCounter, StitchType } from '@engine/index';
 import {
   buildDrapeGraph,
   DRAPE_SPRING_TUNING,
   MAX_DRAPE_SIMULATION_NODES,
 } from '../../src/scene/preview/buildDrapeGraph';
+import { getDrapeLoopAnchorPosition } from '../../src/scene/stitchGeometry';
 
 describe('buildDrapeGraph', () => {
   afterEach(() => {
@@ -65,6 +66,38 @@ describe('buildDrapeGraph', () => {
     expect(secondaryEdges[0]!.stiffness).toBe(DRAPE_SPRING_TUNING.secondary.stiffness);
   });
 
+  it('uses scene loop anchors for foundation parents', () => {
+    const pattern = new Pattern();
+    const chains = pattern.addFoundationChain(4);
+    pattern.startNewRow();
+    pattern.addSingleCrochet();
+
+    const stitches = pattern.getStitches();
+    const graph = buildDrapeGraph(stitches, FoundationType.CHAIN);
+    const chain = stitches.find((stitch) => stitch.id === chains[0]!.id)!;
+    const expectedAnchor = getDrapeLoopAnchorPosition(chain, FoundationType.CHAIN);
+    const anchorNode = graph.nodes.find((node) => node.id === `anchor-${chain.id}`);
+
+    expect(anchorNode?.position).toEqual(expectedAnchor);
+    expect(anchorNode?.fixed).toBe(true);
+  });
+
+  it('positions magic ring loop anchors with round foundation Z', () => {
+    const pattern = new Pattern();
+    pattern.addMagicRing(4);
+    pattern.startNewRow();
+    pattern.addSingleCrochet();
+
+    const stitches = pattern.getStitches();
+    const chainGraph = buildDrapeGraph(stitches, FoundationType.CHAIN);
+    const ringGraph = buildDrapeGraph(stitches, FoundationType.MAGIC_RING);
+    const foundationStitch = stitches.find((stitch) => stitch.row === 0)!;
+    const chainAnchor = chainGraph.nodes.find((node) => node.id === `anchor-${foundationStitch.id}`);
+    const ringAnchor = ringGraph.nodes.find((node) => node.id === `anchor-${foundationStitch.id}`);
+
+    expect(ringAnchor?.position[2]).not.toBe(chainAnchor?.position[2]);
+  });
+
   it('caps simulation nodes for very large patterns', () => {
     const pattern = new Pattern();
     pattern.addFoundationChain(50);
@@ -101,6 +134,31 @@ describe('buildDrapeGraph', () => {
     );
 
     expect(dynamicNodeIds.size).toBe(180);
-    expect(includedRows).toEqual(new Set([1, 2, 3]));
+    expect(includedRows).toEqual(new Set([2, 3, 4]));
+  });
+
+  it('orders magic ring post springs by angular position', () => {
+    const pattern = new Pattern();
+    pattern.addMagicRing(6);
+    pattern.startNewRow();
+    for (let index = 0; index < 6; index += 1) {
+      pattern.addSingleCrochet();
+    }
+
+    const stitches = pattern.getStitches();
+    const rowStitches = stitches.filter((stitch) => stitch.row === 1);
+    const angleById = new Map(
+      rowStitches.map((stitch) => [
+        stitch.id,
+        Math.atan2(stitch.position.z, stitch.position.x),
+      ]),
+    );
+    const graph = buildDrapeGraph(stitches, FoundationType.MAGIC_RING);
+    const postEdges = graph.edges.filter((edge) => edge.kind === 'post');
+
+    expect(postEdges).toHaveLength(5);
+    for (const edge of postEdges) {
+      expect(angleById.get(edge.toId)!).toBeGreaterThan(angleById.get(edge.fromId)!);
+    }
   });
 });

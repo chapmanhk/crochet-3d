@@ -286,7 +286,13 @@ export const usePatternStore = create<PatternState>((set, get) => ({
   },
 
   toggleDrapePreview: () => {
-    set((state) => ({ drapePreviewEnabled: !state.drapePreviewEnabled }));
+    set((state) => {
+      const enabled = !state.drapePreviewEnabled;
+      return {
+        drapePreviewEnabled: enabled,
+        lastNotice: enabled ? 'Loading drape preview…' : state.lastNotice,
+      };
+    });
   },
 
   addFoundationChain: (length: number) =>
@@ -380,8 +386,8 @@ export const usePatternStore = create<PatternState>((set, get) => ({
     set({ yarnColor: color, lastNotice: null });
   },
 
-  loadTemplate: (templateId: TemplateId) =>
-    runPatternAction(
+  loadTemplate: (templateId: TemplateId) => {
+    const loaded = runPatternAction(
       set,
       get,
       () => {
@@ -391,7 +397,12 @@ export const usePatternStore = create<PatternState>((set, get) => ({
         );
       },
       'Failed to load template.',
-    ),
+    );
+    if (loaded) {
+      set({ drapePreviewEnabled: false });
+    }
+    return loaded;
+  },
 
   loadSnapshot: (snapshot: PatternSnapshot, options = {}) => {
     pattern.loadSnapshot(snapshot);
@@ -409,6 +420,7 @@ export const usePatternStore = create<PatternState>((set, get) => ({
       ...syncState(file.ui.selectedStitchType),
       lastError: null,
       lastNotice: 'Pattern loaded.',
+      drapePreviewEnabled: false,
     });
   },
 

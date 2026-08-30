@@ -1037,3 +1037,59 @@ export function getAttachmentInsertionPosition(
 
   return { x: parent.position.x, y: anchor.y, z: anchor.z };
 }
+
+/** Loop anchor used by the drape preview spring graph. */
+export function getDrapeLoopAnchorPosition(
+  parent: StitchNode,
+  foundationType: FoundationType = FoundationType.CHAIN,
+): [number, number, number] {
+  const { x, y, z } = getAttachmentInsertionPosition(
+    parent,
+    StitchType.SINGLE_CROCHET,
+    foundationType,
+  );
+  return [x, y, z];
+}
+
+function drapeIncreasePairFirst(
+  stitch: StitchNode,
+  stitchById: Map<string, StitchNode>,
+  rowStitchesByRow?: Map<number, StitchNode[]>,
+): boolean {
+  const rowStitches =
+    rowStitchesByRow?.get(stitch.row) ??
+    groupStitchesByRow([...stitchById.values()]).get(stitch.row);
+  if (!rowStitches) {
+    return false;
+  }
+
+  const sorted = [...rowStitches].sort((left, right) => left.column - right.column);
+  const stitchIndex = sorted.findIndex((candidate) => candidate.id === stitch.id);
+  return stitchIndex >= 0 && isIncreasePairFirst(stitch, sorted, stitchIndex);
+}
+
+/** Top-of-stitch proxy position for drape preview dynamics. */
+export function getDrapeStitchTopPosition(
+  stitch: StitchNode,
+  stitchById: Map<string, StitchNode>,
+  foundationType: FoundationType = FoundationType.CHAIN,
+  rowStitchesByRow?: Map<number, StitchNode[]>,
+): [number, number, number] {
+  const roundFoundation = isMagicRingFoundation(foundationType);
+  const parent = stitch.attachToId ? stitchById.get(stitch.attachToId) : undefined;
+  if (!parent) {
+    const { x, y, z } = stitch.position;
+    return [x, y, z];
+  }
+
+  const insertion = scInsertionPoint(stitch, parent, stitchById, roundFoundation);
+  const adjustments = getStitchShapeAdjustments(stitch, {
+    increasePairFirst: drapeIncreasePairFirst(stitch, stitchById, rowStitchesByRow),
+  });
+
+  return [
+    stitch.position.x + adjustments.xShift,
+    stitchTopYFromAdjustments(insertion.y, stitch, adjustments),
+    workingStitchTopZ(stitch, roundFoundation, adjustments.zShift),
+  ];
+}
