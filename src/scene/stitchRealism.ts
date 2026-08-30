@@ -60,24 +60,24 @@ export function getStitchShapeAdjustments(
   let leanRadians = stitchJitter(stitch, 4, 0.05);
 
   if (options.increasePairFirst) {
-    xShift -= 0.03;
-    vHalfWidth *= 0.94;
-    leanRadians -= 0.07;
+    xShift -= 0.04;
+    vHalfWidth *= 0.9;
+    leanRadians -= 0.09;
   }
 
   if (placementKind === PlacementKind.INCREASE_SECOND) {
-    xShift += 0.035;
-    vHalfWidth *= 0.92;
-    leanRadians += 0.08;
+    xShift += 0.045;
+    vHalfWidth *= 0.88;
+    leanRadians += 0.1;
   }
 
   if (placementKind === PlacementKind.DECREASE) {
-    vHalfWidth *= 0.72;
-    xShift *= 0.35;
-    leanRadians *= 0.5;
+    vHalfWidth *= 0.62;
+    xShift *= 0.25;
+    leanRadians *= 0.4;
   }
 
-  if (stitch.column === 0 && stitch.row > 1) {
+  if (stitch.column === 0 && stitch.row >= 1) {
     yShift += CHAIN_TURN_LIFT;
   }
 

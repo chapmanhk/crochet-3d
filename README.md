@@ -84,7 +84,7 @@ Stitches are rendered imperatively by `StitchRenderer`:
 - **Row joins** — yarn path between consecutive rows (merged geometry)
 - **Outline** — screen-space stroke (~2.5 px) in a darker yarn tone (not a drop shadow)
 - **Row stacking** — scene-only `VISUAL_ROW_HEIGHT` (0.22); engine layout Y (`ROW_HEIGHT` = 1.2) drives placement math only
-- **Drape preview** — optional Rapier ball-collider layer behind the illustrated stitches (toolbar toggle)
+- **Drape preview** — optional Rapier spring-linked proxy layer behind illustrated stitches (toolbar toggle)
 
 Visual behavior is tested in `tests/scene/`; crocheter-facing behavior is specified in `specs/*.feature`.
 

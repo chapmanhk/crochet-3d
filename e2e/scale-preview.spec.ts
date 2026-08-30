@@ -2,6 +2,7 @@ import { expect, test } from './test';
 import {
   clickToolbarButton,
   createFoundationChain,
+  createMagicRing,
   gotoApp,
   infoPanel,
   loadTemplate,
@@ -25,5 +26,14 @@ test.describe('Scale preview', () => {
     await expect(page.getByTestId('attachment-target-description')).toContainText(
       'attaches to stitch',
     );
+  });
+
+  test('Magic ring attachment target uses round wording', async ({ page }) => {
+    await gotoApp(page);
+    await createMagicRing(page, 4);
+    await clickToolbarButton(page, 'New Round');
+
+    await expect(page.getByTestId('attachment-target-description')).toContainText('the magic ring');
+    await expect(page.getByTestId('attachment-target-description')).toContainText('round 1');
   });
 });

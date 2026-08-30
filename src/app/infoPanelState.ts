@@ -15,7 +15,7 @@ function formatAttachmentTargetRowLabel(
   foundationType: FoundationType,
 ): string {
   if (isMagicRing(foundationType)) {
-    return `round ${target.row}`;
+    return target.row === 0 ? 'the magic ring' : `round ${target.row}`;
   }
 
   return target.row === 0 ? 'foundation' : `row ${target.row}`;

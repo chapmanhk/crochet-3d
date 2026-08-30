@@ -30,10 +30,16 @@ Feature: Drape preview yarn constraints
     Then the simulation node count should be at most 200
 
   @e2e
+  Scenario: Drape preview is disabled without a pattern
+    Given I have no pattern
+    Then the drape preview toggle should be disabled
+    And the disabled reason should mention adding a foundation chain or template
+
+  @e2e
   Scenario: Drape preview with yarn constraints remains toggleable
     Given I have a foundation chain of 6
     When I choose "New Row"
     And I enable drape preview
-    Then the drape preview toggle should show "Drape preview on"
+    Then the drape preview toggle should be pressed
     When I disable drape preview
-    Then the drape preview toggle should show "Drape preview off"
+    Then the drape preview toggle should not be pressed

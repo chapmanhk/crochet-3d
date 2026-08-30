@@ -1037,3 +1037,45 @@ export function getAttachmentInsertionPosition(
 
   return { x: parent.position.x, y: anchor.y, z: anchor.z };
 }
+
+/** Loop anchor used by the drape preview spring graph. */
+export function getDrapeLoopAnchorPosition(
+  parent: StitchNode,
+  foundationType: FoundationType = FoundationType.CHAIN,
+): [number, number, number] {
+  const position = getAttachmentInsertionPosition(
+    parent,
+    StitchType.SINGLE_CROCHET,
+    foundationType,
+  );
+  return [position.x, position.y, position.z];
+}
+
+/** Top-of-stitch proxy position for drape preview dynamics. */
+export function getDrapeStitchTopPosition(
+  stitch: StitchNode,
+  stitchById: Map<string, StitchNode>,
+  foundationType: FoundationType = FoundationType.CHAIN,
+): [number, number, number] {
+  const roundFoundation = isMagicRingFoundation(foundationType);
+  const parent = stitch.attachToId ? stitchById.get(stitch.attachToId) : undefined;
+  if (!parent) {
+    return [stitch.position.x, stitch.position.y, stitch.position.z];
+  }
+
+  const rowStitches = [...stitchById.values()]
+    .filter((candidate) => candidate.row === stitch.row)
+    .sort((left, right) => left.column - right.column);
+  const stitchIndex = rowStitches.findIndex((candidate) => candidate.id === stitch.id);
+
+  const insertion = scInsertionPoint(stitch, parent, stitchById, roundFoundation);
+  const adjustments = getStitchShapeAdjustments(stitch, {
+    increasePairFirst:
+      stitchIndex >= 0 && isIncreasePairFirst(stitch, rowStitches, stitchIndex),
+  });
+  const x = stitch.position.x + adjustments.xShift;
+  const y = stitchTopYFromAdjustments(insertion.y, stitch, adjustments);
+  const z = workingStitchTopZ(stitch, roundFoundation, adjustments.zShift);
+
+  return [x, y, z];
+}

@@ -1,12 +1,13 @@
 import type { StitchNode } from '@engine/index';
-import { groupStitchesByRow } from '@engine/index';
+import { FoundationType, groupStitchesByRow } from '@engine/index';
+import { getDrapeLoopAnchorPosition, getDrapeStitchTopPosition } from '../stitchGeometry';
 
 export type DrapeEdgeKind = 'post' | 'loop' | 'secondary';
 
 export interface DrapeNode {
   id: string;
   position: [number, number, number];
-  /** Fixed anchors hold foundation / parent loop attachment points. */
+  /** Fixed anchors hold parent loop attachment points. */
   fixed: boolean;
 }
 
@@ -32,10 +33,6 @@ export const DRAPE_SPRING_TUNING = {
 } as const;
 
 export const MAX_DRAPE_SIMULATION_NODES = 200;
-
-function drapePosition(stitch: StitchNode): [number, number, number] {
-  return [stitch.position.x, stitch.position.y, stitch.position.z];
-}
 
 function selectWorkingStitches(stitches: StitchNode[]): StitchNode[] {
   const working = stitches.filter((stitch) => stitch.row > 0);
@@ -85,11 +82,18 @@ function createEdge(
   };
 }
 
+export function buildDrapeGraphFingerprint(stitches: StitchNode[]): string {
+  return stitches.map((stitch) => stitch.id).join(',');
+}
+
 /**
  * Build a coarse stitch joint graph for Rapier drape preview.
  * Post springs link same-row neighbors; loop springs link each stitch to its parent loop anchor.
  */
-export function buildDrapeGraph(stitches: StitchNode[]): DrapeGraph {
+export function buildDrapeGraph(
+  stitches: StitchNode[],
+  foundationType: FoundationType = FoundationType.CHAIN,
+): DrapeGraph {
   if (stitches.length === 0) {
     return { nodes: [], edges: [] };
   }
@@ -103,7 +107,7 @@ export function buildDrapeGraph(stitches: StitchNode[]): DrapeGraph {
   for (const stitch of workingStitches) {
     nodes.set(stitch.id, {
       id: stitch.id,
-      position: drapePosition(stitch),
+      position: getDrapeStitchTopPosition(stitch, stitchById, foundationType),
       fixed: false,
     });
   }
@@ -117,15 +121,12 @@ export function buildDrapeGraph(stitches: StitchNode[]): DrapeGraph {
 
     const anchor: DrapeNode = {
       id,
-      position: drapePosition(parent),
+      position: getDrapeLoopAnchorPosition(parent, foundationType),
       fixed: true,
     };
     nodes.set(id, anchor);
     return anchor;
   };
-
-  const resolveAnchor = (target: StitchNode): DrapeNode | undefined =>
-    target.row === 0 ? ensureAnchor(target) : nodes.get(target.id);
 
   for (const stitch of workingStitches) {
     const stitchNode = nodes.get(stitch.id)!;
@@ -138,10 +139,7 @@ export function buildDrapeGraph(stitches: StitchNode[]): DrapeGraph {
       if (!target) {
         return;
       }
-      const anchor = resolveAnchor(target);
-      if (!anchor) {
-        return;
-      }
+      const anchor = ensureAnchor(target);
       edges.push(createEdge(stitch.id, anchor.id, kind, stitchNode.position, anchor.position));
     };
 

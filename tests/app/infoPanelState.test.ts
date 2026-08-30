@@ -109,7 +109,7 @@ describe('infoPanelState', () => {
         1,
         FoundationType.MAGIC_RING,
       ),
-    ).toContain('in round 0 (round 1)');
+    ).toContain('in the magic ring (round 1)');
   });
 
   it('names the selected stitch type in the attachment target description', () => {

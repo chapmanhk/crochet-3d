@@ -11,8 +11,4 @@ Feature: Deferred product capabilities
   Background:
     Given I am using the crochet pattern designer
 
-  @deferred @e2e
-  Scenario: Reset with no pattern is a no-op
-    Given I have no pattern
-    When I choose "Reset"
-    Then the pattern status should be "No pattern"
+  # Reserved for Phase 6+ capabilities (sharing, taller stitches, garment grading).

@@ -151,5 +151,5 @@ export async function toggleDrapePreview(page: Page, enabled: boolean) {
     }).toPass({ timeout: 15_000 });
   }
   await expect(toggle).toHaveAttribute('aria-pressed', target);
-  await expect(toggle).toHaveText(enabled ? 'Drape preview on' : 'Drape preview off');
+  await expect(toggle).toHaveText('Drape preview');
 }

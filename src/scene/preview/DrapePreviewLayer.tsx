@@ -1,22 +1,27 @@
 import { createRef, useMemo, useRef, type RefObject } from 'react';
-import { BallCollider, Physics, RigidBody, type RapierRigidBody } from '@react-three/rapier';
+import { Physics, RigidBody, type RapierRigidBody } from '@react-three/rapier';
 import type { StitchNode } from '@engine/index';
-import { buildDrapeGraph } from './buildDrapeGraph';
+import { FoundationType } from '@engine/index';
+import { buildDrapeGraph, buildDrapeGraphFingerprint } from './buildDrapeGraph';
 import { DrapeSpringEdge } from './DrapeSpringEdge';
 
-const DRAPED_NODE_RADIUS = 0.035;
 const DRAPED_NODE_MASS = 0.04;
 
 interface DrapePreviewLayerProps {
   stitches: StitchNode[];
+  foundationType: FoundationType;
 }
 
 /**
  * Rapier drape preview: spring-linked stitch proxies with loop + post constraints.
  * Illustrative hang feedback — not strand-accurate yarn simulation.
  */
-export function DrapePreviewLayer({ stitches }: DrapePreviewLayerProps) {
-  const graph = useMemo(() => buildDrapeGraph(stitches), [stitches]);
+export function DrapePreviewLayer({ stitches, foundationType }: DrapePreviewLayerProps) {
+  const graph = useMemo(
+    () => buildDrapeGraph(stitches, foundationType),
+    [stitches, foundationType],
+  );
+  const simulationKey = useMemo(() => buildDrapeGraphFingerprint(stitches), [stitches]);
   const nodeRefsCache = useRef(new Map<string, RefObject<RapierRigidBody>>());
 
   const nodeRefs = useMemo(() => {
@@ -37,7 +42,7 @@ export function DrapePreviewLayer({ stitches }: DrapePreviewLayerProps) {
   }
 
   return (
-    <Physics gravity={[0, -2.8, 0]} timeStep={1 / 60}>
+    <Physics key={simulationKey} gravity={[0, -2.8, 0]} timeStep={1 / 60}>
       {graph.nodes.map((node) => {
         const dynamicProps = node.fixed
           ? {}
@@ -51,9 +56,7 @@ export function DrapePreviewLayer({ stitches }: DrapePreviewLayerProps) {
             type={node.fixed ? 'fixed' : 'dynamic'}
             colliders={false}
             {...dynamicProps}
-          >
-            <BallCollider args={[DRAPED_NODE_RADIUS]} />
-          </RigidBody>
+          />
         );
       })}
       {graph.edges.map((edge) => {

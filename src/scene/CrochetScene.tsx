@@ -31,10 +31,11 @@ function SceneControls() {
 }
 
 export function CrochetScene() {
-  const { stitches, drapePreviewEnabled } = usePatternStore(
+  const { stitches, drapePreviewEnabled, foundationType } = usePatternStore(
     useShallow((state) => ({
       stitches: state.stitches,
       drapePreviewEnabled: state.drapePreviewEnabled,
+      foundationType: state.foundationType,
     })),
   );
 
@@ -47,7 +48,11 @@ export function CrochetScene() {
       <color attach="background" args={[SCENE_BACKGROUND]} />
       <SceneControls />
       <SceneStitchRenderer />
-      <LazyDrapePreview stitches={stitches} enabled={drapePreviewEnabled} />
+      <LazyDrapePreview
+        stitches={stitches}
+        foundationType={foundationType}
+        enabled={drapePreviewEnabled}
+      />
       <AttachmentPointPicker />
     </Canvas>
   );

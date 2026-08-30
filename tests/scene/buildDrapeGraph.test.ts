@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { Pattern, resetIdCounter, StitchType } from '@engine/index';
+import { FoundationType, Pattern, resetIdCounter, StitchType } from '@engine/index';
 import {
   buildDrapeGraph,
   DRAPE_SPRING_TUNING,
   MAX_DRAPE_SIMULATION_NODES,
 } from '../../src/scene/preview/buildDrapeGraph';
+import { getDrapeLoopAnchorPosition } from '../../src/scene/stitchGeometry';
 
 describe('buildDrapeGraph', () => {
   afterEach(() => {
@@ -63,6 +64,38 @@ describe('buildDrapeGraph', () => {
 
     expect(secondaryEdges).toHaveLength(1);
     expect(secondaryEdges[0]!.stiffness).toBe(DRAPE_SPRING_TUNING.secondary.stiffness);
+  });
+
+  it('uses scene loop anchors for foundation parents', () => {
+    const pattern = new Pattern();
+    const chains = pattern.addFoundationChain(4);
+    pattern.startNewRow();
+    pattern.addSingleCrochet();
+
+    const stitches = pattern.getStitches();
+    const graph = buildDrapeGraph(stitches, FoundationType.CHAIN);
+    const chain = stitches.find((stitch) => stitch.id === chains[0]!.id)!;
+    const expectedAnchor = getDrapeLoopAnchorPosition(chain, FoundationType.CHAIN);
+    const anchorNode = graph.nodes.find((node) => node.id === `anchor-${chain.id}`);
+
+    expect(anchorNode?.position).toEqual(expectedAnchor);
+    expect(anchorNode?.fixed).toBe(true);
+  });
+
+  it('positions magic ring loop anchors with round foundation Z', () => {
+    const pattern = new Pattern();
+    pattern.addMagicRing(4);
+    pattern.startNewRow();
+    pattern.addSingleCrochet();
+
+    const stitches = pattern.getStitches();
+    const chainGraph = buildDrapeGraph(stitches, FoundationType.CHAIN);
+    const ringGraph = buildDrapeGraph(stitches, FoundationType.MAGIC_RING);
+    const foundationStitch = stitches.find((stitch) => stitch.row === 0)!;
+    const chainAnchor = chainGraph.nodes.find((node) => node.id === `anchor-${foundationStitch.id}`);
+    const ringAnchor = ringGraph.nodes.find((node) => node.id === `anchor-${foundationStitch.id}`);
+
+    expect(ringAnchor?.position[2]).not.toBe(chainAnchor?.position[2]);
   });
 
   it('caps simulation nodes for very large patterns', () => {
