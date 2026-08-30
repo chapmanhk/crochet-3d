@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import {
   Pattern,
   StitchType,
@@ -8,11 +8,13 @@ import {
 } from '@engine/index';
 import {
   acceptConfirm,
+  clickToolbarButton,
   createFoundationChain,
   dismissConfirm,
+  gotoApp,
   infoPanel,
   startRowOne,
-  toolbarButton,
+  waitForAppReady,
 } from './helpers';
 
 function buildPatternJson(setup: (pattern: Pattern) => void): string {
@@ -28,25 +30,17 @@ function buildPatternJson(setup: (pattern: Pattern) => void): string {
 }
 
 test.describe('Pattern persistence', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      window.localStorage.setItem('crochet-3d-onboarding-seen', 'true');
-    });
-  });
-
   async function startFresh(page: import('@playwright/test').Page) {
-    await page.goto('/');
-    await page.evaluate(() => window.localStorage.removeItem('crochet-3d-autosave'));
-    await page.reload();
+    await gotoApp(page);
   }
 
   test('Save pattern downloads a JSON file', async ({ page }) => {
     await startFresh(page);
     await startRowOne(page, 3);
-    await toolbarButton(page, /Add single crochet/).click();
+    await clickToolbarButton(page, /Add single crochet/);
 
     const downloadPromise = page.waitForEvent('download');
-    await toolbarButton(page, 'Save pattern').click();
+    await clickToolbarButton(page, 'Save pattern');
     const download = await downloadPromise;
 
     expect(download.suggestedFilename()).toMatch(/crochet-pattern-.*\.json$/);
@@ -98,6 +92,9 @@ test.describe('Pattern persistence', () => {
 
     await page.evaluate((contents) => {
       const input = document.querySelector('input[type="file"][accept*="json"]') as HTMLInputElement;
+      if (!input) {
+        throw new Error('Missing pattern file input');
+      }
       const file = new File([contents], 'pattern.json', { type: 'application/json' });
       const dataTransfer = new DataTransfer();
       dataTransfer.items.add(file);
@@ -129,7 +126,7 @@ test.describe('Pattern persistence', () => {
     await startFresh(page);
     await createFoundationChain(page, 3);
 
-    await toolbarButton(page, 'Copy instructions').click();
+    await clickToolbarButton(page, 'Copy instructions');
     await expect(infoPanel(page).getByText('Instructions copied to clipboard.')).toBeVisible();
 
     const clipboardText = await page.evaluate(async () => navigator.clipboard.readText());
@@ -141,7 +138,7 @@ test.describe('Pattern persistence', () => {
     await createFoundationChain(page, 3);
 
     const downloadPromise = page.waitForEvent('download');
-    await toolbarButton(page, 'Export instructions').click();
+    await clickToolbarButton(page, 'Export instructions');
     const download = await downloadPromise;
 
     expect(download.suggestedFilename()).toMatch(/crochet-instructions-.*\.md$/);
@@ -149,12 +146,15 @@ test.describe('Pattern persistence', () => {
   });
 
   test('Pattern restores from autosave after refresh', async ({ page }) => {
-    await page.goto('/');
+    // Clear stale autosave from earlier tests in this worker; we only need to
+    // preserve autosave after the pattern is built and before reload.
+    await gotoApp(page);
     await startRowOne(page, 3);
-    await toolbarButton(page, /Add single crochet/).click();
+    await clickToolbarButton(page, /Add single crochet/);
 
     await page.waitForFunction(() => window.localStorage.getItem('crochet-3d-autosave') !== null);
     await page.reload();
+    await waitForAppReady(page);
     await expect(infoPanel(page).locator('dt:text-is("Stitches") + dd')).toHaveText('4');
     await expect(infoPanel(page).getByText('Restored your last pattern.')).toBeVisible();
   });

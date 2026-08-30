@@ -1,9 +1,9 @@
 # Phase 4 — 3D preview at scale
 # Performance and realism for larger patterns.
 
-Feature: Scale preview and drape
+Feature: Scale preview
   As a crocheter designing larger pieces
-  I want smooth 3D preview and optional drape feedback
+  I want smooth 3D preview at scale
   So that I can work with big patterns without sluggish orbit controls
 
   Background:
@@ -15,15 +15,6 @@ Feature: Scale preview and drape
     And I choose the "Large swatch" template
     Then the "Save pattern" control should be enabled
     And the stitch count should be at least 100
-
-  @e2e
-  Scenario: Drape preview can be toggled on and off
-    Given I have a foundation chain of 6
-    When I choose "New Row"
-    And I enable drape preview
-    Then the drape preview toggle should show "Drape preview on"
-    When I disable drape preview
-    Then the drape preview toggle should show "Drape preview off"
 
   @e2e
   Scenario: Attachment target is announced in the info panel

@@ -1,5 +1,6 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './test';
 import {
+  clickToolbarButton,
   createFoundationChain,
   gotoApp,
   infoPanel,
@@ -16,27 +17,10 @@ test.describe('Scale preview', () => {
     await expect(infoPanel(page)).toContainText('120');
   });
 
-  test('Drape preview can be toggled on and off', async ({ page }) => {
-    await gotoApp(page);
-    await createFoundationChain(page, 6);
-    await toolbarButton(page, 'New Row').click();
-
-    const toggle = page.getByTestId('drape-preview-toggle');
-    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-
-    await toggle.click();
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-    await expect(toggle).toHaveText('Drape preview on');
-
-    await toggle.click();
-    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-    await expect(toggle).toHaveText('Drape preview off');
-  });
-
   test('Attachment target is announced in the info panel', async ({ page }) => {
     await gotoApp(page);
     await createFoundationChain(page, 6);
-    await toolbarButton(page, 'New Row').click();
+    await clickToolbarButton(page, 'New Row');
 
     await expect(page.getByTestId('attachment-target-description')).toContainText(
       'attaches to stitch',

@@ -51,7 +51,7 @@ Performance and accessibility improvements for larger patterns (`specs/scale-pre
 |------------|-------|----------------|
 | **Instanced stitch meshes** | `src/scene/instancedStitches.ts`, `StitchRenderer` | Flat working rows with ≥4 stitches render via `THREE.InstancedMesh` batches keyed by shared prototype geometry. Foundation rows, round work, and row joins stay on merged strand geometry. |
 | **Lazy 3D load** | `src/app/LazyCrochetScene.tsx`, `vite.config.ts` | The canvas loads through `React.lazy` so the initial bundle stays small. Vite splits `react-vendor`, `engine`, `store`, `scene`, `three`, `r3f`, and `rapier` chunks; Rapier and the drape layer load only when needed. |
-| **Drape preview toggle** | Toolbar **Drape preview** button, `LazyDrapePreview` | Optional Rapier physics proxy (ball colliders on working-row stitches) for a rough hang preview. Off by default; toggling on lazy-loads `@react-three/rapier` and `preview/DrapePreviewLayer`. |
+| **Drape preview toggle** | Toolbar **Drape preview** button, `LazyDrapePreview` | Optional Rapier spring-linked proxy (loop + post constraints on working-row stitches) for illustrative hang preview. Off by default; toggling on lazy-loads `@react-three/rapier` and `preview/DrapePreviewLayer`. |
 | **Attachment target description** | `InfoPanel`, `getAttachmentTargetDescription` | When a stitch can be placed, the info panel announces which foundation or prior-row stitch is the next attachment target (e.g. “Next single crochet attaches to stitch 3 of 6 in row 1”). Synced for screen readers via `aria-live`. |
 
 **Large swatch template:** Toolbar **Templates → Large swatch** loads a 120-stitch pattern to exercise instanced rendering and responsive orbit controls.
