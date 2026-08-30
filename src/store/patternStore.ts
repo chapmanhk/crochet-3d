@@ -286,7 +286,13 @@ export const usePatternStore = create<PatternState>((set, get) => ({
   },
 
   toggleDrapePreview: () => {
-    set((state) => ({ drapePreviewEnabled: !state.drapePreviewEnabled }));
+    set((state) => {
+      const enabled = !state.drapePreviewEnabled;
+      return {
+        drapePreviewEnabled: enabled,
+        lastNotice: enabled ? 'Loading drape preview…' : state.lastNotice,
+      };
+    });
   },
 
   addFoundationChain: (length: number) =>

@@ -6,6 +6,7 @@ import {
   completeRow,
   createFoundationChain,
   dismissConfirm,
+  expectToolbarDisabledReason,
   gotoApp,
   infoPanel,
   MAX_CHAIN_LENGTH,
@@ -311,7 +312,7 @@ test.describe('Pattern validation', () => {
   test('Reset is disabled with no pattern', async ({ page }) => {
     await gotoApp(page);
 
-    await expect(toolbarButton(page, /Reset/)).toBeDisabled();
+    await expectToolbarDisabledReason(page, 'Reset', /no pattern to reset/);
   });
 
   test('Disabled toolbar buttons expose reasons to assistive technology', async ({ page }) => {
@@ -510,6 +511,16 @@ test.describe('Magic ring foundation', () => {
     await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('12');
     await expect(panel.locator('dt:text("Round progress") + dd')).toHaveText('4/4');
     await expect(panel.getByText('Round 2: work around (4 sc)')).toBeVisible();
+
+    await clickToolbarButton(page, 'New Round');
+    await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Round 3');
+    await completeRow(page, 4);
+
+    await clickToolbarButton(page, 'New Round');
+    await expect(panel.locator('dt:text("Status") + dd')).toHaveText('Round 4');
+    await completeRow(page, 4);
+    await expect(panel.locator('dt:text-is("Stitches") + dd')).toHaveText('20');
+    await expect(panel.getByText('Round 4: work around (4 sc)')).toBeVisible();
   });
 });
 

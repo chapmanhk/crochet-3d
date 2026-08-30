@@ -1,6 +1,7 @@
 import { expect, test } from './test';
 import {
   clickToolbarButton,
+  completeRow,
   createFoundationChain,
   createMagicRing,
   gotoApp,
@@ -24,7 +25,7 @@ test.describe('Scale preview', () => {
     await clickToolbarButton(page, 'New Row');
 
     await expect(page.getByTestId('attachment-target-description')).toContainText(
-      'attaches to stitch',
+      'goes into stitch',
     );
   });
 
@@ -32,8 +33,10 @@ test.describe('Scale preview', () => {
     await gotoApp(page);
     await createMagicRing(page, 4);
     await clickToolbarButton(page, 'New Round');
+    await completeRow(page, 4);
+    await clickToolbarButton(page, 'New Round');
 
-    await expect(page.getByTestId('attachment-target-description')).toContainText('the magic ring');
-    await expect(page.getByTestId('attachment-target-description')).toContainText('round 1');
+    await expect(page.getByTestId('attachment-target-description')).toContainText('Round 1');
+    await expect(page.getByTestId('attachment-target-description')).toContainText('working round 2');
   });
 });

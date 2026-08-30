@@ -226,6 +226,12 @@ button {
   background: transparent;
 }
 
+.btn.subtle[aria-pressed='true'] {
+  background: #e8f0fe;
+  border-color: #1a5fb4;
+  color: #1a5fb4;
+}
+
 .btn:disabled,
 .btn[aria-disabled='true'] {
   opacity: 0.55;

@@ -3,6 +3,7 @@ import {
   clickToolbarButton,
   createFoundationChain,
   drapePreviewToggle,
+  expectToolbarDisabledReason,
   gotoApp,
   toggleDrapePreview,
 } from './helpers';
@@ -10,7 +11,11 @@ import {
 test.describe('Drape preview yarn constraints', () => {
   test('Drape preview is disabled without a pattern', async ({ page }) => {
     await gotoApp(page);
-    await expect(drapePreviewToggle(page)).toBeDisabled();
+    await expectToolbarDisabledReason(
+      page,
+      'Drape preview',
+      /foundation \(chain or magic ring\)/,
+    );
   });
 
   test('Drape preview with yarn constraints remains toggleable', async ({ page }) => {

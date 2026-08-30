@@ -315,6 +315,7 @@ export function Toolbar() {
           />
         </div>
         <div className="toolbar-divider" aria-hidden="true" />
+        <div className="toolbar-group" role="group" aria-label="Stitch actions">
         <StitchTypeSelector
           value={selectedStitchType}
           onChange={setSelectedStitchType}
@@ -357,6 +358,7 @@ export function Toolbar() {
           onClick={() => setConfirmAction('reset')}
           variant="subtle"
         />
+        </div>
       </div>
 
       <FoundationStartDialog

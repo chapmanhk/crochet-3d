@@ -11,7 +11,7 @@ describe('toolbarState', () => {
   });
 
   it('explains why drape preview is unavailable', () => {
-    expect(getDrapePreviewDisabledReason(0)).toContain('foundation');
+    expect(getDrapePreviewDisabledReason(0)).toContain('magic ring');
     expect(getDrapePreviewDisabledReason(3)).toBeNull();
   });
 });

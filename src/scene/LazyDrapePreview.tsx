@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import type { StitchNode } from '@engine/index';
 import { FoundationType } from '@engine/index';
 
@@ -12,13 +12,27 @@ interface LazyDrapePreviewProps {
   stitches: StitchNode[];
   foundationType: FoundationType;
   enabled: boolean;
+  onReady?: () => void;
+}
+
+function DrapePreviewReady({ onReady }: { onReady?: () => void }) {
+  useEffect(() => {
+    onReady?.();
+  }, [onReady]);
+
+  return null;
 }
 
 /**
  * Lazy-loads the Rapier drape preview layer only when `enabled` is true.
  * Keeps the `rapier` chunk off the critical path until the user toggles preview on.
  */
-export function LazyDrapePreview({ stitches, foundationType, enabled }: LazyDrapePreviewProps) {
+export function LazyDrapePreview({
+  stitches,
+  foundationType,
+  enabled,
+  onReady,
+}: LazyDrapePreviewProps) {
   if (!enabled) {
     return null;
   }
@@ -26,6 +40,7 @@ export function LazyDrapePreview({ stitches, foundationType, enabled }: LazyDrap
   return (
     <Suspense fallback={null}>
       <DrapePreviewLayer stitches={stitches} foundationType={foundationType} />
+      <DrapePreviewReady onReady={onReady} />
     </Suspense>
   );
 }

@@ -21,6 +21,6 @@ export function getExportInstructionsDisabledReason(stitchesCount: number): stri
 export function getDrapePreviewDisabledReason(stitchesCount: number): string | null {
   return disabledWhenEmpty(
     stitchesCount,
-    'Add a foundation chain or template before enabling drape preview.',
+    'Add a foundation (chain or magic ring) or choose a template before enabling drape preview.',
   );
 }

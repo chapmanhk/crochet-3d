@@ -31,11 +31,12 @@ function SceneControls() {
 }
 
 export function CrochetScene() {
-  const { stitches, drapePreviewEnabled, foundationType } = usePatternStore(
+  const { stitches, drapePreviewEnabled, foundationType, clearNotice } = usePatternStore(
     useShallow((state) => ({
       stitches: state.stitches,
       drapePreviewEnabled: state.drapePreviewEnabled,
       foundationType: state.foundationType,
+      clearNotice: state.clearNotice,
     })),
   );
 
@@ -52,6 +53,7 @@ export function CrochetScene() {
         stitches={stitches}
         foundationType={foundationType}
         enabled={drapePreviewEnabled}
+        onReady={() => clearNotice()}
       />
       <AttachmentPointPicker />
     </Canvas>
